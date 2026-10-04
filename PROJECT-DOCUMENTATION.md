@@ -1,9 +1,9 @@
 # 📋 Smart Civic Grievance Platform — Complete Project Documentation
 
-> **Version:** 2.0 — Consolidated  
+> **Version:** 3.0 — Scope-Reduced  
 > **Last Updated:** October 4, 2026  
 > **Team:** Sairaj (Backend + DevOps + Cloud) · Sufiyan (Frontend) · Tushar (ML/AI)  
-> **Status:** Planning & Architecture Complete · Implementation Starting
+> **Status:** Planning & Architecture Complete · Scope Finalized · Implementation Starting
 
 ---
 
@@ -242,13 +242,13 @@ Step 6:  Complaint marked resolved → citizen auto-notified
 
 ### Carry-Forward Rules
 - Worker marks task as "Cannot Complete" with a reason
-- Next day, task re-enters scoring pool with 10% carry-forward bonus
+- Next day, task re-enters scoring pool (no bonus scoring — just re-assigned)
 - If carried forward 3+ times → automatic escalation to admin
 
 ### Key Design Decisions
 | Decision | Reasoning |
 |----------|-----------|
-| **Mobile PWA, not native app** | No app store, instant updates. |
+| **Mobile web app, not native app** | No app store, instant updates, works in any browser. |
 | **4-digit PIN login** | Quick field login. Security via rate limiting. |
 | **24-hour JWT token** | One login per day. |
 | **15–20 tasks/day cap** | Prevents worker overload. |
@@ -311,8 +311,7 @@ Admins use a desktop-optimized web dashboard — charts, maps, tables, and manag
                         ├─ Reviews triage queue
                         ├─ Tracks worker performance
                         ├─ Views hotspot maps
-                        ├─ Manages worker accounts & zones
-                        └─ Views hotspot maps
+                        └─ Manages worker accounts & zones
 ```
 
 ---
@@ -478,9 +477,9 @@ Lives **inside the backend** (not a separate service). Loaded into memory at sta
 | **FastAPI** | Modern, async, auto-generates API docs (Swagger), type-safe with Pydantic. | Django too heavy for API-only. Flask too minimal — no validation/docs. |
 | **SQLAlchemy 2.0** | Industry-standard ORM. Modern async support. Prevents SQL injection. | — |
 | **Alembic** | Versioned database migrations. Essential for team development. | — |
-| **Celery + Redis** | Background task queue. Redis serves 3 roles (broker, sessions, cache). | RabbitMQ more complex. Redis already needed for other jobs. |
+| **APScheduler** | Lightweight in-process scheduler for recurring jobs (SLA checks, daily task allocation). Runs inside FastAPI — no extra container. | Celery requires 2 extra containers (worker + beat). Overkill for our scale. |
 | **passlib + python-jose** | bcrypt hashing + JWT tokens. Industry standard. | — |
-| **slowapi** | Rate limiting. Critical for 4-digit PIN brute-force protection. | — |
+| **opennsfw2** | NSFW image filter. Blocks inappropriate uploads before AI classification. | — |
 
 ## Frontend Technologies
 
@@ -980,9 +979,10 @@ backend/
 ### Auth Endpoints
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/v1/auth/admin/login` | POST | Admin login → JWT tokens |
-| `/api/v1/auth/admin/refresh` | POST | Refresh expired admin access token |
+| `/api/v1/auth/admin/login` | POST | Admin login → JWT token |
 | `/api/v1/auth/worker/login` | POST | Worker login → JWT token |
+
+> ⏳ Admin token refresh endpoint may be added depending on final JWT strategy decision.
 
 ### Complaint Endpoints
 | Endpoint | Method | Who | Description |
@@ -997,7 +997,6 @@ backend/
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/v1/workers/me/tasks` | GET | Get my daily task queue |
-| `/api/v1/workers/me/tasks/route` | GET | Get optimized route |
 | `/api/v1/workers/me/tasks/{id}` | PATCH | Update task status |
 | `/api/v1/workers/me/tasks/{id}/defer` | PATCH | Defer task (with reason) |
 
@@ -1010,7 +1009,6 @@ backend/
 | `/api/v1/admin/triage/{id}` | PATCH | Classify a triaged complaint |
 | `/api/v1/admin/workers` | GET/POST | Worker list + create new worker |
 | `/api/v1/admin/hotspots` | GET | Geographic hotspot data |
-| `/api/v1/admin/export` | GET | Export data to CSV/Excel |
 
 ### Other Endpoints
 | Endpoint | Method | Description |
@@ -1075,7 +1073,7 @@ frontend/src/
 │   ├── dashboard/    (StatsCards · CategoryChart · TrendChart · HotspotMap · WorkerTable)
 │   ├── worker/       (TaskCard · TaskList · ResolveForm · DeferForm)
 │   ├── triage/       (TriageCard · TriageQueue)
-│   └── shared/       (Navbar · LoginForm · CanvasViewer · LoadingSpinner · StatusBadge)
+│   └── shared/       (Navbar · LoginForm · LoadingSpinner · StatusBadge)
 ├── views/            (LoginView · AdminDashboard · AdminTriage · AdminWorkers
 │                      WorkerTaskQueue · WorkerTaskDetail · NotFound)
 ├── router/           (index.js — routes + auth guards)
@@ -1122,19 +1120,16 @@ frontend/src/
 
 | Store | State | Purpose |
 |-------|-------|---------|
-| **authStore** | token, refreshToken, user, isAuthenticated, userRole | Auth session |
+| **authStore** | token, user, isAuthenticated, userRole | Auth session |
 | **complaintStore** | dashboardStats, triageQueue, trendData | Complaint data |
 | **workerStore** | tasks, activeTask | Worker task data |
 
 ---
 
-## PWA Capabilities
+## Browser Capabilities Used
 
-| Capability | Admin PWA | Worker Mobile PWA |
-|-----------|-----------|-------------------|
-| Installable (home screen) | ✅ | ✅ |
-| Offline fallback | Basic | Critical (workers may lose signal) |
-| Push notifications | ✅ | ✅ |
+| Capability | Admin Dashboard | Worker Mobile App |
+|-----------|----------------|-------------------|
 | Camera access | ❌ | ✅ (resolution photos) |
 | GPS/Geolocation | ❌ | ✅ (navigation) |
 | Responsive layout | Desktop-first | Mobile-first |
@@ -1143,7 +1138,7 @@ frontend/src/
 
 # 11 — Background Tasks & Scheduling
 
-## The 4 Celery Tasks
+## The 4 Background Tasks (FastAPI BackgroundTasks + APScheduler)
 
 ### Task 1: `classify_complaint` (Event-triggered)
 - **When:** Citizen submits complaint
@@ -1553,8 +1548,7 @@ Frontend (Sufiyan):
   □ Pinia stores
   □ LoginView, AdminDashboard, AdminTriage, AdminWorkers
   □ WorkerTaskQueue, WorkerTaskDetail
-  □ HotspotMap (Leaflet), CanvasViewer
-  □ PWA setup
+  □ HotspotMap (Leaflet)
 ```
 
 ---
