@@ -4,6 +4,7 @@
 # The .env file contains database passwords, JWT secrets, API keys
 # If this gets committed, your entire system is compromised
 .env
+.env.*
 
 # ========================
 # PYTHON
