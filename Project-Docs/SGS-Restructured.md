@@ -424,7 +424,7 @@ Citizen → Telegram webhook → Redis session → AI classification → citizen
 | Auth               | JWT + bcrypt                   | Token-based authentication and secure credential hashing.   |
 | Rate limiting      | SlowAPI                        | API abuse protection.                                       |
 | Citizen interface  | python-telegram-bot            | Telegram integration.                                       |
-| Frontend           | Vue 3 + TypeScript + Vite      | Responsive web UI and PWA foundation.                       |
+| Frontend           | Vue 3 + JavaScript + Vite      | Responsive web UI and PWA foundation.                       |
 | UI                 | Bootstrap 5                    | Responsive components and consistent styling.               |
 | State              | Pinia                          | Frontend state management.                                  |
 | Charts             | Chart.js / vue-chartjs         | Admin analytics.                                            |
