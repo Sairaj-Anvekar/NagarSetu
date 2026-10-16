@@ -21,6 +21,7 @@
 | SGMS-123 | 5 | T2 | Hotspot query using ST_DWithin and spatial aggregation |
 | SGMS-124 | 3 | T3 | Filters: date, category, department, zone |
 | SGMS-125 | 3 | T2 | `+` Triage API (GET/PATCH /triage/*) for low-confidence cases |
+| SGMS-136A | 5 | T2 | `+` Read-only Civic Operations MCP admin assistant for SLA risk, zone hotspots, department workload, low-confidence complaints and nearby complaints |
 | SGMS-126 | 5 | T2 | Security hardening and API validation review |
 | SGMS-127 | 3 | T3 | Database index and slow-query review |
 | SGMS-130 | 5 | T2 | Full E2E run: citizen -> AI -> assignment -> worker -> completion -> admin |
