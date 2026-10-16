@@ -78,3 +78,10 @@ htmlcov/
 # ========================
 #/Ai-Use-Guidelines/
 #/Project-Docs/
+
+# ========================
+# GRAVITAS
+# ========================
+.agents
+.claude
+/skills-lock.json
