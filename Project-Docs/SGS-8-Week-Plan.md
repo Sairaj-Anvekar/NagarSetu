@@ -10,7 +10,7 @@ Parallel Workstreams • Integration Gates • Deliverables • Testing • Depl
 | Core Intelligence  | MobileNetV2 image classification + DistilBERT text classification                    |
 | Geographic Routing | PostgreSQL + PostGIS with four static zones (A/B/C/D)                                |
 | Backend            | Python 3.11+ • FastAPI • SQLAlchemy • Alembic • Redis                                |
-| Frontend           | Vue 3 • TypeScript • Vite • Bootstrap 5 • Pinia • Leaflet                            |
+| Frontend           | Vue 3 • JavaScript • Vite • Bootstrap 5 • Pinia • Leaflet                            |
 | Deployment         | Docker • Nginx • AWS EC2 • S3 • SSM • HTTPS • GitHub Actions                         |
 | Team               | Sairaj — Backend/DevOps \| Sufiyan — Frontend/PWA \| Tushar — ML                     |
 | Timeline           | 8 weeks                                                                              |
@@ -88,7 +88,7 @@ The team should not wait for one person to finish the entire system before start
 
 ## Frontend / PWA — Sufiyan
 
-- Initialize Vue 3 + TypeScript + Vite + Bootstrap 5.
+- Initialize Vue 3 + JavaScript + Vite + Bootstrap 5.
 
 - Configure Vue Router, Pinia and Axios.
 
@@ -1102,7 +1102,7 @@ A feature is not considered complete when code merely exists. It is complete whe
 | Authentication            | JWT, bcrypt, RBAC                                              |
 | Rate limiting             | SlowAPI                                                        |
 | Citizen interface         | python-telegram-bot                                            |
-| Frontend                  | Vue 3, TypeScript, Vite, Bootstrap 5, Pinia, Vue Router, Axios |
+| Frontend                  | Vue 3, JavaScript, Vite, Bootstrap 5, Pinia, Vue Router, Axios |
 | Charts                    | Chart.js / vue-chartjs                                         |
 | Maps                      | Leaflet + OpenStreetMap                                        |
 | Image ML                  | MobileNetV2 + TensorFlow/Keras                                 |

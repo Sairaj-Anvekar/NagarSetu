@@ -28,7 +28,7 @@
 
 | Key | Pts | Tier | Task |
 |---|---:|:---:|---|
-| SGMS-20 | 3 | T1 | Initialize Vue 3 + TypeScript + Vite + Bootstrap 5 with Router, Pinia and Axios |
+| SGMS-20 | 3 | T1 | Initialize Vue 3 + JavaScript + Vite + Bootstrap 5 with Router, Pinia and Axios |
 | SGMS-21 | 3 | T1 | Shared layout/navigation and route placeholders (/login, /admin, /worker) |
 | SGMS-22 | 5 | T2 | Basic design system: cards, tables, status/priority badges, loading/error states |
 
