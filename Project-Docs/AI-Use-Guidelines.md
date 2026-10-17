@@ -80,7 +80,7 @@ You: *pastes into auth_service.py without reading*
 > **If AI generated it, you still must understand it well enough to explain it in a code review, demo, or viva.**
 
 **What this means in practice:**
-- If Sairaj uses AI to write the Celery task allocation, he must be able to explain the scoring algorithm to Sufiyan and Tushar.
+- If Sairaj uses AI to write the task allocation service, he must be able to explain the scoring algorithm to Sufiyan and Tushar.
 - If Sufiyan uses AI to build the Vue router guards, he must be able to explain role-based routing.
 - If Tushar uses AI to fine-tune MobileNetV2, he must be able to explain transfer learning.
 

@@ -22,7 +22,7 @@ main  ────────────────────────�
 
 | Branch | Purpose | Rules |
 |---|---|---|
-| **`main`** | Production copy (golden build) | Nobody commits directly. Code only arrives from `dev` at sprint gates. |
+| **`main`** | Production copy (golden build) | Nobody commits directly. Code only arrives from `dev` at weekly integration gates. |
 | **`dev`** | Team integration & testing | Nobody commits directly. All feature branches merge here via PR. |
 | **`feature/SGMS-XX-*`** | Isolated work for one task | Created from `dev`. Deleted immediately after merging into `dev`. |
 
@@ -75,7 +75,7 @@ git branch -d feature/SGMS-14-docker-compose
 |---|---|---|
 | Broken code or integration bug | Caught in `dev`, fixed before `main` | `main` breaks, professor/mentor sees broken app |
 | Mid-sprint demo | Demo runs reliably from clean `main` | `main` is half-broken mid-sprint |
-| Sprint Gate testing | Test full app in `dev`, merge to `main` when gate passes | `main` is your testing ground (risky) |
+| Integration Gate testing | Test full app in `dev`, merge to `main` when gate passes | `main` is your testing ground (risky) |
 
 ---
 
@@ -83,8 +83,8 @@ git branch -d feature/SGMS-14-docker-compose
 
 - **PR to `dev`** → Runs linting (Ruff/ESLint) & unit tests.
 - **Merge to `dev`** → Runs integration checks & verifies containers.
-- **Sprint Gate (`dev` → `main`)** → Full test suite passes.
-- **Merge to `main`** → Deploys to production environment (AWS in Sprint 8).
+- **Integration Gate (`dev` → `main`)** → Full test suite passes.
+- **Merge to `main`** → Deploys to production environment (AWS in Week 4).
 
 ---
 
