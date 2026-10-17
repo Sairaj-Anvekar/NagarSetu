@@ -1,52 +1,54 @@
-# NagarSetu — Smart Civic Grievance System
+# NagarSetu - Smart Civic Grievance System
 
-A digital civic complaint platform that enables citizens to report municipal issues through Telegram, classifies complaints using AI, automatically assigns them to field workers based on department and geographic zone, and provides administrators with operational visibility through a web dashboard.
+Citizens report civic issues via a Telegram bot, AI (MobileNetV2 for images, DistilBERT for text) classifies them, PostGIS routes by zone, complaints are auto-assigned to field workers using a mobile PWA, and admins monitor via a web dashboard.
 
 ## Team
 
-| Member  | Role                      |
-|---------|---------------------------|
-| Sairaj  | Backend, Database, DevOps |
-| Sufiyan | Frontend, Worker PWA      |
-| Tushar  | AI/ML                     |
+| Member  | Role           |
+|---------|----------------|
+| Sairaj  | Backend/DevOps |
+| Sufiyan | Frontend/PWA   |
+| Tushar  | ML             |
 
 ## Tech Stack
 
-| Layer              | Technology                              |
-|--------------------|-----------------------------------------|
-| Backend            | Python 3.11+, FastAPI, SQLAlchemy, Alembic |
-| Database           | PostgreSQL 16 + PostGIS                 |
-| Session State      | Redis 7                                 |
-| Frontend           | Vue 3, TypeScript, Vite, Bootstrap 5    |
-| AI/ML              | MobileNetV2, DistilBERT                 |
-| Object Storage     | MinIO (local) / AWS S3 (production)     |
-| Infrastructure     | Docker, Nginx, AWS EC2, GitHub Actions  |
+| Layer              | Technology                                                 |
+|--------------------|------------------------------------------------------------|
+| Backend            | FastAPI, SQLAlchemy 2.0, Alembic                           |
+| Database           | PostgreSQL 16 + PostGIS                                    |
+| Cache / State      | Redis 7                                                    |
+| Object Storage     | MinIO/S3                                                   |
+| Frontend           | Vue 3 + Vite + Bootstrap 5 + Pinia                         |
+| AI/ML              | MobileNetV2, DistilBERT, TensorFlow/Keras, Transformers    |
+| Infrastructure     | Docker, Nginx, AWS EC2, GitHub Actions                     |
 
-## Project Structure
+## Repository Layout
 
 ```
 smart-grievance-system/
-├── backend/         # FastAPI application
-├── frontend/        # Vue 3 web application
-├── infra/           # Docker Compose, Nginx, deployment scripts
-├── ml-training/     # ML training notebooks and datasets
-├── Project-Docs/    # Architecture and planning documents
-└── Sprints/         # Sprint-by-sprint execution plans
+├── .github/         # CI/CD workflows and repository automation
+├── backend/         # FastAPI application, database models, and API endpoints
+├── docs/            # Project documentation and specifications
+├── frontend/        # Vue 3 web dashboard and worker PWA
+├── infra/           # Docker Compose, Nginx, and deployment configurations
+├── ml/              # ML model inference pipelines and artifacts
+├── ml-training/     # ML model training notebooks, scripts, and datasets
+└── Project-Docs/    # Architectural guidelines, sprint plans, and project roadmaps
 ```
 
-## Getting Started
+## Local Setup
 
-> Setup instructions will be added once the Docker development stack is configured.
+Docker Compose setup will be finalized in the next milestone (feature/docker-compose).
 
-## Branching Strategy
+## Branching Rules
 
-| Branch    | Purpose                                              |
-|-----------|------------------------------------------------------|
-| `main`    | Stable, deployable code only                         |
-| `dev`     | Integration branch — features merge here first       |
-| `feature/SGMS-XX-*` | Individual issue branches, created off `dev` |
+- `main` = production
+- `dev` = integration
+- `feature/<short-description>` branches are created from `dev` and merged via PR into `dev`
+- Never commit directly to `main` or `dev`
+- One task = one branch
 
-**Workflow:** `feature branch` → PR to `dev` → when stable, `dev` → PR to `main`
+For detailed branching conventions and guidelines, see [Project-Docs/Branching-Strategy.md](Project-Docs/Branching-Strategy.md).
 
 ## License
 

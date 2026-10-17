@@ -86,3 +86,23 @@ htmlcov/
 .agents
 .claude
 /skills-lock.json
+
+# ADDITIONAL
+*.py[cod]
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+.vite/
+npm-debug.log*
+*.pem
+*.key
+*.keras
+*.ckpt
+*.npy
+postgres_data/
+redis_data/
+minio_data/
+*.local
+uploads/
+tmp/
