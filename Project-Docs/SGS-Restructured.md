@@ -15,7 +15,7 @@ Requirements • Architecture • AI/ML • Database • Backend • Frontend �
 | Geospatial layer               | PostgreSQL 16 + PostGIS              |
 | Storage                        | MinIO locally → AWS S3 in production |
 | Deployment                     | Docker + AWS EC2 + Nginx + HTTPS     |
-| Overall implementation horizon | 8 weeks                              |
+| Overall implementation horizon | 4 weeks                              |
 | Document status                | Updated master baseline              |
 
 | **Purpose** This is the master project plan, not the week-by-week execution schedule. It defines what the system is, how it works, what is in scope, how the components interact, and the finalized engineering decisions that govern implementation. |
@@ -80,7 +80,7 @@ Requirements • Architecture • AI/ML • Database • Backend • Frontend �
 
 - 26\. Development Governance and Team Responsibilities
 
-- 27\. Final 8-Week Delivery Roadmap
+- 27\. Final 4-Week Delivery Roadmap
 
 - 28\. Integration Gates
 
@@ -1108,21 +1108,17 @@ Backend logs should be machine-readable JSON where practical, including timestam
 
 - Prefer small vertical slices over giant feature branches.
 
-# 27. Final 8-Week Delivery Roadmap
+# 27. Final 4-Week Delivery Roadmap
 
-| **This is the master timeline** This section states the overall delivery horizon. The separate Detailed 8-Week Execution Plan contains the day/week-level task map. |
+| **This is the master timeline** This section states the overall delivery horizon. The separate Detailed 4-Week Compressed Engineering Execution Plan contains the day/week-level task map. |
 |---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 
 | **Week** | **Primary focus**                    | **Major outcome**                                                 |
 |----------|--------------------------------------|-------------------------------------------------------------------|
-| 1        | Foundation & Architecture            | Local stack, database, migrations, frontend shell, ML setup.      |
-| 2        | Core Backend & Authentication        | Secure auth, RBAC, worker/department/zone configuration.          |
-| 3        | Complaint Intake & AI Classification | Telegram flow, Redis sessions, image/text inference.              |
-| 4        | Complaint Finalization & SLA         | Location, summary, grievance code, Submitted state, priority/SLA. |
-| 5        | PostGIS & Automatic Assignment       | Zones, eligibility, workload and atomic worker assignment.        |
-| 6        | Worker PWA & Resolution              | In-Progress, evidence upload, Completed and notifications.        |
-| 7        | Admin Dashboard & Integration        | Analytics, hotspots, exports, audit and full E2E.                 |
-| 8        | Deployment & Final Validation        | AWS, HTTPS, CI/CD, security and final demo.                       |
+| 1        | Foundation, Architecture & Authentication | Working local stack + secure authenticated backend |
+| 2        | Complaint Intake, AI Classification & Finalization | AI-enabled complaint intake + real citizen submission |
+| 3        | PostGIS Zones, Automatic Assignment & Worker Resolution | Automatic dispatch + field resolution workflow |
+| 4        | Admin Dashboard, Analytics, Integration & Deployment | Operational dashboard + production-ready demo |
 
 ## 27.1 Parallel work philosophy
 
@@ -1132,10 +1128,10 @@ Backend, frontend and ML work proceed in parallel whenever contracts permit. Int
 
 | **Gate**            | **Required result**                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| Gate 1 — End Week 2 | Frontend can call authenticated FastAPI APIs; database migrations and worker configuration work.                                          |
-| Gate 2 — End Week 4 | Citizen can submit a real complaint through Telegram with AI classification, confirmation, location, grievance code and Submitted status. |
-| Gate 3 — End Week 6 | Complaint is automatically assigned to the correct worker, worker starts work, resolves with evidence and complaint becomes Completed.    |
-| Gate 4 — End Week 8 | Production deployment works over HTTPS and the complete citizen → AI → assignment → worker → admin flow is demonstrable.                  |
+| Gate 1 — End Week 1 | Frontend can call authenticated FastAPI APIs; database migrations and worker configuration work.                                          |
+| Gate 2 — End Week 2 | Citizen can submit a real complaint through Telegram with AI classification, confirmation, location, grievance code and Submitted status. |
+| Gate 3 — End Week 3 | Complaint is automatically assigned to the correct worker, worker starts work, resolves with evidence and complaint becomes Completed.    |
+| Gate 4 — End Week 4 | Production deployment works over HTTPS and the complete citizen → AI → assignment → worker → admin flow is demonstrable.                  |
 
 # 29. Final Demo Scenario
 
@@ -1277,7 +1273,7 @@ Backend, frontend and ML work proceed in parallel whenever contracts permit. Int
 | Offline PWA          | Out of baseline                                                                  | Avoids synchronization complexity.                                          |
 | Route optimization   | Out of baseline                                                                  | Simple Google Maps directions are sufficient.                               |
 | Dynamic zone editor  | Out of baseline                                                                  | Static seeded zones meet project requirement.                               |
-| Roadmap              | 8 weeks                                                                          | Finalized project delivery horizon.                                         |
+| Roadmap              | 4 weeks                                                                          | Finalized project delivery horizon.                                         |
 
 # Appendix A — Technology Matrix
 
@@ -1346,7 +1342,7 @@ Backend, frontend and ML work proceed in parallel whenever contracts permit. Int
 | Frontend direction                  | Defined                                                       |
 | Security baseline                   | Defined                                                       |
 | Deployment architecture             | Defined                                                       |
-| 8-week delivery roadmap             | Finalized                                                     |
+| 4-week delivery roadmap             | Finalized                                                     |
 | Production implementation           | To be built and validated                                     |
 
 | **Implementation reality** The project documentation establishes a strong planning baseline. The remaining work is implementation, integration and validation; architecture decisions should now change only when a concrete engineering constraint requires it. |

@@ -1,6 +1,6 @@
 **SMART CIVIC GRIEVANCE SYSTEM**
 
-**Detailed 8-Week Engineering Execution Plan**
+**Detailed 4-Week Compressed Engineering Execution Plan**
 
 Parallel Workstreams • Integration Gates • Deliverables • Testing • Deployment
 
@@ -13,12 +13,14 @@ Parallel Workstreams • Integration Gates • Deliverables • Testing • Depl
 | Frontend           | Vue 3 • JavaScript • Vite • Bootstrap 5 • Pinia • Leaflet                            |
 | Deployment         | Docker • Nginx • AWS EC2 • S3 • SSM • HTTPS • GitHub Actions                         |
 | Team               | Sairaj — Backend/DevOps \| Sufiyan — Frontend/PWA \| Tushar — ML                     |
-| Timeline           | 8 weeks                                                                              |
+| Timeline           | 4 weeks                                                                              |
 
-| **Document purpose** This document converts the finalized project architecture and decisions into an execution-ready 8-week build map. Work is intentionally parallelized, but each week ends with an integration gate so the project does not become three disconnected workstreams. |
+| **Document purpose** This document converts the finalized project architecture and decisions into an execution-ready 4-week build map. Work is intentionally parallelized, but each week ends with an integration gate so the project does not become three disconnected workstreams. |
 |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 
 *Implementation baseline • Version 1.0*
+
+**Compressed schedule note:** The original eight sequential work packages are retained without removing implementation tasks. Original Weeks 1–2 are scheduled in compressed Week 1; original Weeks 3–4 in compressed Week 2; original Weeks 5–6 in compressed Week 3; and original Weeks 7–8 in compressed Week 4. This requires parallel execution across the three owners and overlapping integration/testing.
 
 # 1. Executive Summary
 
@@ -40,18 +42,14 @@ The Smart Civic Grievance System is a three-interface civic complaint platform f
 | **Important scope decision** Only three user-facing complaint statuses are used: Submitted, In-Progress, and Completed. Internal logs/events may contain CREATED, CLASSIFIED, CONFIRMED, ASSIGNED, STARTED, DEFERRED and COMPLETED, but these are not exposed as additional complaint statuses. |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 
-# 2. Master 8-Week Plan
+# 2. Master 4-Week Plan
 
-| **Week** | **Backend / DevOps**                  | **Frontend / PWA**             | **AI / ML**               | **Integration Gate**              |
-|----------|---------------------------------------|--------------------------------|---------------------------|-----------------------------------|
-| 1        | Foundation, DB, Docker, CI            | Vue foundation, UI structure   | Dataset + training setup  | Local environment works           |
-| 2        | Auth, RBAC, worker/department APIs    | Login, layouts, auth store     | Baseline models           | Authenticated API works           |
-| 3        | Complaint service + Telegram flow     | Citizen/admin/worker skeletons | Inference service         | AI returns category               |
-| 4        | Finalization, SLA, priority, queue    | Complaint/status UI            | Inference optimization    | Citizen can submit real complaint |
-| 5        | PostGIS zones + automatic assignment  | Worker queue                   | Backend model integration | Complaint reaches correct worker  |
-| 6        | Resolution, storage, notifications    | Worker PWA completion flow     | Final model evaluation    | Worker can complete complaint     |
-| 7        | Analytics, audit, hotspots, hardening | Admin dashboard + maps         | ML evaluation/docs        | Full E2E system works             |
-| 8        | AWS, HTTPS, CI/CD, security           | Production polish              | Final packaging           | Production/demo-ready deployment  |
+| **Week** | **Backend / DevOps** | **Frontend / PWA** | **AI / ML** | **Integration Gate** |
+|---|---|---|---|---|
+| 1 | Foundation, DB, Docker, CI; authentication, RBAC, worker/department APIs | Vue foundation, UI structure; login, layouts, auth store | Dataset + training setup; baseline models | Local environment works; authenticated API works |
+| 2 | Complaint service + Telegram flow; finalization, SLA, priority, queue | Citizen/admin/worker skeletons; complaint/status UI | Inference service; inference optimization | AI returns category; citizen can submit real complaint |
+| 3 | PostGIS zones + automatic assignment; resolution, storage, notifications | Worker queue; Worker PWA completion flow | Backend model integration; final model evaluation | Complaint reaches correct worker; worker can complete complaint |
+| 4 | Analytics, audit, hotspots, hardening; AWS, HTTPS, CI/CD, security | Admin dashboard + maps; production polish | ML evaluation/docs; final packaging | Full E2E system works; production/demo-ready deployment |
 
 ## 2.1 Team ownership
 
@@ -65,7 +63,7 @@ The Smart Civic Grievance System is a three-interface civic complaint platform f
 
 The team should not wait for one person to finish the entire system before starting another workstream. Instead, each week establishes the contracts and dependencies needed by the other members. Frontend can build against agreed API response shapes; ML can package an inference interface before final model accuracy is complete; backend can expose mocked interfaces while the final model or UI is still being developed.
 
-# Week 1 — Foundation & Architecture
+# Week 1 — Foundation, Architecture & Authentication
 
 | **Weekly objective** Create a reproducible development environment and establish the database, service boundaries, repository structure, frontend shell and ML dataset/training pipeline. |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -130,7 +128,7 @@ The team should not wait for one person to finish the entire system before start
 
 | **Gate**    | **Definition of done**                                                                                                                                                                     |
 |-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Week 1 gate | docker compose up succeeds; database migrations run cleanly; /health and /ready work; Vue loads; Redis and MinIO are reachable; ML training notebooks/scripts are reproducible; CI passes. |
+| Week 1 Gate A | docker compose up succeeds; database migrations run cleanly; /health and /ready work; Vue loads; Redis and MinIO are reachable; ML training notebooks/scripts are reproducible; CI passes. |
 
 ## Suggested implementation artifacts
 
@@ -166,7 +164,7 @@ The team should not wait for one person to finish the entire system before start
 
 - Do not postpone migrations; schema drift becomes expensive once parallel development starts.
 
-# Week 2 — Core Backend & Authentication
+## Week 1, continued — Core Backend & Authentication
 
 | **Weekly objective** Make the backend usable by real users: secure login, role-based access, worker management and static geographic configuration. |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -233,7 +231,7 @@ The team should not wait for one person to finish the entire system before start
 
 | **Gate**    | **Definition of done**                                                                                                                                                             |
 |-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Week 2 gate | Admin and worker authentication works end-to-end; RBAC blocks unauthorized routes; workers have a department and one of Zone A/B/C/D; baseline models can be loaded for inference. |
+| Week 1 Gate B | Admin and worker authentication works end-to-end; RBAC blocks unauthorized routes; workers have a department and one of Zone A/B/C/D; baseline models can be loaded for inference. |
 
 ## Suggested implementation artifacts
 
@@ -255,7 +253,7 @@ The team should not wait for one person to finish the entire system before start
 
 - Do not hard-code secrets into the repository.
 
-# Week 3 — Complaint Intake & AI Classification
+# Week 2 — Complaint Intake, AI Classification & Finalization
 
 | **Weekly objective** Build the complaint intake service and Telegram conversation flow while the ML models become callable through a near-real-time inference interface. |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -318,7 +316,7 @@ The team should not wait for one person to finish the entire system before start
 
 | **Gate**    | **Definition of done**                                                                                                                                        |
 |-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Week 3 gate | AI returns a category for both image and text inputs, Telegram conversation state survives between messages, and the backend has a stable inference contract. |
+| Week 2 Gate A | AI returns a category for both image and text inputs, Telegram conversation state survives between messages, and the backend has a stable inference contract. |
 
 ## Suggested implementation artifacts
 
@@ -342,7 +340,7 @@ The team should not wait for one person to finish the entire system before start
 
 - Do not expose citizen personal information in worker-facing payloads.
 
-# Week 4 — Complaint Finalization & SLA
+## Week 2, continued — Complaint Finalization & SLA
 
 | **Weekly objective** Complete the citizen reporting flow: confirmation, mandatory location, optional description, final summary, grievance code, persistence, SLA/deadline and dynamic queue ordering. |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -413,7 +411,7 @@ The team should not wait for one person to finish the entire system before start
 
 | **Gate**    | **Definition of done**                                                                                                                                                                       |
 |-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Week 4 gate | An actual complaint can be submitted through Telegram from start to finish and appears in PostgreSQL with a grievance code, location, category, priority, SLA/deadline and Submitted status. |
+| Week 2 Gate B | An actual complaint can be submitted through Telegram from start to finish and appears in PostgreSQL with a grievance code, location, category, priority, SLA/deadline and Submitted status. |
 
 ## Suggested implementation artifacts
 
@@ -437,7 +435,7 @@ The team should not wait for one person to finish the entire system before start
 
 - Do not make the 6 AM daily allocation job the core assignment mechanism; assignment is lifecycle-driven.
 
-# Week 5 — PostGIS Zones & Automatic Worker Assignment
+# Week 3 — PostGIS Zones, Automatic Assignment & Worker Resolution
 
 | **Weekly objective** Implement the core geographic dispatch logic. A complaint is automatically assigned to an eligible worker in the responsible department and the complaint's static zone. |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -510,7 +508,7 @@ The team should not wait for one person to finish the entire system before start
 
 | **Gate**    | **Definition of done**                                                                                                                                                                                                  |
 |-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Week 5 gate | Creating a Submitted complaint with a valid location automatically determines the zone and assigns the complaint to exactly one eligible worker based on department, zone, active status, workload and tie-break rules. |
+| Week 3 Gate A | Creating a Submitted complaint with a valid location automatically determines the zone and assigns the complaint to exactly one eligible worker based on department, zone, active status, workload and tie-break rules. |
 
 ## Suggested implementation artifacts
 
@@ -534,7 +532,7 @@ The team should not wait for one person to finish the entire system before start
 
 - Reassignment is reserved for operational events such as worker deactivation, explicit deferral/requeue or invalid assignment.
 
-# Week 6 — Worker PWA & Resolution
+## Week 3, continued — Worker PWA & Resolution
 
 | **Weekly objective** Complete the field-worker workflow from task receipt to evidence-backed completion. |
 |----------------------------------------------------------------------------------------------------------|
@@ -613,7 +611,7 @@ The team should not wait for one person to finish the entire system before start
 
 | **Gate**    | **Definition of done**                                                                                                                             |
 |-------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| Week 6 gate | Worker can take a real assigned complaint from Submitted → In-Progress → Completed, with resolution evidence stored and citizen notification sent. |
+| Week 3 Gate B | Worker can take a real assigned complaint from Submitted → In-Progress → Completed, with resolution evidence stored and citizen notification sent. |
 
 ## Suggested implementation artifacts
 
@@ -635,7 +633,7 @@ The team should not wait for one person to finish the entire system before start
 
 - Do not expose citizen phone, Telegram identity or other personal data in worker screens.
 
-# Week 7 — Admin Dashboard, Analytics & Integration
+# Week 4 — Admin Dashboard, Analytics, Integration & Deployment
 
 | **Weekly objective** Turn the core system into an observable operational platform with dashboard metrics, hotspot analysis, search, exports, audit logs and full end-to-end testing. |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -710,7 +708,7 @@ The team should not wait for one person to finish the entire system before start
 
 | **Gate**    | **Definition of done**                                                                                                                                                                                                                              |
 |-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Week 7 gate | Full end-to-end system works locally: Telegram intake → AI classification → confirmation → location → Submitted → PostGIS zone → automatic worker assignment → PWA → In-Progress → resolution → Completed → citizen notification → admin dashboard. |
+| Week 4 Gate A | Full end-to-end system works locally: Telegram intake → AI classification → confirmation → location → Submitted → PostGIS zone → automatic worker assignment → PWA → In-Progress → resolution → Completed → citizen notification → admin dashboard. |
 
 ## Suggested implementation artifacts
 
@@ -736,7 +734,7 @@ The team should not wait for one person to finish the entire system before start
 
 - Fix integration defects before visual polish.
 
-# Week 8 — Deployment, Security & Final Validation
+## Week 4, continued — Deployment, Security & Final Validation
 
 | **Weekly objective** Deploy the system to AWS, secure it, establish CI/CD and validate the complete project against the final demo scenario. |
 |----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -801,7 +799,7 @@ The team should not wait for one person to finish the entire system before start
 
 | **Gate**    | **Definition of done**                                                                                                                                                                       |
 |-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Week 8 gate | Production deployment is reachable over HTTPS and the complete demo scenario works from citizen complaint submission through AI, PostGIS assignment, worker resolution and admin visibility. |
+| Week 4 Gate B | Production deployment is reachable over HTTPS and the complete demo scenario works from citizen complaint submission through AI, PostGIS assignment, worker resolution and admin visibility. |
 
 ## Suggested implementation artifacts
 
@@ -829,29 +827,24 @@ The team should not wait for one person to finish the entire system before start
 
 # 11. Detailed Parallel Work Map
 
-| **Week** | **Sairaj — Backend/DevOps**         | **Sufiyan — Frontend/PWA**         | **Tushar — ML**            | **Shared checkpoint**     |
-|----------|-------------------------------------|------------------------------------|----------------------------|---------------------------|
-| 1        | Docker, DB, FastAPI, migrations, CI | Vue shell, routing, stores         | Dataset, splits, baselines | Contracts + local stack   |
-| 2        | Auth, RBAC, workers, zones          | Login, layouts, worker/admin shell | Training + metrics         | Authenticated API         |
-| 3        | Complaint service, Telegram, Redis  | Complaint components               | Inference service          | AI classification         |
-| 4        | Finalization, SLA, queue            | Citizen/admin status UI            | Optimization/evaluation    | Real complaint submission |
-| 5        | PostGIS + automatic assignment      | Worker queue                       | Backend model integration  | Correct worker assignment |
-| 6        | Resolution + notification           | Complete PWA                       | Model freeze               | Real resolution           |
-| 7        | Analytics + security                | Dashboard + maps                   | Evaluation/docs            | Full E2E                  |
-| 8        | AWS + CI/CD + hardening             | Production polish                  | Deployment package         | Release validation        |
+| **Week** | **Sairaj — Backend/DevOps** | **Sufiyan — Frontend/PWA** | **Tushar — ML** | **Shared checkpoint** |
+|---|---|---|---|---|
+| 1 | Docker, DB, FastAPI, migrations, CI; auth, RBAC, workers, zones | Vue shell, routing, stores; login, layouts, worker/admin shell | Dataset, splits, baselines; training + metrics | Contracts + local stack; authenticated API |
+| 2 | Complaint service, Telegram, Redis; finalization, SLA, queue | Complaint components; citizen/admin status UI | Inference service; optimization/evaluation | AI classification; real complaint submission |
+| 3 | PostGIS + automatic assignment; resolution + notification | Worker queue; complete PWA | Backend model integration; model freeze | Correct worker assignment; real resolution |
+| 4 | Analytics + security; AWS + CI/CD + hardening | Dashboard + maps; production polish | Evaluation/docs; deployment package | Full E2E; release validation |
 
 ## 11.1 Critical coordination points
 
-| **When** | **People**       | **Alignment required**                                                           |
-|----------|------------------|----------------------------------------------------------------------------------|
-| Week 1   | Sairaj + Sufiyan | API request/response shapes and error format before feature-heavy frontend work. |
-| Week 1–2 | Sairaj + Tushar  | Category taxonomy, department mapping and model input/output contract.           |
-| Week 3   | Sairaj + Tushar  | Model artifact format, loading interface and inference latency.                  |
-| Week 4   | All 3            | Real Telegram submission and AI confirmation flow.                               |
-| Week 5   | Sairaj + Sufiyan | Worker assignment endpoint and queue payload.                                    |
-| Week 6   | All 3            | Complete resolution flow and notification behavior.                              |
-| Week 7   | All 3            | End-to-end testing and bug bash.                                                 |
-| Week 8   | All 3            | Production smoke test and final demo freeze.                                     |
+| **When** | **People** | **Alignment required** |
+|---|---|---|
+| Week 1 | Sairaj + Sufiyan | API request/response shapes and error format before feature-heavy frontend work. |
+| Week 1 | Sairaj + Tushar | Category taxonomy, department mapping and model input/output contract. |
+| Week 2 | Sairaj + Tushar | Model artifact format, loading interface and inference latency. |
+| Week 2 | All 3 | Real Telegram submission and AI confirmation flow. |
+| Week 3 | Sairaj + Sufiyan | Worker assignment endpoint and queue payload. |
+| Week 3 | All 3 | Complete resolution flow and notification behavior. |
+| Week 4 | All 3 | End-to-end testing, bug bash, production smoke test and final demo freeze. |
 
 # 12. Core Technical Contracts
 
@@ -983,7 +976,7 @@ A feature is not considered complete when code merely exists. It is complete whe
 
 # 15. Scope Control
 
-| **Required for the 8-week target** Protect the core vertical slice. New features should not be accepted if they threaten the Week 6 end-to-end milestone. |
+| **Required for the 4-week target** Protect the core vertical slice. New features should not be accepted if they threaten the Week 3 end-to-end milestone. |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------|
 
 ## 15.1 Explicitly out of scope
@@ -1077,21 +1070,17 @@ A feature is not considered complete when code merely exists. It is complete whe
 | Schema drift                          | Alembic migrations + shared API contract.                                                                               |
 | Frontend/backend integration mismatch | Freeze request/response shapes before feature-heavy frontend work.                                                      |
 | Production secret leakage             | Environment variables locally; AWS SSM in production; never commit secrets.                                             |
-| Scope creep                           | Use Tier 1/2/3 priority and protect the Week 6 vertical slice.                                                          |
-| Late deployment problems              | Start deployment preparation in Week 7 and deploy in Week 8 with smoke tests.                                           |
+| Scope creep                           | Use Tier 1/2/3 priority and protect the Week 3 vertical slice.                                                          |
+| Late deployment problems              | Start deployment preparation during Week 3 and complete deployment and smoke tests in Week 4.                                           |
 
 # 18. Week-by-Week Deliverables Summary
 
-| **Week** | **Primary deliverable**         | **Proof**                                                       |
-|----------|---------------------------------|-----------------------------------------------------------------|
-| 1        | Working local engineering stack | Docker Compose + migrations + CI + frontend shell + ML baseline |
-| 2        | Secure authenticated backend    | Admin/worker login + worker management + fixed zones            |
-| 3        | AI-enabled complaint intake     | Telegram + Redis session + category prediction                  |
-| 4        | Real citizen submission         | Location + summary + grievance code + Submitted complaint       |
-| 5        | Automatic dispatch              | PostGIS zone + eligible worker selection + atomic assignment    |
-| 6        | Field resolution workflow       | Worker PWA + In-Progress + resolution evidence + Completed      |
-| 7        | Operational dashboard           | Metrics + trends + hotspots + search + exports + E2E            |
-| 8        | Production-ready demo           | AWS + HTTPS + CI/CD + security + final smoke test               |
+| **Week** | **Primary deliverable** | **Proof** |
+|---|---|---|
+| 1 | Working local stack + secure authenticated backend | Docker Compose, migrations, CI, frontend shell, ML baseline, admin/worker login, worker management and fixed zones |
+| 2 | AI-enabled complaint intake + real citizen submission | Telegram, Redis session, category prediction, location, summary, grievance code and Submitted complaint |
+| 3 | Automatic dispatch + field resolution workflow | PostGIS zone, eligible worker selection, atomic assignment, Worker PWA, In-Progress, resolution evidence and Completed |
+| 4 | Operational dashboard + production-ready demo | Metrics, trends, hotspots, search, exports, E2E, AWS, HTTPS, CI/CD, security and final smoke test |
 
 # Appendix A — Reference Technology Stack
 
@@ -1128,7 +1117,7 @@ A feature is not considered complete when code merely exists. It is complete whe
 
 - The worker PWA is online-only for the planned baseline.
 
-- Static zones are seeded/configured; a complex GIS editing interface is outside the 8-week scope.
+- Static zones are seeded/configured; a complex GIS editing interface is outside the 4-week scope.
 
 - Queue priority is dynamic, but ordinary priority changes do not trigger automatic reassignment.
 
