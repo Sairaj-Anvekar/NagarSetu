@@ -5,6 +5,7 @@
 # If this gets committed, your entire system is compromised
 .env
 .env.*
+!.env.example
 
 # ========================
 # PYTHON
