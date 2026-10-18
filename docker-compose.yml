@@ -1,11 +1,13 @@
+# Run: docker compose up -d
+
 services:
   db:
     image: postgis/postgis:16-3.4
     container_name: sgs_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: nagarsetu
-      POSTGRES_USER: SGSDEV
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
@@ -34,3 +36,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
