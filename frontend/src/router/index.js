@@ -13,4 +13,12 @@ const router = createRouter({
   ],
 })
 
+if (import.meta.env.DEV) {
+  router.addRoute({
+    path: '/design',
+    name: 'design',
+    component: () => import('../views/DesignSystemView.vue'),
+  })
+}
+
 export default router
