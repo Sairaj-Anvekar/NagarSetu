@@ -1,6 +1,8 @@
 from typing import Any
+
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+
 from app.services import health_service
 
 router = APIRouter()

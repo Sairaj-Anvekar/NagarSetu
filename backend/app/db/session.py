@@ -1,6 +1,8 @@
-from typing import Generator
+from collections.abc import Generator
+
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
+
 from app.core.config import get_settings
 
 _engine: Engine | None = None
