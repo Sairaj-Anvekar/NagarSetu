@@ -1,6 +1,11 @@
 <script setup>
+import { ref } from 'vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import ErrorAlert from '../components/ErrorAlert.vue'
+
+const retryMessage = ref('')
 
 const statusVariants = [
   { status: 'Submitted', caption: 'Initial state when citizen files grievance' },
@@ -46,6 +51,80 @@ const priorityVariants = [
                 <PriorityBadge :priority="item.priority" />
               </div>
               <small class="text-muted">{{ item.caption }}</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-5">
+      <h2 class="h4 mb-3">Loading states</h2>
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <div class="mb-2">
+                <LoadingSpinner size="sm" />
+              </div>
+              <small class="text-muted">Small spinner</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <div class="mb-2">
+                <LoadingSpinner size="md" />
+              </div>
+              <small class="text-muted">Default medium spinner</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <div class="mb-2">
+                <LoadingSpinner size="lg" />
+              </div>
+              <small class="text-muted">Large spinner (3rem)</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <LoadingSpinner centered label="Fetching civic records..." />
+              <div class="text-center">
+                <small class="text-muted">Centered spinner with custom label</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-5">
+      <h2 class="h4 mb-3">Error states</h2>
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <ErrorAlert message="Unable to load grievances from the server." />
+              <small class="text-muted">Standard alert with message only</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <ErrorAlert
+                title="Connection failed"
+                message="Server is unreachable. Please check your network connection."
+                show-retry
+                @retry="retryMessage = 'Retry clicked'"
+              />
+              <small class="text-muted">Alert with retry button</small>
+              <small v-if="retryMessage" class="d-block mt-2 text-primary">{{ retryMessage }}</small>
             </div>
           </div>
         </div>
