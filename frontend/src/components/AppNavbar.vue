@@ -1,5 +1,14 @@
 <script setup>
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const auth = useAuthStore()
+
+function handleLogout() {
+  auth.logout()
+  router.push('/login')
+}
 </script>
 
 <template>
@@ -21,14 +30,23 @@ import { RouterLink } from 'vue-router'
 
       <div class="collapse navbar-collapse" id="mainNav">
         <ul class="navbar-nav ms-auto">
-          <li class="nav-item">
+          <li v-if="!auth.isAuthenticated" class="nav-item">
             <RouterLink class="nav-link" to="/login">Login</RouterLink>
           </li>
-          <li class="nav-item">
+          <li v-if="auth.isAdmin" class="nav-item">
             <RouterLink class="nav-link" to="/admin">Admin</RouterLink>
           </li>
-          <li class="nav-item">
+          <li v-if="auth.isWorker" class="nav-item">
             <RouterLink class="nav-link" to="/worker">Worker</RouterLink>
+          </li>
+          <li v-if="auth.isAuthenticated" class="nav-item">
+            <button
+              type="button"
+              class="btn btn-outline-light btn-sm"
+              @click="handleLogout"
+            >
+              Logout
+            </button>
           </li>
         </ul>
       </div>
