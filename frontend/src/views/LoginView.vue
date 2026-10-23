@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { getSafeRedirect } from '../utils/redirect'
 import AppCard from '../components/AppCard.vue'
 import AdminLoginForm from '../components/AdminLoginForm.vue'
 import WorkerLoginForm from '../components/WorkerLoginForm.vue'
@@ -13,7 +14,10 @@ const auth = useAuthStore()
 const activeTab = ref('admin')
 
 function goHome() {
-  if (auth.isAdmin) {
+  const target = getSafeRedirect(route.query.redirect)
+  if (target !== null && auth.isAuthenticated) {
+    router.push(target)
+  } else if (auth.isAdmin) {
     router.push('/admin')
   } else if (auth.isWorker) {
     router.push('/worker')

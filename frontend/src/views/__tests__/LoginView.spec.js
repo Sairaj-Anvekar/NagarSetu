@@ -237,4 +237,79 @@ describe('LoginView — login redirects and session state', () => {
 
     expect(router.currentRoute.value.path).toBe('/worker')
   })
+
+  it('redirects to target path after successful admin login with ?redirect query', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    mockLoginAdmin.mockResolvedValueOnce({
+      token: 'admin-tok',
+      role: 'admin',
+      user: { id: 1 },
+    })
+
+    router.push('/login?redirect=/admin')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    const adminForm = wrapper.findComponent(AdminLoginForm)
+    await adminForm.find('#admin-username').setValue('alice')
+    await adminForm.find('#admin-password').setValue('secret')
+    await adminForm.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/admin')
+  })
+
+  it('ignores unsafe redirect query like //evil.com and redirects admin to role home', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    mockLoginAdmin.mockResolvedValueOnce({
+      token: 'admin-tok',
+      role: 'admin',
+      user: { id: 1 },
+    })
+
+    router.push('/login?redirect=//evil.com')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    const adminForm = wrapper.findComponent(AdminLoginForm)
+    await adminForm.find('#admin-username').setValue('alice')
+    await adminForm.find('#admin-password').setValue('secret')
+    await adminForm.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/admin')
+  })
+
+  it('redirects already-authenticated worker to redirect target on mount', async () => {
+    saveAuth({ token: 'saved-worker-tok', role: 'worker', user: null })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    router.push('/login?redirect=/worker')
+    await router.isReady()
+
+    mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/worker')
+  })
 })
+
