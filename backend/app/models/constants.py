@@ -23,3 +23,33 @@ class ClassificationSource(StrEnum):
 def check_in_values(column_name: str, enum_cls: type[Enum]) -> str:
     values = ",".join(f"'{item.value}'" for item in enum_cls)
     return f"{column_name} IN ({values})"
+
+
+class LogEvent(StrEnum):
+    CREATED = "CREATED"
+    CLASSIFIED = "CLASSIFIED"
+    CONFIRMED = "CONFIRMED"
+    ASSIGNED = "ASSIGNED"
+    STARTED = "STARTED"
+    DEFERRED = "DEFERRED"
+    COMPLETED = "COMPLETED"
+
+
+class ActorType(StrEnum):
+    CITIZEN = "citizen"
+    WORKER = "worker"
+    ADMIN = "admin"
+    SYSTEM = "system"
+
+
+class AssignmentEndReason(StrEnum):
+    COMPLETED = "completed"
+    DEFERRED = "deferred"
+    WORKER_DEACTIVATED = "worker_deactivated"
+    REASSIGNED = "reassigned"
+
+
+class TriageStatus(StrEnum):
+    PENDING = "pending"
+    REVIEWED = "reviewed"
+
