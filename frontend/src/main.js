@@ -16,4 +16,12 @@ app.use(router)
 
 registerUnauthorizedHandler(router)
 
-app.mount('#app')
+async function start() {
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_API === 'true') {
+    const { installMockApi } = await import('./api/mock')
+    installMockApi({ delayMs: Number(import.meta.env.VITE_MOCK_API_DELAY_MS ?? 400) })
+  }
+  app.mount('#app')
+}
+
+start()
