@@ -48,3 +48,8 @@ class AssignmentEndReason(StrEnum):
     WORKER_DEACTIVATED = "worker_deactivated"
     REASSIGNED = "reassigned"
 
+
+class TriageStatus(StrEnum):
+    PENDING = "pending"
+    REVIEWED = "reviewed"
+

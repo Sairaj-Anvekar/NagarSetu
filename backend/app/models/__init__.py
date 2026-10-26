@@ -5,6 +5,8 @@ from app.models.complaint import Complaint
 from app.models.complaint_assignment import ComplaintAssignment
 from app.models.complaint_log import ComplaintLog
 from app.models.department import Department
+from app.models.resolution import Resolution
+from app.models.triage_queue import TriageQueue
 from app.models.worker import Worker
 from app.models.zone import Zone
 
@@ -16,7 +18,10 @@ __all__ = [
     "ComplaintAssignment",
     "ComplaintLog",
     "Department",
+    "Resolution",
+    "TriageQueue",
     "Worker",
     "Zone",
 ]
+
 
