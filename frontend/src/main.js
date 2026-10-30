@@ -1,6 +1,8 @@
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap'
-import './assets/main.css'
+import '@fontsource-variable/sora'
+import '@fontsource-variable/public-sans'
+import './assets/theme.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

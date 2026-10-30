@@ -1,0 +1,219 @@
+:root {
+  /* NagarSetu Design Tokens */
+  --ns-ink: #12202B;
+  --ns-harbour: #0A4A6B;
+  --ns-harbour-dark: #083A55;
+  --ns-span: #1E9C95;
+  --ns-mist: #EEF4F7;
+  --ns-paper: #FFFFFF;
+  --ns-slate: #5B6B78;
+  --ns-line: #D8E2E9;
+  --ns-radius-card: 12px;
+  --ns-radius-control: 8px;
+  --ns-shadow-card: 0 1px 2px rgba(18, 32, 43, 0.06), 0 4px 16px rgba(18, 32, 43, 0.06);
+  --ns-font-body: 'Public Sans Variable', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ns-font-display: 'Sora Variable', 'Public Sans Variable', system-ui, sans-serif;
+
+  /* Bootstrap Root Overrides */
+  --bs-body-bg: var(--ns-mist);
+  --bs-body-bg-rgb: 238, 244, 247;
+  --bs-body-color: var(--ns-ink);
+  --bs-body-color-rgb: 18, 32, 43;
+  --bs-body-font-family: var(--ns-font-body);
+  --bs-body-line-height: 1.55;
+  --bs-primary: var(--ns-harbour);
+  --bs-primary-rgb: 10, 74, 107;
+  --bs-link-color: var(--ns-harbour);
+  --bs-link-color-rgb: 10, 74, 107;
+  --bs-link-hover-color: var(--ns-harbour-dark);
+  --bs-link-hover-color-rgb: 8, 58, 85;
+  --bs-border-color: var(--ns-line);
+  --bs-secondary-color: var(--ns-slate);
+  --bs-secondary-color-rgb: 91, 107, 120;
+  --bs-focus-ring-color: rgba(30, 156, 149, 0.35);
+}
+
+body {
+  line-height: 1.55;
+}
+
+/* Headings & Display Typography */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: var(--ns-font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ns-ink);
+}
+
+h1, .h1 {
+  font-size: 2rem;
+}
+
+h2, .h2 {
+  font-size: 1.5rem;
+}
+
+h3, .h3 {
+  font-size: 1.25rem;
+}
+
+h4, .h4 {
+  font-size: 1.125rem;
+}
+
+/* Buttons */
+.btn {
+  --bs-btn-border-radius: var(--ns-radius-control);
+  --bs-btn-font-weight: 600;
+  border-radius: var(--ns-radius-control);
+  font-weight: 600;
+}
+
+.btn-primary {
+  --bs-btn-color: #ffffff;
+  --bs-btn-bg: var(--ns-harbour);
+  --bs-btn-border-color: var(--ns-harbour);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: var(--ns-harbour-dark);
+  --bs-btn-hover-border-color: var(--ns-harbour-dark);
+  --bs-btn-focus-shadow-rgb: 10, 74, 107;
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: var(--ns-harbour-dark);
+  --bs-btn-active-border-color: var(--ns-harbour-dark);
+  --bs-btn-disabled-color: #ffffff;
+  --bs-btn-disabled-bg: var(--ns-harbour);
+  --bs-btn-disabled-border-color: var(--ns-harbour);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--ns-harbour);
+  --bs-btn-border-color: var(--ns-harbour);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: var(--ns-harbour);
+  --bs-btn-hover-border-color: var(--ns-harbour);
+  --bs-btn-focus-shadow-rgb: 10, 74, 107;
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: var(--ns-harbour-dark);
+  --bs-btn-active-border-color: var(--ns-harbour-dark);
+  --bs-btn-disabled-color: var(--ns-harbour);
+  --bs-btn-disabled-bg: transparent;
+  --bs-btn-disabled-border-color: var(--ns-harbour);
+}
+
+/* Nav Pills */
+.nav-pills {
+  --bs-nav-pills-border-radius: var(--ns-radius-control);
+  --bs-nav-pills-link-active-color: #ffffff;
+  --bs-nav-pills-link-active-bg: var(--ns-harbour);
+}
+
+.nav-pills .nav-link {
+  color: var(--ns-harbour);
+  font-weight: 600;
+}
+
+.nav-pills .nav-link:hover,
+.nav-pills .nav-link:focus {
+  color: var(--ns-harbour-dark);
+}
+
+.nav-pills .nav-link.active,
+.nav-pills .show > .nav-link {
+  color: var(--bs-nav-pills-link-active-color);
+  background-color: var(--bs-nav-pills-link-active-bg);
+}
+
+/* Form Inputs & Selects */
+.form-control,
+.form-select {
+  background-color: var(--ns-paper);
+  border-color: var(--ns-line);
+  border-radius: var(--ns-radius-control);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--ns-paper);
+  border-color: var(--ns-span);
+  box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+}
+
+/* Cards */
+.card {
+  --bs-card-bg: var(--ns-paper);
+  --bs-card-border-color: var(--ns-line);
+  --bs-card-border-radius: var(--ns-radius-card);
+  --bs-card-box-shadow: var(--ns-shadow-card);
+  background-color: var(--bs-card-bg);
+  border: 1px solid var(--bs-card-border-color);
+  border-radius: var(--bs-card-border-radius);
+  box-shadow: var(--bs-card-box-shadow);
+}
+
+.card-header {
+  --bs-card-cap-bg: var(--ns-paper);
+  background-color: var(--bs-card-cap-bg);
+  border-bottom: 1px solid var(--ns-line);
+  font-family: var(--ns-font-display);
+  font-weight: 600;
+}
+
+/* Tables */
+.table {
+  --bs-table-border-color: var(--ns-line);
+  --bs-table-hover-bg: rgba(10, 74, 107, 0.04);
+}
+
+.table > thead > tr > th,
+.table th {
+  color: var(--ns-slate);
+  font-weight: 600;
+  background-color: var(--ns-mist);
+  border-bottom: 1px solid var(--ns-line);
+  --bs-table-bg: var(--ns-mist);
+  --bs-table-color: var(--ns-slate);
+}
+
+.table > :not(caption) > * > * {
+  border-bottom-color: var(--ns-line);
+}
+
+/* Alerts */
+.alert {
+  --bs-alert-border-radius: var(--ns-radius-card);
+  border-radius: var(--ns-radius-card);
+  border-width: 1px;
+}
+
+/* Badges */
+.badge {
+  --bs-badge-font-weight: 600;
+  font-weight: 600;
+}
+
+/* NagarSetu Navbar */
+.ns-navbar {
+  background-color: var(--ns-harbour);
+  --bs-navbar-color: rgba(255, 255, 255, 0.78);
+  --bs-navbar-hover-color: #ffffff;
+  --bs-navbar-active-color: #ffffff;
+  --bs-navbar-brand-color: #ffffff;
+  --bs-navbar-brand-hover-color: #ffffff;
+}
+
+.ns-navbar .navbar-brand {
+  color: var(--bs-navbar-brand-color);
+}
+
+.ns-navbar .navbar-brand span,
+.ns-navbar .navbar-brand-text {
+  font-family: var(--ns-font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ns-navbar .nav-link.router-link-active {
+  box-shadow: inset 0 -2px 0 var(--ns-span);
+  color: var(--bs-navbar-active-color);
+}

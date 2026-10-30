@@ -1,6 +1,7 @@
 <script setup>
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import BrandMark from './BrandMark.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -12,9 +13,12 @@ function handleLogout() {
 </script>
 
 <template>
-  <nav class="navbar navbar-expand-md navbar-dark bg-primary">
+  <nav class="navbar navbar-expand-md ns-navbar" data-bs-theme="dark">
     <div class="container">
-      <RouterLink class="navbar-brand" to="/">NagarSetu</RouterLink>
+      <RouterLink class="navbar-brand d-inline-flex align-items-center gap-2" to="/">
+        <BrandMark />
+        <span>NagarSetu</span>
+      </RouterLink>
 
       <button
         class="navbar-toggler"
