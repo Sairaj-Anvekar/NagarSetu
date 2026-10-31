@@ -1,39 +1,58 @@
 :root {
   /* NagarSetu Design Tokens */
-  --ns-ink: #12202B;
-  --ns-harbour: #0A4A6B;
-  --ns-harbour-dark: #083A55;
-  --ns-span: #1E9C95;
-  --ns-mist: #EEF4F7;
+  --ns-ink: #14202B;
+  --ns-harbour: #0B6E99;
+  --ns-harbour-dark: #095A7E;
+  --ns-span: #14A89A;
+  --ns-mist: #F5F7FA;
   --ns-paper: #FFFFFF;
-  --ns-slate: #5B6B78;
-  --ns-line: #D8E2E9;
+  --ns-slate: #5B6B7A;
+  --ns-line: #E3E8EE;
+  --ns-navy: #0F2233;
+  --ns-surface-2: #F8FAFC;
   --ns-radius-card: 12px;
   --ns-radius-control: 8px;
-  --ns-shadow-card: 0 1px 2px rgba(18, 32, 43, 0.06), 0 4px 16px rgba(18, 32, 43, 0.06);
+  --ns-radius-pill: 999px;
+  --ns-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --ns-shadow-pop: 0 8px 24px rgba(16, 24, 40, 0.12);
   --ns-font-body: 'Public Sans Variable', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ns-font-display: 'Sora Variable', 'Public Sans Variable', system-ui, sans-serif;
 
+  /* Semantic soft tints: background and foreground text */
+  --ns-success-bg: #E6F6EE;
+  --ns-success-fg: #0F7A4A;
+  --ns-warning-bg: #FFF4DB;
+  --ns-warning-fg: #8A5A00;
+  --ns-danger-bg: #FDECEC;
+  --ns-danger-fg: #B42318;
+  --ns-info-bg: #E4F1F8;
+  --ns-info-fg: #0B5C80;
+  --ns-orange-bg: #FFEDE0;
+  --ns-orange-fg: #B54708;
+  --ns-neutral-bg: #EEF1F5;
+  --ns-neutral-fg: #475467;
+
   /* Bootstrap Root Overrides */
   --bs-body-bg: var(--ns-mist);
-  --bs-body-bg-rgb: 238, 244, 247;
+  --bs-body-bg-rgb: 245, 247, 250;
   --bs-body-color: var(--ns-ink);
-  --bs-body-color-rgb: 18, 32, 43;
+  --bs-body-color-rgb: 20, 32, 43;
   --bs-body-font-family: var(--ns-font-body);
   --bs-body-line-height: 1.55;
   --bs-primary: var(--ns-harbour);
-  --bs-primary-rgb: 10, 74, 107;
+  --bs-primary-rgb: 11, 110, 153;
   --bs-link-color: var(--ns-harbour);
-  --bs-link-color-rgb: 10, 74, 107;
+  --bs-link-color-rgb: 11, 110, 153;
   --bs-link-hover-color: var(--ns-harbour-dark);
-  --bs-link-hover-color-rgb: 8, 58, 85;
+  --bs-link-hover-color-rgb: 9, 90, 126;
   --bs-border-color: var(--ns-line);
   --bs-secondary-color: var(--ns-slate);
-  --bs-secondary-color-rgb: 91, 107, 120;
-  --bs-focus-ring-color: rgba(30, 156, 149, 0.35);
+  --bs-secondary-color-rgb: 91, 107, 122;
+  --bs-focus-ring-color: rgba(20, 168, 154, 0.25);
 }
 
 body {
+  font-size: 1rem;
   line-height: 1.55;
 }
 
@@ -47,25 +66,35 @@ h1, h2, h3, h4, h5, h6,
 }
 
 h1, .h1 {
-  font-size: 2rem;
+  font-size: 1.75rem;
 }
 
 h2, .h2 {
-  font-size: 1.5rem;
+  font-size: 1.375rem;
 }
 
 h3, .h3 {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
 }
 
 h4, .h4 {
-  font-size: 1.125rem;
+  font-size: 1rem;
+}
+
+small, .small {
+  font-size: 0.8125rem;
+}
+
+.ns-num,
+.table {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Buttons */
 .btn {
   --bs-btn-border-radius: var(--ns-radius-control);
   --bs-btn-font-weight: 600;
+  min-height: 40px;
   border-radius: var(--ns-radius-control);
   font-weight: 600;
 }
@@ -77,7 +106,8 @@ h4, .h4 {
   --bs-btn-hover-color: #ffffff;
   --bs-btn-hover-bg: var(--ns-harbour-dark);
   --bs-btn-hover-border-color: var(--ns-harbour-dark);
-  --bs-btn-focus-shadow-rgb: 10, 74, 107;
+  --bs-btn-focus-shadow-rgb: 20, 168, 154;
+  --bs-btn-focus-box-shadow: 0 0 0 3px var(--bs-focus-ring-color);
   --bs-btn-active-color: #ffffff;
   --bs-btn-active-bg: var(--ns-harbour-dark);
   --bs-btn-active-border-color: var(--ns-harbour-dark);
@@ -88,17 +118,53 @@ h4, .h4 {
 
 .btn-outline-primary {
   --bs-btn-color: var(--ns-harbour);
+  --bs-btn-bg: transparent;
   --bs-btn-border-color: var(--ns-harbour);
   --bs-btn-hover-color: #ffffff;
   --bs-btn-hover-bg: var(--ns-harbour);
   --bs-btn-hover-border-color: var(--ns-harbour);
-  --bs-btn-focus-shadow-rgb: 10, 74, 107;
+  --bs-btn-focus-shadow-rgb: 20, 168, 154;
+  --bs-btn-focus-box-shadow: 0 0 0 3px var(--bs-focus-ring-color);
   --bs-btn-active-color: #ffffff;
   --bs-btn-active-bg: var(--ns-harbour-dark);
   --bs-btn-active-border-color: var(--ns-harbour-dark);
   --bs-btn-disabled-color: var(--ns-harbour);
   --bs-btn-disabled-bg: transparent;
   --bs-btn-disabled-border-color: var(--ns-harbour);
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--ns-ink);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--ns-line);
+  --bs-btn-hover-color: var(--ns-ink);
+  --bs-btn-hover-bg: var(--ns-surface-2);
+  --bs-btn-hover-border-color: var(--ns-line);
+  --bs-btn-focus-shadow-rgb: 20, 168, 154;
+  --bs-btn-focus-box-shadow: 0 0 0 3px var(--bs-focus-ring-color);
+  --bs-btn-active-color: var(--ns-ink);
+  --bs-btn-active-bg: var(--ns-neutral-bg);
+  --bs-btn-active-border-color: var(--ns-line);
+  --bs-btn-disabled-color: var(--ns-slate);
+  --bs-btn-disabled-bg: transparent;
+  --bs-btn-disabled-border-color: var(--ns-line);
+}
+
+.btn-light {
+  --bs-btn-color: var(--ns-ink);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--ns-ink);
+  --bs-btn-hover-bg: var(--ns-surface-2);
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-focus-shadow-rgb: 20, 168, 154;
+  --bs-btn-focus-box-shadow: 0 0 0 3px var(--bs-focus-ring-color);
+  --bs-btn-active-color: var(--ns-ink);
+  --bs-btn-active-bg: var(--ns-neutral-bg);
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-color: var(--ns-slate);
+  --bs-btn-disabled-bg: transparent;
+  --bs-btn-disabled-border-color: transparent;
 }
 
 /* Nav Pills */
@@ -125,8 +191,15 @@ h4, .h4 {
 }
 
 /* Form Inputs & Selects */
+.form-label {
+  color: var(--ns-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
 .form-control,
 .form-select {
+  min-height: 42px;
   background-color: var(--ns-paper);
   border-color: var(--ns-line);
   border-radius: var(--ns-radius-control);
@@ -136,7 +209,31 @@ h4, .h4 {
 .form-select:focus {
   background-color: var(--ns-paper);
   border-color: var(--ns-span);
-  box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+  box-shadow: 0 0 0 3px var(--bs-focus-ring-color);
+}
+
+.form-control::placeholder {
+  color: var(--ns-slate);
+}
+
+@media (max-width: 767.98px) {
+  .form-control,
+  .form-select {
+    font-size: max(1rem, 16px);
+  }
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .form-control,
+  .form-select {
+    min-height: 44px;
+  }
+}
+
+.btn-lg,
+.btn-group-lg > .btn {
+  min-height: 48px;
 }
 
 /* Cards */
@@ -145,6 +242,7 @@ h4, .h4 {
   --bs-card-border-color: var(--ns-line);
   --bs-card-border-radius: var(--ns-radius-card);
   --bs-card-box-shadow: var(--ns-shadow-card);
+  --bs-box-shadow-sm: var(--ns-shadow-card);
   background-color: var(--bs-card-bg);
   border: 1px solid var(--bs-card-border-color);
   border-radius: var(--bs-card-border-radius);
@@ -152,7 +250,7 @@ h4, .h4 {
 }
 
 .card-header {
-  --bs-card-cap-bg: var(--ns-paper);
+  --bs-card-cap-bg: transparent;
   background-color: var(--bs-card-cap-bg);
   border-bottom: 1px solid var(--ns-line);
   font-family: var(--ns-font-display);
@@ -161,17 +259,21 @@ h4, .h4 {
 
 /* Tables */
 .table {
+  --bs-table-bg: var(--ns-paper);
+  --bs-table-color: var(--ns-ink);
   --bs-table-border-color: var(--ns-line);
-  --bs-table-hover-bg: rgba(10, 74, 107, 0.04);
+  --bs-table-hover-bg: var(--ns-surface-2);
+  --bs-table-hover-color: var(--ns-ink);
 }
 
 .table > thead > tr > th,
 .table th {
   color: var(--ns-slate);
   font-weight: 600;
-  background-color: var(--ns-mist);
+  font-size: 0.8125rem;
+  background-color: var(--ns-surface-2);
   border-bottom: 1px solid var(--ns-line);
-  --bs-table-bg: var(--ns-mist);
+  --bs-table-bg: var(--ns-surface-2);
   --bs-table-color: var(--ns-slate);
 }
 
@@ -186,15 +288,121 @@ h4, .h4 {
   border-width: 1px;
 }
 
+.alert-success {
+  --bs-alert-bg: var(--ns-success-bg);
+  --bs-alert-color: var(--ns-success-fg);
+  --bs-alert-border-color: var(--ns-success-fg);
+  --bs-alert-link-color: var(--ns-success-fg);
+}
+
+.alert-warning {
+  --bs-alert-bg: var(--ns-warning-bg);
+  --bs-alert-color: var(--ns-warning-fg);
+  --bs-alert-border-color: var(--ns-warning-fg);
+  --bs-alert-link-color: var(--ns-warning-fg);
+}
+
+.alert-danger {
+  --bs-alert-bg: var(--ns-danger-bg);
+  --bs-alert-color: var(--ns-danger-fg);
+  --bs-alert-border-color: var(--ns-danger-fg);
+  --bs-alert-link-color: var(--ns-danger-fg);
+}
+
+.alert-primary, .alert-info {
+  --bs-alert-bg: var(--ns-info-bg);
+  --bs-alert-color: var(--ns-info-fg);
+  --bs-alert-border-color: var(--ns-info-fg);
+  --bs-alert-link-color: var(--ns-info-fg);
+}
+
+.alert-secondary, .alert-light, .alert-dark {
+  --bs-alert-bg: var(--ns-neutral-bg);
+  --bs-alert-color: var(--ns-neutral-fg);
+  --bs-alert-border-color: var(--ns-neutral-fg);
+  --bs-alert-link-color: var(--ns-neutral-fg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ns-span);
+  outline-offset: 2px;
+}
+
 /* Badges */
 .badge {
   --bs-badge-font-weight: 600;
   font-weight: 600;
 }
 
+.ns-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.625rem;
+  border: 1px solid transparent;
+  border-radius: var(--ns-radius-pill);
+  background-color: var(--ns-neutral-bg);
+  color: var(--ns-neutral-fg);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.ns-badge::before {
+  content: '';
+  width: 0.375rem;
+  height: 0.375rem;
+  flex-shrink: 0;
+  border-radius: var(--ns-radius-pill);
+  background-color: currentColor;
+}
+
+.ns-badge--submitted {
+  background-color: var(--ns-info-bg);
+  color: var(--ns-info-fg);
+}
+
+.ns-badge--in-progress {
+  background-color: var(--ns-warning-bg);
+  color: var(--ns-warning-fg);
+}
+
+.ns-badge--completed {
+  background-color: var(--ns-success-bg);
+  color: var(--ns-success-fg);
+}
+
+.ns-badge--unknown {
+  border-color: var(--ns-line);
+}
+
+.ns-badge--critical {
+  background-color: var(--ns-danger-bg);
+  color: var(--ns-danger-fg);
+}
+
+.ns-badge--high {
+  background-color: var(--ns-orange-bg);
+  color: var(--ns-orange-fg);
+}
+
+.ns-badge--medium {
+  background-color: var(--ns-neutral-bg);
+  color: var(--ns-neutral-fg);
+}
+
+/* Unknown priorities also use the low-priority style. */
+.ns-badge--low {
+  background-color: var(--ns-paper);
+  color: var(--ns-slate);
+  border-color: var(--ns-line);
+}
+
 /* NagarSetu Navbar */
 .ns-navbar {
-  background-color: var(--ns-harbour);
+  background-color: var(--ns-navy);
   --bs-navbar-color: rgba(255, 255, 255, 0.78);
   --bs-navbar-hover-color: #ffffff;
   --bs-navbar-active-color: #ffffff;
