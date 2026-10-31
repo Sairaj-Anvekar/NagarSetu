@@ -14,17 +14,17 @@ const props = defineProps({
 const statusClass = computed(() => {
   switch (props.status) {
     case 'Submitted':
-      return 'text-bg-info'
+      return 'ns-badge--submitted'
     case 'In-Progress':
-      return 'text-bg-primary'
+      return 'ns-badge--in-progress'
     case 'Completed':
-      return 'text-bg-success'
+      return 'ns-badge--completed'
     default:
-      return 'text-bg-light border text-dark'
+      return 'ns-badge--unknown'
   }
 })
 </script>
 
 <template>
-  <span class="badge" :class="statusClass">{{ status }}</span>
+  <span class="ns-badge" :class="statusClass">{{ status }}</span>
 </template>

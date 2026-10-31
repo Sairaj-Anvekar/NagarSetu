@@ -37,6 +37,10 @@ describe('AppNavbar — navigation link display', () => {
       },
     })
 
+    const brand = wrapper.find('.navbar-brand')
+    expect(brand.text()).toContain('NagarSetu')
+    expect(brand.find('svg').exists()).toBe(true)
+
     expect(wrapper.text()).toContain('Login')
     expect(wrapper.text()).not.toContain('Admin')
     expect(wrapper.text()).not.toContain('Worker')
