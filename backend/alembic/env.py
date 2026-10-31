@@ -15,6 +15,13 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def include_object(obj, name, type_, reflected, compare_to):
+    # Only manage tables defined in our models; ignore PostGIS extension tables.
+    if type_ == "table" and reflected and name not in target_metadata.tables:
+        return False
+    return alembic_helpers.include_object(obj, name, type_, reflected, compare_to)
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=get_settings().database_url,
@@ -22,7 +29,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
-        include_object=alembic_helpers.include_object,
+        include_object=include_object,
         process_revision_directives=alembic_helpers.writer,
         render_item=alembic_helpers.render_item,
     )
@@ -37,7 +44,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
-            include_object=alembic_helpers.include_object,
+            include_object=include_object,
             process_revision_directives=alembic_helpers.writer,
             render_item=alembic_helpers.render_item,
         )
