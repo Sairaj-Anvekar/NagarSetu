@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://u:p@localhost:5432/test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-tests-only-0123456789")
 
 
 @pytest.fixture
