@@ -12,22 +12,22 @@ const props = defineProps({
 })
 
 const priorityConfig = {
-  critical: { label: 'Critical', className: 'text-bg-danger' },
-  high: { label: 'High', className: 'text-bg-warning' },
-  medium: { label: 'Medium', className: 'text-bg-secondary' },
-  low: { label: 'Low', className: 'text-bg-light border text-dark' },
+  critical: { label: 'Critical', className: 'ns-badge--critical' },
+  high: { label: 'High', className: 'ns-badge--high' },
+  medium: { label: 'Medium', className: 'ns-badge--medium' },
+  low: { label: 'Low', className: 'ns-badge--low' },
 }
 
 const badgeInfo = computed(() => {
   return (
     priorityConfig[props.priority] ?? {
       label: props.priority,
-      className: 'text-bg-light border text-dark',
+      className: 'ns-badge--low',
     }
   )
 })
 </script>
 
 <template>
-  <span class="badge rounded-pill" :class="badgeInfo.className">{{ badgeInfo.label }}</span>
+  <span class="ns-badge" :class="badgeInfo.className">{{ badgeInfo.label }}</span>
 </template>
