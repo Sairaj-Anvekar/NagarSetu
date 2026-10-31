@@ -1,24 +1,11 @@
 <script setup>
-import { RouterLink, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import BrandMark from './BrandMark.vue'
-
-const router = useRouter()
-const auth = useAuthStore()
-
-function handleLogout() {
-  auth.logout()
-  router.push('/login')
-}
+import { RouterLink } from 'vue-router'
 </script>
 
 <template>
-  <nav class="navbar navbar-expand-md ns-navbar" data-bs-theme="dark">
+  <nav class="navbar navbar-expand-md navbar-dark bg-primary">
     <div class="container">
-      <RouterLink class="navbar-brand d-inline-flex align-items-center gap-2" to="/">
-        <BrandMark />
-        <span>NagarSetu</span>
-      </RouterLink>
+      <RouterLink class="navbar-brand" to="/">NagarSetu</RouterLink>
 
       <button
         class="navbar-toggler"
@@ -34,23 +21,14 @@ function handleLogout() {
 
       <div class="collapse navbar-collapse" id="mainNav">
         <ul class="navbar-nav ms-auto">
-          <li v-if="!auth.isAuthenticated" class="nav-item">
+          <li class="nav-item">
             <RouterLink class="nav-link" to="/login">Login</RouterLink>
           </li>
-          <li v-if="auth.isAdmin" class="nav-item">
+          <li class="nav-item">
             <RouterLink class="nav-link" to="/admin">Admin</RouterLink>
           </li>
-          <li v-if="auth.isWorker" class="nav-item">
+          <li class="nav-item">
             <RouterLink class="nav-link" to="/worker">Worker</RouterLink>
-          </li>
-          <li v-if="auth.isAuthenticated" class="nav-item">
-            <button
-              type="button"
-              class="btn btn-outline-light btn-sm"
-              @click="handleLogout"
-            >
-              Logout
-            </button>
           </li>
         </ul>
       </div>
