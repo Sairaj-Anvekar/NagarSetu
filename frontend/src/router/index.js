@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import AdminView from '../views/AdminView.vue'
+import AdminWorkersView from '../views/AdminWorkersView.vue'
+import AdminLayout from '../components/admin/AdminLayout.vue'
 import WorkerView from '../views/WorkerView.vue'
 import { authGuard } from './guards'
 
@@ -11,9 +13,12 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView },
     {
       path: '/admin',
-      name: 'admin',
-      component: AdminView,
-      meta: { requiresAuth: true, role: 'admin' },
+      component: AdminLayout,
+      meta: { requiresAuth: true, role: 'admin', noNavbar: true },
+      children: [
+        { path: '', name: 'admin', component: AdminView },
+        { path: 'workers', name: 'admin-workers', component: AdminWorkersView },
+      ],
     },
     {
       path: '/worker',

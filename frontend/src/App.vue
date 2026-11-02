@@ -1,11 +1,13 @@
 <script setup>
-import { RouterView } from 'vue-router'
+import { RouterView, useRoute } from 'vue-router'
 import AppNavbar from './components/AppNavbar.vue'
+
+const route = useRoute()
 </script>
 
 <template>
-  <AppNavbar />
-  <main>
+  <AppNavbar v-if="!route.meta.noNavbar" />
+  <component :is="route.meta.noNavbar ? 'div' : 'main'">
     <RouterView />
-  </main>
+  </component>
 </template>
