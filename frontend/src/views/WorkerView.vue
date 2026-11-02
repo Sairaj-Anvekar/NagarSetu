@@ -1,6 +1,12 @@
+<script setup>
+import PageHeader from '../components/PageHeader.vue'
+import EmptyState from '../components/EmptyState.vue'
+</script>
+
 <template>
-  <div class="container py-5">
-    <h1 class="h3">Worker</h1>
-    <p class="text-muted">Worker task queue coming later.</p>
-  </div>
+  <PageHeader title="My tasks" subtitle="Your assigned complaints will appear here." />
+  <EmptyState
+    title="Your task list is coming next"
+    message="Assigned complaints, with priority and deadline, will be listed here."
+  />
 </template>
