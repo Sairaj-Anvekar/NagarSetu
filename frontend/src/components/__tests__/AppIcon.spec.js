@@ -3,9 +3,16 @@ import { mount } from '@vue/test-utils'
 import AppIcon from '../AppIcon.vue'
 
 describe('AppIcon', () => {
-  it.each(['dashboard', 'users', 'menu', 'logout', 'chevron-down'])(
-    'renders %s as a decorative SVG at the default size',
-    (name) => {
+  it.each([
+    'dashboard',
+    'users',
+    'menu',
+    'logout',
+    'chevron-down',
+    'tasks',
+    'history',
+    'user',
+  ])('renders %s as a decorative SVG at the default size', (name) => {
       const wrapper = mount(AppIcon, { props: { name } })
       const svg = wrapper.get('svg')
 
