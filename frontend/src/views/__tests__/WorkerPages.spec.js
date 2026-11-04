@@ -3,7 +3,6 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { saveAuth } from '../../utils/authStorage'
-import WorkerView from '../WorkerView.vue'
 import WorkerHistoryView from '../WorkerHistoryView.vue'
 import WorkerAccountView from '../WorkerAccountView.vue'
 import EmptyState from '../../components/EmptyState.vue'
@@ -30,19 +29,6 @@ describe('Worker placeholder pages', () => {
     wrapper?.unmount()
     wrapper = undefined
     localStorage.clear()
-  })
-
-  it('renders the My tasks heading and empty state in WorkerView', () => {
-    wrapper = mount(WorkerView)
-
-    expect(wrapper.get('h1').text()).toBe('My tasks')
-    expect(wrapper.get('header p').text()).toBe('Your assigned complaints will appear here.')
-
-    const emptyState = wrapper.getComponent(EmptyState)
-    expect(emptyState.get('h3').text()).toBe('Your task list is coming next')
-    expect(emptyState.get('p').text()).toBe(
-      'Assigned complaints, with priority and deadline, will be listed here.',
-    )
   })
 
   it('renders the History heading and empty state in WorkerHistoryView', () => {

@@ -12,6 +12,8 @@ describe('AppIcon', () => {
     'tasks',
     'history',
     'user',
+    'map-pin',
+    'clock',
   ])('renders %s as a decorative SVG at the default size', (name) => {
       const wrapper = mount(AppIcon, { props: { name } })
       const svg = wrapper.get('svg')
