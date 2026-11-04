@@ -1,10 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount as baseMount, RouterLinkStub } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import AdminWorkersView from '../AdminWorkersView.vue'
 import DataTable from '../../components/DataTable.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { fetchWorkers } from '../../api/workersApi'
+
+function mount(component, options = {}) {
+  return baseMount(component, {
+    ...options,
+    global: {
+      stubs: { RouterLink: RouterLinkStub },
+      ...options?.global,
+    },
+  })
+}
 
 vi.mock('../../api/workersApi', async (importOriginal) => {
   const actual = await importOriginal()
@@ -90,6 +100,21 @@ describe('AdminWorkersView - Table, Formatting & Filters', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+  })
+
+  it('renders an "Add worker" link pointing to the admin-worker-new route', async () => {
+    fetchWorkers.mockResolvedValueOnce({
+      items: getMockWorkers(),
+      total: 8,
+    })
+
+    const wrapper = mount(AdminWorkersView)
+    await flushPromises()
+
+    const link = wrapper.findComponent(RouterLinkStub)
+    expect(link.exists()).toBe(true)
+    expect(link.text()).toBe('Add worker')
+    expect(link.props('to')).toEqual({ name: 'admin-worker-new' })
   })
 
   it('shows centered role="status" spinner and no table while the first call is pending', async () => {
