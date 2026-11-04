@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import AppCard from '../components/AppCard.vue'
 import DataTable from '../components/DataTable.vue'
@@ -191,6 +192,9 @@ defineExpose({
   <div class="admin-workers-view">
     <PageHeader title="Workers" :subtitle="subtitle">
       <template #actions>
+        <RouterLink :to="{ name: 'admin-worker-new' }" class="btn btn-primary btn-sm">
+          Add worker
+        </RouterLink>
         <button
           type="button"
           class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"

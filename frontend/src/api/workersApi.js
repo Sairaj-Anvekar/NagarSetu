@@ -62,6 +62,27 @@ export async function fetchWorkers() {
 }
 
 /**
+ * Creates a new municipal field worker.
+ *
+ * @param {{ name: string, phone: string, pin: string, department_id: string, zone_id: string }} payload
+ * @returns {Promise<object>}
+ */
+export async function createWorker({ name, phone, pin, department_id, zone_id }) {
+  const trimmedName = typeof name === 'string' ? name.trim() : ''
+  const sanitizedPhone = typeof phone === 'string' ? phone.replace(/\s+/g, '') : ''
+
+  const { data } = await http.post('/workers', {
+    name: trimmedName,
+    phone: sanitizedPhone,
+    pin,
+    department_id,
+    zone_id,
+  })
+
+  return normalizeWorker(data)
+}
+
+/**
  * Activates or deactivates a municipal worker.
  *
  * @param {string|number} id
@@ -82,4 +103,3 @@ export async function setWorkerActive(id, isActive) {
     is_active: Boolean(isActive),
   }
 }
-

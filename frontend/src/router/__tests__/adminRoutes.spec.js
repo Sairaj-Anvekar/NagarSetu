@@ -50,4 +50,36 @@ describe('Admin routes', () => {
     expect(router.currentRoute.value.path).toBe('/login')
     expect(router.currentRoute.value.query.redirect).toBe('/admin/workers')
   })
+
+  it('allows an admin session to load /admin/workers/new with route name admin-worker-new', async () => {
+    saveAuth({
+      token: 'admin-routes-test-token',
+      role: 'admin',
+      user: { id: '1', name: 'Demo Admin', role: 'admin' },
+    })
+    await router.push('/admin/workers/new')
+
+    expect(router.currentRoute.value.path).toBe('/admin/workers/new')
+    expect(router.currentRoute.value.name).toBe('admin-worker-new')
+    expect(router.currentRoute.value.meta.requiresAuth).toBe(true)
+    expect(router.currentRoute.value.meta.role).toBe('admin')
+  })
+
+  it('redirects a logged-out visit to /admin/workers/new to login with redirect parameter', async () => {
+    await router.push('/admin/workers/new')
+
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(router.currentRoute.value.query.redirect).toBe('/admin/workers/new')
+  })
+
+  it('redirects a worker session pushing /admin/workers/new to /worker', async () => {
+    saveAuth({
+      token: 'worker-routes-test-token',
+      role: 'worker',
+      user: { id: '101', name: 'Demo Worker', role: 'worker' },
+    })
+    await router.push('/admin/workers/new')
+
+    expect(router.currentRoute.value.path).toBe('/worker')
+  })
 })

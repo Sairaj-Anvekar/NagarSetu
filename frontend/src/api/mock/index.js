@@ -3,6 +3,7 @@ import { createMockAdapter } from './mockAdapter'
 import { authRoutes } from './authHandlers'
 import { workerRoutes } from './workerHandlers'
 import { workerAdminRoutes } from './workerAdminHandlers'
+import { referenceRoutes } from './referenceHandlers'
 
 let originalAdapter = null
 let isOriginalSaved = false
@@ -14,7 +15,7 @@ export function installMockApi({ delayMs } = {}) {
   }
 
   http.defaults.adapter = createMockAdapter(
-    [...authRoutes, ...workerRoutes, ...workerAdminRoutes],
+    [...authRoutes, ...workerRoutes, ...workerAdminRoutes, ...referenceRoutes],
     { delayMs },
   )
   console.info('[mock-api] enabled (development only)')

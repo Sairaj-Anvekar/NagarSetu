@@ -1,6 +1,24 @@
 // FAKE development accounts for the mock API only.
 // These credentials are used for local frontend testing before the real backend is connected.
 
+export const MOCK_DEPARTMENTS = [
+  { id: 'd1', name: 'Solid Waste Management' },
+  { id: 'd2', name: 'Water Supply Board' },
+  { id: 'd3', name: 'Roads & Public Works' },
+  { id: 'd4', name: 'Vigilance & Grievance Cell' },
+  { id: 'd5', name: 'Stormwater & Drainage' },
+  { id: 'd6', name: 'Municipal Electrical Wing' },
+  { id: 'd7', name: 'Public Health & Veterinary' },
+  { id: 'd8', name: 'Town Planning & Encroachment' },
+]
+
+export const MOCK_ZONES = [
+  { id: 'z1', name: 'Zone A' },
+  { id: 'z2', name: 'Zone B' },
+  { id: 'z3', name: 'Zone C' },
+  { id: 'z4', name: 'Zone D' },
+]
+
 export const MOCK_ADMINS = [
   {
     id: '1',
