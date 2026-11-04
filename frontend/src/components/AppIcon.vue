@@ -4,7 +4,18 @@ defineProps({
   size: { type: Number, default: 20 },
 })
 
-const names = ['dashboard', 'users', 'menu', 'logout', 'chevron-down', 'tasks', 'history', 'user']
+const names = [
+  'dashboard',
+  'users',
+  'menu',
+  'logout',
+  'chevron-down',
+  'tasks',
+  'history',
+  'user',
+  'map-pin',
+  'clock',
+]
 </script>
 
 <template>
@@ -50,6 +61,14 @@ const names = ['dashboard', 'users', 'menu', 'logout', 'chevron-down', 'tasks', 
     <template v-else-if="name === 'user'">
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7" />
+    </template>
+    <template v-else-if="name === 'map-pin'">
+      <path d="M12 21s7-5.6 7-11a7 7 0 0 0-14 0c0 5.4 7 11 7 11z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </template>
+    <template v-else-if="name === 'clock'">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
     </template>
   </svg>
 </template>
