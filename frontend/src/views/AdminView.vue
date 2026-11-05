@@ -1,6 +1,12 @@
+<script setup>
+import PageHeader from '../components/PageHeader.vue'
+import EmptyState from '../components/EmptyState.vue'
+</script>
+
 <template>
-  <div class="container py-5">
-    <h1 class="h3">Admin Dashboard</h1>
-    <p class="text-muted">Admin screens coming later.</p>
-  </div>
+  <PageHeader title="Dashboard" subtitle="Overview of complaints and workers." />
+  <EmptyState
+    title="Dashboard metrics are on the way"
+    message="Complaint totals, trends and hotspots will appear here."
+  />
 </template>

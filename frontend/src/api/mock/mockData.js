@@ -1,13 +1,31 @@
 // FAKE development accounts for the mock API only.
 // These credentials are used for local frontend testing before the real backend is connected.
 
+export const MOCK_DEPARTMENTS = [
+  { id: 'd1', name: 'Solid Waste Management' },
+  { id: 'd2', name: 'Water Supply Board' },
+  { id: 'd3', name: 'Roads & Public Works' },
+  { id: 'd4', name: 'Vigilance & Grievance Cell' },
+  { id: 'd5', name: 'Stormwater & Drainage' },
+  { id: 'd6', name: 'Municipal Electrical Wing' },
+  { id: 'd7', name: 'Public Health & Veterinary' },
+  { id: 'd8', name: 'Town Planning & Encroachment' },
+]
+
+export const MOCK_ZONES = [
+  { id: 'z1', name: 'Zone A' },
+  { id: 'z2', name: 'Zone B' },
+  { id: 'z3', name: 'Zone C' },
+  { id: 'z4', name: 'Zone D' },
+]
+
 export const MOCK_ADMINS = [
   {
     id: '1',
     name: 'Demo Admin',
     username: 'admin',
-    password: 'admin123'
-  }
+    password: 'admin123',
+  },
 ]
 
 export const MOCK_WORKERS = [
@@ -16,37 +34,99 @@ export const MOCK_WORKERS = [
     name: 'Ravi Patil',
     phone: '+919876543210',
     pin: '1234',
-    is_active: true
+    is_active: true,
+    department_id: 'd1',
+    department: 'Solid Waste Management',
+    zone_id: 'z1',
+    zone: 'Zone A',
   },
   {
     id: '102',
     name: 'Anita Sharma',
     phone: '+919123456780',
     pin: '4321',
-    is_active: true
+    is_active: true,
+    department_id: 'd2',
+    department: 'Water Supply Board',
+    zone_id: 'z2',
+    zone: 'Zone B',
   },
   {
     id: '103',
     name: 'Deactivated Worker',
     phone: '+919000000000',
     pin: '1234',
-    is_active: false
+    is_active: false,
+    department_id: 'd3',
+    department: 'Roads & Public Works',
+    zone_id: 'z3',
+    zone: 'Zone C',
   },
   {
     id: '104',
     name: 'Empty Queue Worker',
     phone: '+919555500000',
     pin: '1111',
-    is_active: true
+    is_active: true,
+    department_id: 'd1',
+    department: 'Solid Waste Management',
+    zone_id: 'z2',
+    zone: 'Zone B',
   },
   {
     id: '105',
     name: 'Error Demo Worker',
     phone: '+919666600000',
     pin: '2222',
-    is_active: true
-  }
+    is_active: true,
+    department_id: 'd5',
+    department: 'Stormwater & Drainage',
+    zone_id: 'z4',
+    zone: 'Zone D',
+  },
+  {
+    id: '106',
+    name: 'Meera Joshi',
+    phone: '+919811100001',
+    pin: '5555',
+    is_active: true,
+    department_id: 'd6',
+    department: 'Municipal Electrical Wing',
+    zone_id: 'z1',
+    zone: 'Zone A',
+  },
+  {
+    id: '107',
+    name: 'Imran Khan',
+    phone: '+919811100002',
+    pin: '6666',
+    is_active: true,
+    department_id: 'd7',
+    department: 'Public Health & Veterinary',
+    zone_id: 'z3',
+    zone: 'Zone C',
+  },
+  {
+    id: '108',
+    name: 'Suresh Nair',
+    phone: '+919811100003',
+    pin: '7777',
+    is_active: false,
+    department_id: 'd8',
+    department: 'Town Planning & Encroachment',
+    zone_id: 'z4',
+    zone: 'Zone D',
+  },
 ]
+
+const INITIAL_WORKERS = JSON.parse(JSON.stringify(MOCK_WORKERS))
+
+export function resetMockWorkers() {
+  MOCK_WORKERS.length = 0
+  for (const worker of JSON.parse(JSON.stringify(INITIAL_WORKERS))) {
+    MOCK_WORKERS.push(worker)
+  }
+}
 
 export const MOCK_TASKS = [
   {
@@ -59,7 +139,7 @@ export const MOCK_TASKS = [
     status: 'Submitted',
     dueInHours: -3,
     latitude: 15.2993,
-    longitude: 74.124
+    longitude: 74.124,
   },
   {
     id: 't2',
@@ -71,7 +151,7 @@ export const MOCK_TASKS = [
     status: 'In-Progress',
     dueInHours: 5,
     latitude: 15.3012,
-    longitude: 74.1255
+    longitude: 74.1255,
   },
   {
     id: 't3',
@@ -83,7 +163,7 @@ export const MOCK_TASKS = [
     status: 'Submitted',
     dueInHours: 20,
     latitude: 15.298,
-    longitude: 74.122
+    longitude: 74.122,
   },
   {
     id: 't4',
@@ -95,7 +175,7 @@ export const MOCK_TASKS = [
     status: 'Submitted',
     dueInHours: 30,
     latitude: 15.3025,
-    longitude: 74.128
+    longitude: 74.128,
   },
   {
     id: 't5',
@@ -107,7 +187,7 @@ export const MOCK_TASKS = [
     status: 'Submitted',
     dueInHours: -30,
     latitude: 15.297,
-    longitude: 74.121
+    longitude: 74.121,
   },
   {
     id: 't6',
@@ -119,7 +199,7 @@ export const MOCK_TASKS = [
     status: 'In-Progress',
     dueInHours: 2,
     latitude: 15.3005,
-    longitude: 74.126
+    longitude: 74.126,
   },
   {
     id: 't7',
@@ -131,7 +211,6 @@ export const MOCK_TASKS = [
     status: 'Submitted',
     dueInHours: 40,
     latitude: 15.303,
-    longitude: 74.1295
-  }
+    longitude: 74.1295,
+  },
 ]
-
