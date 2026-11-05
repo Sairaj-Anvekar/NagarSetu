@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
 
 from app.api.health import router as health_router
 from app.api.v1.router import api_router
 from app.core.config import get_settings
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 
 
 def create_app() -> FastAPI:
@@ -15,6 +17,8 @@ def create_app() -> FastAPI:
     ]
 
     app = FastAPI(title="NagarSetu API", version="0.1.0")
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
     app.add_middleware(
         CORSMiddleware,

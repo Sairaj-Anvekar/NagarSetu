@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 720
     cors_origins: str = "http://localhost:5173"
+    rate_limit_enabled: bool = True
 
 
 @lru_cache
