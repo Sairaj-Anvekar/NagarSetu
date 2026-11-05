@@ -1,8 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.schemas.auth import AdminLoginRequest, TokenResponse, WorkerLoginRequest
 from app.services import auth_service
@@ -11,7 +12,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/admin/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 def login_admin(
+    request: Request,
     payload: AdminLoginRequest,
     db: Annotated[Session, Depends(get_db)],
 ) -> TokenResponse:
@@ -35,7 +38,9 @@ def login_admin(
 
 
 @router.post("/worker/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 def login_worker(
+    request: Request,
     payload: WorkerLoginRequest,
     db: Annotated[Session, Depends(get_db)],
 ) -> TokenResponse:
