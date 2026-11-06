@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.phone import normalize_phone
+from app.schemas.common import RefOut
 
 
 class AdminLoginRequest(BaseModel):
@@ -41,6 +42,7 @@ class UserOut(BaseModel):
     id: str
     name: str
     role: str
+    department: RefOut | None = None
 
 
 class TokenResponse(BaseModel):
