@@ -13,12 +13,18 @@ class DuplicatePhone(Exception):
 
 
 def list_workers(
-    db: Session, page: int, page_size: int
+    db: Session, page: int, page_size: int, department_id: int
 ) -> tuple[list[Worker], int]:
-    total = db.scalar(select(func.count()).select_from(Worker)) or 0
+    count_stmt = (
+        select(func.count())
+        .select_from(Worker)
+        .where(Worker.department_id == department_id)
+    )
+    total = db.scalar(count_stmt) or 0
     offset = (page - 1) * page_size
     stmt = (
         select(Worker)
+        .where(Worker.department_id == department_id)
         .options(joinedload(Worker.department), joinedload(Worker.zone))
         .order_by(Worker.id)
         .offset(offset)
@@ -28,19 +34,9 @@ def list_workers(
     return workers, total
 
 
-def create_worker(db: Session, data: WorkerCreate) -> Worker:
-    department = db.get(Department, data.department_id)
-    if not department:
-        raise RequestValidationError(
-            [
-                {
-                    "loc": ("body", "department_id"),
-                    "msg": "Department not found",
-                    "type": "value_error",
-                }
-            ]
-        )
-
+def create_worker(
+    db: Session, data: WorkerCreate, department_id: int
+) -> Worker:
     zone = db.get(Zone, data.zone_id)
     if not zone:
         raise RequestValidationError(
@@ -61,7 +57,7 @@ def create_worker(db: Session, data: WorkerCreate) -> Worker:
         name=data.name,
         phone=data.phone,
         pin_hash=hash_secret(data.pin),
-        department_id=data.department_id,
+        department_id=department_id,
         zone_id=data.zone_id,
         is_active=True,
     )
@@ -77,14 +73,14 @@ def create_worker(db: Session, data: WorkerCreate) -> Worker:
 
 
 def set_worker_active(
-    db: Session, worker_id: int, is_active: bool
+    db: Session, worker_id: int, is_active: bool, department_id: int
 ) -> Worker | None:
     worker = db.get(
         Worker,
         worker_id,
         options=[joinedload(Worker.department), joinedload(Worker.zone)],
     )
-    if not worker:
+    if not worker or worker.department_id != department_id:
         return None
 
     worker.is_active = is_active
@@ -94,12 +90,18 @@ def set_worker_active(
 
 
 def list_departments(
-    db: Session, page: int, page_size: int
+    db: Session, page: int, page_size: int, department_id: int
 ) -> tuple[list[Department], int]:
-    total = db.scalar(select(func.count()).select_from(Department)) or 0
+    count_stmt = (
+        select(func.count())
+        .select_from(Department)
+        .where(Department.id == department_id)
+    )
+    total = db.scalar(count_stmt) or 0
     offset = (page - 1) * page_size
     stmt = (
         select(Department)
+        .where(Department.id == department_id)
         .order_by(Department.id)
         .offset(offset)
         .limit(page_size)
@@ -121,4 +123,3 @@ def list_zones(
     )
     zones = list(db.scalars(stmt).all())
     return zones, total
-

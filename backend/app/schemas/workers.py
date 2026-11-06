@@ -11,7 +11,7 @@ class WorkerCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     phone: str
     pin: str = Field(pattern=r"^\d{4}$")
-    department_id: int
+    department_id: int | None = None  # Ignored: the logged-in admin's department is always used
     zone_id: int
 
     @field_validator("name", mode="before")

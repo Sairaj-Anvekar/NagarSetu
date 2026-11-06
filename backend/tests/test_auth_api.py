@@ -28,6 +28,10 @@ def test_admin_login_success(
     fake_admin.username = "admin"
     fake_admin.full_name = "Dev Admin"
     fake_admin.is_active = True
+    dept = MagicMock()
+    dept.id = 1
+    dept.name = "Sanitation"
+    fake_admin.department = dept
 
     monkeypatch.setattr(
         "app.services.auth_service.authenticate_admin",
@@ -44,6 +48,7 @@ def test_admin_login_success(
     assert data["user"]["role"] == "admin"
     assert data["user"]["id"] == "42"
     assert isinstance(data["user"]["id"], str)
+    assert data["user"]["department"] == {"id": "1", "name": "Sanitation"}
 
     decoded = decode_access_token(data["access_token"])
     assert decoded["role"] == "admin"
@@ -108,6 +113,7 @@ def test_worker_login_success(
     assert data["token_type"] == "bearer"
     assert data["user"]["role"] == "worker"
     assert data["user"]["id"] == "101"
+    assert data["user"]["department"] is None
 
     decoded = decode_access_token(data["access_token"])
     assert decoded["role"] == "worker"
@@ -206,4 +212,55 @@ def test_cors_preflight_admin_login(client: TestClient) -> None:
     )
     assert response.status_code == 200
     assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+
+def test_admin_login_returns_department_object(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_admin = MagicMock()
+    fake_admin.id = 1
+    fake_admin.username = "admin"
+    fake_admin.full_name = "Sanitation Admin"
+    fake_admin.is_active = True
+    dept = MagicMock()
+    dept.id = 1
+    dept.name = "Sanitation"
+    fake_admin.department = dept
+
+    monkeypatch.setattr(
+        "app.services.auth_service.authenticate_admin",
+        lambda db, username, password: fake_admin,
+    )
+
+    response = client.post(
+        "/api/v1/auth/admin/login",
+        json={"username": "admin", "password": "password"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user"]["department"] == {"id": "1", "name": "Sanitation"}
+
+
+def test_worker_login_returns_department_null(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_worker = MagicMock()
+    fake_worker.id = 101
+    fake_worker.name = "Dev Worker"
+    fake_worker.phone = "+919000000001"
+    fake_worker.is_active = True
+
+    monkeypatch.setattr(
+        "app.services.auth_service.authenticate_worker",
+        lambda db, phone, pin: fake_worker,
+    )
+
+    response = client.post(
+        "/api/v1/auth/worker/login",
+        json={"phone": "+919000000001", "pin": "1234"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user"]["department"] is None
+
 

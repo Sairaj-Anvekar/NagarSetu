@@ -12,6 +12,7 @@ from app.services import worker_service
 class SimpleAdmin:
     id = 1
     username = "admin"
+    department_id = 1
     is_active = True
 
 
@@ -138,7 +139,7 @@ def test_admin_get_workers_returns_200_and_expected_shapes(
     monkeypatch.setattr(
         worker_service,
         "list_workers",
-        lambda db, page, page_size: ([fake_worker], 1),
+        lambda db, page, page_size, department_id: ([fake_worker], 1),
     )
 
     response = client.get("/api/v1/workers")
@@ -166,13 +167,13 @@ def test_admin_post_worker_valid_body_normalizes_phone(
 ):
     captured: dict[str, str] = {}
 
-    def fake_create(db, data):
+    def fake_create(db, data, department_id):
         captured["phone"] = data.phone
         return FakeWorker(
             id=1,
             name=data.name,
             phone=data.phone,
-            department_id=data.department_id,
+            department_id=department_id,
             zone_id=data.zone_id,
         )
 
@@ -237,7 +238,7 @@ def test_admin_post_worker_empty_name_returns_422(
 def test_admin_post_worker_duplicate_phone_returns_409(
     client: TestClient, as_admin: None, monkeypatch: pytest.MonkeyPatch
 ):
-    def fake_create_duplicate(db, data):
+    def fake_create_duplicate(db, data, department_id):
         raise worker_service.DuplicatePhone()
 
     monkeypatch.setattr(worker_service, "create_worker", fake_create_duplicate)
@@ -262,7 +263,7 @@ def test_admin_post_worker_duplicate_phone_returns_409(
 def test_admin_post_worker_unknown_department_returns_422(
     client: TestClient, as_admin: None, monkeypatch: pytest.MonkeyPatch
 ):
-    def fake_create_invalid_dept(db, data):
+    def fake_create_invalid_dept(db, data, department_id):
         raise RequestValidationError(
             [
                 {
@@ -298,8 +299,8 @@ def test_admin_patch_worker_returns_200(
     monkeypatch.setattr(
         worker_service,
         "set_worker_active",
-        lambda db, worker_id, is_active: FakeWorker(
-            id=worker_id, is_active=is_active
+        lambda db, worker_id, is_active, department_id: FakeWorker(
+            id=worker_id, is_active=is_active, department_id=department_id
         ),
     )
 
@@ -316,7 +317,7 @@ def test_admin_patch_worker_not_found_returns_404(
     monkeypatch.setattr(
         worker_service,
         "set_worker_active",
-        lambda db, worker_id, is_active: None,
+        lambda db, worker_id, is_active, department_id: None,
     )
 
     response = client.patch("/api/v1/workers/999", json={"is_active": False})
@@ -330,7 +331,7 @@ def test_admin_get_departments_and_zones_list_shape(
     monkeypatch.setattr(
         worker_service,
         "list_departments",
-        lambda db, page, page_size: (
+        lambda db, page, page_size, department_id: (
             [FakeRef(1, "Sanitation"), FakeRef(2, "Roads")],
             2,
         ),
@@ -372,4 +373,125 @@ def test_admin_get_workers_page_zero_returns_422(
     assert response.status_code == 422
     errors = response.json()["detail"]
     assert any(err["loc"][-1] == "page" for err in errors)
+
+
+def test_admin_get_workers_passes_admin_department_id(
+    client: TestClient, as_admin: None, monkeypatch: pytest.MonkeyPatch
+):
+    captured: dict[str, int] = {}
+
+    def fake_list(db, page, page_size, department_id):
+        captured["department_id"] = department_id
+        return [], 0
+
+    monkeypatch.setattr(worker_service, "list_workers", fake_list)
+    response = client.get("/api/v1/workers")
+    assert response.status_code == 200
+    assert captured.get("department_id") == 1
+
+
+def test_admin_post_worker_body_department_id_ignored_uses_admin_dept(
+    client: TestClient, as_admin: None, monkeypatch: pytest.MonkeyPatch
+):
+    captured: dict[str, int] = {}
+
+    def fake_create(db, data, department_id):
+        captured["department_id"] = department_id
+        return FakeWorker(
+            id=1,
+            name=data.name,
+            phone=data.phone,
+            department_id=department_id,
+            zone_id=data.zone_id,
+        )
+
+    monkeypatch.setattr(worker_service, "create_worker", fake_create)
+    response = client.post(
+        "/api/v1/workers",
+        json={
+            "name": "Ramesh Kumar",
+            "phone": "+919876543210",
+            "pin": "1234",
+            "department_id": 3,
+            "zone_id": 2,
+        },
+    )
+    assert response.status_code == 201
+    assert captured["department_id"] == 1
+
+
+def test_admin_post_worker_without_department_id_succeeds(
+    client: TestClient, as_admin: None, monkeypatch: pytest.MonkeyPatch
+):
+    captured: dict[str, int] = {}
+
+    def fake_create(db, data, department_id):
+        captured["department_id"] = department_id
+        return FakeWorker(
+            id=1,
+            name=data.name,
+            phone=data.phone,
+            department_id=department_id,
+            zone_id=data.zone_id,
+        )
+
+    monkeypatch.setattr(worker_service, "create_worker", fake_create)
+    response = client.post(
+        "/api/v1/workers",
+        json={
+            "name": "Ramesh Kumar",
+            "phone": "+919876543210",
+            "pin": "1234",
+            "zone_id": 2,
+        },
+    )
+    assert response.status_code == 201
+    assert captured["department_id"] == 1
+
+
+def test_admin_patch_worker_fake_returns_none_gives_404(
+    client: TestClient, as_admin: None, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(
+        worker_service,
+        "set_worker_active",
+        lambda db, worker_id, is_active, department_id: None,
+    )
+
+    response = client.patch("/api/v1/workers/42", json={"is_active": False})
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Worker not found"
+
+
+def test_admin_get_departments_passes_admin_department_id(
+    client: TestClient, as_admin: None, monkeypatch: pytest.MonkeyPatch
+):
+    captured: dict[str, int] = {}
+
+    def fake_list_departments(db, page, page_size, department_id):
+        captured["department_id"] = department_id
+        return [FakeRef(department_id, "Sanitation")], 1
+
+    monkeypatch.setattr(
+        worker_service, "list_departments", fake_list_departments
+    )
+    response = client.get("/api/v1/departments")
+    assert response.status_code == 200
+    assert captured["department_id"] == 1
+
+
+def test_admin_get_zones_works_without_department(
+    client: TestClient, as_admin: None, monkeypatch: pytest.MonkeyPatch
+):
+    called: list[bool] = []
+
+    def fake_list_zones(db, page, page_size):
+        called.append(True)
+        return [FakeRef(1, "Zone A")], 1
+
+    monkeypatch.setattr(worker_service, "list_zones", fake_list_zones)
+    response = client.get("/api/v1/zones")
+    assert response.status_code == 200
+    assert len(called) == 1
+
 
