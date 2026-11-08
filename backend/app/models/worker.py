@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +29,9 @@ class Worker(TimestampMixin, Base):
     )
     last_assigned_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    base_location: Mapped[WKBElement | None] = mapped_column(
+        Geometry(geometry_type="POINT", srid=4326), nullable=True
     )
 
     department: Mapped[Department] = relationship("Department")
