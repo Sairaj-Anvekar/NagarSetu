@@ -46,7 +46,11 @@ def pick_best(candidates: list[Candidate]) -> Candidate | None:
     return min(candidates, key=candidate_sort_key)
 
 
-def get_candidates(db: Session, complaint: Complaint) -> list[Candidate]:
+def get_candidates(
+    db: Session,
+    complaint: Complaint,
+    exclude_worker_ids: set[int] | None = None,
+) -> list[Candidate]:
     if complaint.zone_id is None:
         return []
 
@@ -94,6 +98,8 @@ def get_candidates(db: Session, complaint: Complaint) -> list[Candidate]:
             Worker.is_active.is_(True),
         )
     )
+    if exclude_worker_ids:
+        stmt = stmt.where(Worker.id.notin_(exclude_worker_ids))
 
     rows = db.execute(stmt).all()
     return [
@@ -118,7 +124,10 @@ def get_active_assignment(
 
 
 def assign_complaint(
-    db: Session, complaint_id: UUID | int | str, now: datetime | None = None
+    db: Session,
+    complaint_id: UUID | int | str,
+    now: datetime | None = None,
+    exclude_worker_ids: set[int] | None = None,
 ) -> ComplaintAssignment | None:
     now = now or datetime.now(UTC)
     complaint = db.scalars(
@@ -134,7 +143,9 @@ def assign_complaint(
     if existing is not None:
         return existing
 
-    candidates = get_candidates(db, complaint)
+    candidates = get_candidates(
+        db, complaint, exclude_worker_ids=exclude_worker_ids
+    )
     best = pick_best(candidates)
     if best is None:
         return None
