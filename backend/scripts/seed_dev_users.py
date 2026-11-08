@@ -1,6 +1,7 @@
 import os
 import sys
 
+from geoalchemy2 import WKTElement
 from sqlalchemy import select, text
 
 from app.core.phone import normalize_phone
@@ -15,6 +16,7 @@ DEMO_WORKERS = [
         "department": "Sanitation",
         "zone": "Zone A",
         "is_active": True,
+        "base_location": (75.865, 17.675),
     },
     {
         "phone": "+919000000002",
@@ -22,6 +24,7 @@ DEMO_WORKERS = [
         "department": "Public Works Department",
         "zone": "Zone A",
         "is_active": True,
+        "base_location": (75.875, 17.680),
     },
     {
         "phone": "+919000000003",
@@ -29,6 +32,7 @@ DEMO_WORKERS = [
         "department": "Sanitation",
         "zone": "Zone B",
         "is_active": True,
+        "base_location": (75.940, 17.680),
     },
     {
         "phone": "+919000000004",
@@ -36,6 +40,7 @@ DEMO_WORKERS = [
         "department": "Sanitation",
         "zone": "Zone C",
         "is_active": True,
+        "base_location": (75.880, 17.640),
     },
     {
         "phone": "+919000000005",
@@ -43,6 +48,7 @@ DEMO_WORKERS = [
         "department": "Public Works Department",
         "zone": "Zone B",
         "is_active": True,
+        "base_location": (75.935, 17.685),
     },
     {
         "phone": "+919000000006",
@@ -50,6 +56,7 @@ DEMO_WORKERS = [
         "department": "Public Works Department",
         "zone": "Zone D",
         "is_active": True,
+        "base_location": (75.940, 17.640),
     },
     {
         "phone": "+919000000007",
@@ -57,6 +64,7 @@ DEMO_WORKERS = [
         "department": "Sanitation",
         "zone": "Zone A",
         "is_active": True,
+        "base_location": (75.895, 17.690),
     },
     {
         "phone": "+919000000008",
@@ -64,6 +72,7 @@ DEMO_WORKERS = [
         "department": "Sanitation",
         "zone": "Zone A",
         "is_active": False,
+        "base_location": (75.880, 17.680),
     },
 ]
 
@@ -155,6 +164,8 @@ def main() -> None:
             phone = normalize_phone(w_spec["phone"])
             dept = departments[w_spec["department"]]
             zone = zones[w_spec["zone"]]
+            lon, lat = w_spec["base_location"]
+            point_elem = WKTElement(f"POINT({lon} {lat})", srid=4326)
             worker = db.scalars(
                 select(Worker).where(Worker.phone == phone)
             ).first()
@@ -166,6 +177,7 @@ def main() -> None:
                     department_id=dept.id,
                     zone_id=zone.id,
                     is_active=w_spec["is_active"],
+                    base_location=point_elem,
                 )
                 db.add(worker)
             else:
@@ -174,6 +186,7 @@ def main() -> None:
                 worker.department_id = dept.id
                 worker.zone_id = zone.id
                 worker.is_active = w_spec["is_active"]
+                worker.base_location = point_elem
 
         demo_phones = {normalize_phone(w["phone"]) for w in DEMO_WORKERS}
         live_test_workers = db.scalars(
