@@ -37,6 +37,18 @@ services:
       timeout: 3s
       retries: 5
 
+  floci:
+    image: floci/floci:latest
+    container_name: sgs_floci
+    restart: unless-stopped
+    ports:
+      - "4566:4566"
+    volumes:
+      - floci_data:/app/data
+    environment:
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_STORAGE_PERSISTENT_PATH: /app/data
+
   backend:
     build: ./backend
     container_name: sgs_backend
@@ -53,11 +65,19 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:-}
       DEV_WORKER_PIN: ${DEV_WORKER_PIN:-}
+      S3_ENDPOINT_URL: http://floci:4566
+      S3_PUBLIC_ENDPOINT_URL: http://localhost:4566
+      S3_BUCKET: nagarsetu-media
+      S3_REGION: ap-south-1
+      S3_ACCESS_KEY_ID: test
+      S3_SECRET_ACCESS_KEY: test
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      floci:
+        condition: service_started
     healthcheck:
       test:
         - CMD-SHELL
@@ -70,3 +90,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  floci_data:

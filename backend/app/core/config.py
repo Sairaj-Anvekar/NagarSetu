@@ -16,6 +16,16 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     rate_limit_enabled: bool = True
 
+    s3_endpoint_url: str | None = None
+    s3_public_endpoint_url: str | None = None
+    s3_bucket: str = "nagarsetu-media"
+    s3_region: str = "ap-south-1"
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
+    signed_url_expire_seconds: int = 3600
+    max_upload_bytes: int = 8388608
+    nsfw_threshold: float = 0.8
+
 
 @lru_cache
 def get_settings() -> Settings:

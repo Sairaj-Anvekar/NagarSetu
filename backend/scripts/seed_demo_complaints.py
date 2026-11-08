@@ -1,7 +1,9 @@
 import os
 import sys
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 
+from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy import delete, select, update
 
 from app.db.session import SessionLocal, get_engine
@@ -15,7 +17,11 @@ from app.models import (
     Worker,
     Zone,
 )
-from app.services import assignment_service, complaint_service
+from app.services import (
+    assignment_service,
+    complaint_service,
+    storage_service,
+)
 
 DEMO_PHONES = [
     "+919000000001",
@@ -27,6 +33,25 @@ DEMO_PHONES = [
     "+919000000007",
     "+919000000008",
 ]
+
+CATEGORY_COLORS = {
+    "Solid Waste & Garbage": "#3f6e49",
+    "Waterlogging & Drainage": "#2c5d88",
+    "Potholes & Road Damage": "#8a4b38",
+    "Streetlight & Power Outage": "#b8860b",
+}
+
+
+def _generate_placeholder_image(category: str, tracking_code: str) -> bytes:
+    color = CATEGORY_COLORS.get(category, "#4a5568")
+    img = Image.new("RGB", (640, 400), color=color)
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    draw.text((30, 170), f"Category: {category}", fill="white", font=font)
+    draw.text((30, 210), f"Tracking: {tracking_code}", fill="white", font=font)
+    buf = BytesIO()
+    img.save(buf, format="JPEG")
+    return buf.getvalue()
 
 
 def seed_demo_complaints() -> None:
@@ -53,13 +78,27 @@ def seed_demo_complaints() -> None:
             db.add(citizen)
             db.flush()
 
-        # Delete all of that citizen's complaints and their related child rows
-        c_ids = list(
+        old_complaints = list(
             db.scalars(
-                select(Complaint.id).where(Complaint.citizen_id == citizen.id)
+                select(Complaint).where(Complaint.citizen_id == citizen.id)
             ).all()
         )
+        old_keys_to_delete: list[str] = [
+            c.image_object_key for c in old_complaints if c.image_object_key
+        ]
+
+        c_ids = [c.id for c in old_complaints]
         if c_ids:
+            old_res_keys = list(
+                db.scalars(
+                    select(Resolution.photo_object_key).where(
+                        Resolution.complaint_id.in_(c_ids),
+                        Resolution.photo_object_key.is_not(None),
+                    )
+                ).all()
+            )
+            old_keys_to_delete.extend(k for k in old_res_keys if k)
+
             db.execute(
                 delete(ComplaintLog).where(ComplaintLog.complaint_id.in_(c_ids))
             )
@@ -155,6 +194,8 @@ def seed_demo_complaints() -> None:
         ]
 
         results = []
+        storage_available = True
+
         for spec in specs:
             c = complaint_service.create_complaint(
                 db,
@@ -174,6 +215,23 @@ def seed_demo_complaints() -> None:
             if "priority" in spec:
                 c.priority = spec["priority"]
             db.flush()
+
+            if storage_available:
+                try:
+                    jpeg_bytes = _generate_placeholder_image(
+                        c.category, c.tracking_code
+                    )
+                    key = f"complaints/{c.id}/photo.jpg"
+                    storage_service.get_storage().put_object(
+                        key, jpeg_bytes, "image/jpeg"
+                    )
+                    c.image_object_key = key
+                    db.flush()
+                except Exception:
+                    print(
+                        "WARNING: photo storage unavailable, complaints seeded without images"
+                    )
+                    storage_available = False
 
             assignment = assignment_service.assign_complaint(
                 db, c.id, now=fixed_now
@@ -195,6 +253,12 @@ def seed_demo_complaints() -> None:
             results.append((c.tracking_code, c.category, zone_name, worker_name))
 
         db.commit()
+
+        for key in old_keys_to_delete:
+            try:
+                storage_service.get_storage().delete_object(key)
+            except Exception:
+                pass
 
         for tracking_code, category, zone_name, worker_name in results:
             print(
