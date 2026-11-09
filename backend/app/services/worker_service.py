@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.security import hash_secret
 from app.models import Department, Worker, Zone
 from app.schemas.workers import WorkerCreate
+from app.services import assignment_service
 
 
 class DuplicatePhone(Exception):
@@ -63,6 +64,11 @@ def create_worker(
     )
     db.add(worker)
     try:
+        db.flush()
+        if worker.is_active:
+            assignment_service.assign_pending(
+                db, department_id=worker.department_id, zone_id=worker.zone_id
+            )
         db.commit()
         db.refresh(worker)
     except IntegrityError:
@@ -83,7 +89,17 @@ def set_worker_active(
     if not worker or worker.department_id != department_id:
         return None
 
+    was_active = worker.is_active
     worker.is_active = is_active
+    db.flush()
+
+    if was_active and not is_active:
+        assignment_service.release_worker_tasks(db, worker_id)
+    elif not was_active and is_active:
+        assignment_service.assign_pending(
+            db, department_id=worker.department_id, zone_id=worker.zone_id
+        )
+
     db.commit()
     db.refresh(worker)
     return worker

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
 from app.db.session import get_db
-from app.models import Admin
+from app.models import Admin, Worker
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -67,4 +67,42 @@ def get_current_admin(
         )
 
     return admin
+
+
+def get_current_worker(
+    claims: Annotated[dict[str, Any], Depends(get_current_claims)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Worker:
+    if claims.get("role") != "worker":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Worker access required",
+        )
+
+    try:
+        worker_id = int(claims["sub"])
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
+
+    worker = db.get(Worker, worker_id)
+    if not worker:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not worker.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is deactivated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return worker
+
 
