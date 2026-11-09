@@ -140,6 +140,7 @@ export const MOCK_TASKS = [
     dueInHours: -3,
     latitude: 15.2993,
     longitude: 74.124,
+    carry_forward_count: 0,
   },
   {
     id: 't2',
@@ -152,6 +153,7 @@ export const MOCK_TASKS = [
     dueInHours: 5,
     latitude: 15.3012,
     longitude: 74.1255,
+    carry_forward_count: 0,
   },
   {
     id: 't3',
@@ -164,6 +166,7 @@ export const MOCK_TASKS = [
     dueInHours: 20,
     latitude: 15.298,
     longitude: 74.122,
+    carry_forward_count: 0,
   },
   {
     id: 't4',
@@ -176,6 +179,7 @@ export const MOCK_TASKS = [
     dueInHours: 30,
     latitude: 15.3025,
     longitude: 74.128,
+    carry_forward_count: 0,
   },
   {
     id: 't5',
@@ -188,6 +192,7 @@ export const MOCK_TASKS = [
     dueInHours: -30,
     latitude: 15.297,
     longitude: 74.121,
+    carry_forward_count: 0,
   },
   {
     id: 't6',
@@ -200,6 +205,7 @@ export const MOCK_TASKS = [
     dueInHours: 2,
     latitude: 15.3005,
     longitude: 74.126,
+    carry_forward_count: 0,
   },
   {
     id: 't7',
@@ -212,5 +218,18 @@ export const MOCK_TASKS = [
     dueInHours: 40,
     latitude: 15.303,
     longitude: 74.1295,
+    carry_forward_count: 0,
   },
 ]
+
+export const MOCK_RESOLUTIONS = []
+
+const INITIAL_TASKS = JSON.parse(JSON.stringify(MOCK_TASKS))
+
+export function resetMockTasks() {
+  MOCK_TASKS.length = 0
+  for (const task of JSON.parse(JSON.stringify(INITIAL_TASKS))) {
+    MOCK_TASKS.push(task)
+  }
+  MOCK_RESOLUTIONS.length = 0
+}
