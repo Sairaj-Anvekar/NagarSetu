@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 8388608
     nsfw_threshold: float = 0.8
 
+    telegram_bot_token: str | None = None
+    telegram_api_base: str = "https://api.telegram.org"
+    telegram_poll_timeout: int = 30
+    telegram_session_ttl_seconds: int = 3600
+    ai_confidence_threshold: float = 0.70
+
 
 @lru_cache
 def get_settings() -> Settings:
