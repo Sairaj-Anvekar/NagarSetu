@@ -12,4 +12,5 @@ slowapi>=0.1.9,<1.0
 boto3>=1.34,<2.0
 Pillow>=10.3,<13.0
 python-multipart>=0.0.9,<1.0
+httpx>=0.27,<1.0
 
