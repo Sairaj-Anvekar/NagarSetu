@@ -1,6 +1,6 @@
 import { AxiosError } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import http, { setUnauthorizedHandler } from '../http'
+import http, { DEFAULT_API_BASE_URL, resolveBaseUrl, setUnauthorizedHandler } from '../http'
 import { saveAuth } from '../../utils/authStorage'
 
 // ---------------------------------------------------------------------------
@@ -149,5 +149,17 @@ describe('http — successful response', () => {
     expect(response.status).toBe(200)
     expect(response.data).toEqual({ message: 'hello' })
     expect(handler).not.toHaveBeenCalled()
+  })
+})
+
+describe('http — baseURL resolution', () => {
+  it('uses VITE_API_BASE_URL from environment and falls back to default', () => {
+    expect(DEFAULT_API_BASE_URL).toBe('http://localhost:8000/api/v1')
+    expect(resolveBaseUrl('http://api.example.com/api/v1')).toBe('http://api.example.com/api/v1')
+    expect(resolveBaseUrl(undefined)).toBe('http://localhost:8000/api/v1')
+    expect(resolveBaseUrl('')).toBe('http://localhost:8000/api/v1')
+    expect(http.defaults.baseURL).toBe(
+      import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL,
+    )
   })
 })

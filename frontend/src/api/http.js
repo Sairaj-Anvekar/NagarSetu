@@ -1,8 +1,14 @@
 import axios from 'axios'
 import { getToken } from '../utils/authStorage'
 
+export const DEFAULT_API_BASE_URL = 'http://localhost:8000/api/v1'
+
+export function resolveBaseUrl(envValue = import.meta.env.VITE_API_BASE_URL) {
+  return envValue || DEFAULT_API_BASE_URL
+}
+
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  baseURL: resolveBaseUrl(),
   timeout: 15000,
 })
 
