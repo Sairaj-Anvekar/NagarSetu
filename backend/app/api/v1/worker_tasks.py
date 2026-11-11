@@ -1,8 +1,10 @@
+import logging
 from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -22,10 +24,13 @@ from app.schemas.common import Page
 from app.schemas.tasks import DeferOut, DeferRequest, HistoryItemOut, TaskOut
 from app.services import (
     image_service,
+    notification_service,
     nsfw_check_service,
     storage_service,
     task_service,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["worker tasks"])
 
@@ -150,6 +155,7 @@ def complete_complaint_task(
     photo: Annotated[UploadFile, File()],
     worker: Annotated[Worker, Depends(get_current_worker)],
     db: Annotated[Session, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ) -> TaskOut:
     errors: list[dict[str, Any]] = []
 
@@ -238,5 +244,22 @@ def complete_complaint_task(
         except Exception:
             pass
         raise
+
+    try:
+        notice = notification_service.prepare_completion_notice(db, complaint_id)
+        if notice:
+            background_tasks.add_task(
+                notification_service.send_completion_notice,
+                notice["chat_id"],
+                notice["tracking_code"],
+                notice["category"],
+                cleaned_note,
+                data,
+            )
+    except Exception as exc:
+        logger.warning(
+            "Failed to prepare completion notice (%s)",
+            type(exc).__name__,
+        )
 
     return result.task
