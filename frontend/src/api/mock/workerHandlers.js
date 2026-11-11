@@ -6,7 +6,23 @@ const PRIORITY_ORDER = {
   critical: 0,
   high: 1,
   medium: 2,
-  low: 3
+  low: 3,
+}
+
+export function toTaskPayload(task, now = Date.now()) {
+  return {
+    id: task.id,
+    tracking_code: task.tracking_code,
+    category: task.category,
+    description: task.description,
+    image_url: null,
+    latitude: task.latitude,
+    longitude: task.longitude,
+    priority: task.priority,
+    status: task.status,
+    sla_deadline: new Date(now + task.dueInHours * 3600000).toISOString(),
+    is_overdue: task.dueInHours < 0,
+  }
 }
 
 function handleGetMyTasks({ headers }) {
@@ -25,21 +41,11 @@ function handleGetMyTasks({ headers }) {
   }
 
   const now = Date.now()
-  const workerTasks = MOCK_TASKS.filter((task) => task.worker_id === session.id)
+  const workerTasks = MOCK_TASKS.filter(
+    (task) => task.worker_id === session.id && task.status !== 'Completed',
+  )
 
-  const items = workerTasks.map((task) => ({
-    id: task.id,
-    tracking_code: task.tracking_code,
-    category: task.category,
-    description: task.description,
-    image_url: null,
-    latitude: task.latitude,
-    longitude: task.longitude,
-    priority: task.priority,
-    status: task.status,
-    sla_deadline: new Date(now + task.dueInHours * 3600000).toISOString(),
-    is_overdue: task.dueInHours < 0
-  }))
+  const items = workerTasks.map((task) => toTaskPayload(task, now))
 
   const sortedItems = [...items].sort((a, b) => {
     if (a.is_overdue !== b.is_overdue) {
@@ -61,8 +67,8 @@ function handleGetMyTasks({ headers }) {
       items: sortedItems,
       total: sortedItems.length,
       page: 1,
-      page_size: 20
-    }
+      page_size: 20,
+    },
   }
 }
 
@@ -70,8 +76,6 @@ export const workerRoutes = [
   {
     method: 'GET',
     path: '/workers/me/tasks',
-    handler: handleGetMyTasks
-  }
+    handler: handleGetMyTasks,
+  },
 ]
-
-
