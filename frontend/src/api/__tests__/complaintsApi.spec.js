@@ -154,6 +154,7 @@ describe('complaintsApi', () => {
         })
 
         expect(recordedConfig).not.toBeNull()
+        expect(recordedConfig.timeout).toBe(60000)
         expect(recordedConfig.data).toBeInstanceOf(FormData)
         expect(recordedConfig.data.get('photo')).toBe(photoFile)
         expect(recordedConfig.data.get('note')).toBe('Paved smoothly with cold asphalt')

@@ -3,11 +3,13 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import WorkerTaskDetailView from '../WorkerTaskDetailView.vue'
+import WorkerCompleteForm from '../../components/worker/WorkerCompleteForm.vue'
 import { deferTask, fetchTask, startTask } from '../../api/complaintsApi'
 
 vi.mock('../../api/complaintsApi', () => ({
   fetchTask: vi.fn(),
   startTask: vi.fn(),
+  completeTask: vi.fn(),
   deferTask: vi.fn(),
 }))
 
@@ -185,17 +187,18 @@ describe('WorkerTaskDetailView — Defer', () => {
     await flushPromises()
 
     await wrapper.findAll('button').find((b) => b.text() === 'Defer task').trigger('click')
-    const textarea = wrapper.get('#defer-reason')
-    const submitBtn = wrapper.get('button[type="submit"]')
+    const deferForm = wrapper.get('form.worker-detail-defer-form')
+    const textarea = deferForm.get('#defer-reason')
+    const submitBtn = deferForm.get('button[type="submit"]')
 
     await textarea.setValue('abcd')
     expect(submitBtn.attributes('disabled')).toBeDefined()
-    await wrapper.get('form').trigger('submit')
+    await deferForm.trigger('submit')
     expect(deferTask).not.toHaveBeenCalled()
 
     await textarea.setValue('a'.repeat(301))
     expect(submitBtn.attributes('disabled')).toBeDefined()
-    await wrapper.get('form').trigger('submit')
+    await deferForm.trigger('submit')
     expect(deferTask).not.toHaveBeenCalled()
 
     await textarea.setValue('12345')
@@ -237,14 +240,67 @@ describe('WorkerTaskDetailView — Defer', () => {
     await flushPromises()
 
     await wrapper.findAll('button').find((b) => b.text() === 'Defer task').trigger('click')
-    await wrapper.get('#defer-reason').setValue('Valid length reason')
-    await wrapper.get('form').trigger('submit')
+    const deferForm = wrapper.get('form.worker-detail-defer-form')
+    await deferForm.get('#defer-reason').setValue('Valid length reason')
+    await deferForm.trigger('submit')
     await flushPromises()
-    expect(wrapper.get('.invalid-feedback').text()).toBe('Reason is too vague')
+    expect(deferForm.get('.invalid-feedback').text()).toBe('Reason is too vague')
 
-    await wrapper.get('form').trigger('submit')
+    await deferForm.trigger('submit')
     await flushPromises()
     expect(wrapper.get('.alert-danger').text()).toContain('Already completed')
+  })
+})
+
+describe('WorkerTaskDetailView — Complete work', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows WorkerCompleteForm only for In-Progress and hides Start/Defer/form for Completed', async () => {
+    fetchTask.mockResolvedValueOnce({ ...baseTask, status: 'Submitted' })
+    const submitted = await mountDetailView()
+    await flushPromises()
+    expect(submitted.wrapper.findComponent(WorkerCompleteForm).exists()).toBe(false)
+
+    fetchTask.mockResolvedValueOnce({ ...baseTask, status: 'Completed' })
+    const completed = await mountDetailView()
+    await flushPromises()
+    expect(completed.wrapper.findComponent(WorkerCompleteForm).exists()).toBe(false)
+    expect(completed.wrapper.findAll('button').find((b) => b.text().includes('Start work'))).toBeUndefined()
+    expect(completed.wrapper.findAll('button').find((b) => b.text() === 'Defer task')).toBeUndefined()
+
+    fetchTask.mockResolvedValueOnce({ ...baseTask, status: 'In-Progress' })
+    const inProgress = await mountDetailView()
+    await flushPromises()
+    const form = inProgress.wrapper.findComponent(WorkerCompleteForm)
+    expect(form.exists()).toBe(true)
+    expect(form.props('taskId')).toBe('task-uuid-1')
+  })
+
+  it('updates badge to Completed, shows success panel, hides actions without refetching, and links to /worker', async () => {
+    fetchTask.mockResolvedValueOnce({ ...baseTask, status: 'In-Progress' })
+    const { wrapper, router } = await mountDetailView()
+    await flushPromises()
+
+    wrapper.getComponent(WorkerCompleteForm).vm.$emit('completed', {
+      ...baseTask,
+      status: 'Completed',
+    })
+    await nextTick()
+
+    expect(fetchTask).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('.ns-badge--completed').text()).toBe('Completed')
+    expect(wrapper.text()).toContain('Work completed. Thank you.')
+    expect(wrapper.findComponent(WorkerCompleteForm).exists()).toBe(false)
+    expect(wrapper.findAll('button').find((b) => b.text().includes('Start work'))).toBeUndefined()
+    expect(wrapper.findAll('button').find((b) => b.text() === 'Defer task')).toBeUndefined()
+
+    const backLink = wrapper.get('.worker-detail-completed a[href="/worker"].btn')
+    expect(backLink.text()).toBe('Back to my tasks')
+    await backLink.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/worker')
   })
 })
 
