@@ -7,6 +7,7 @@ import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import StatusBadge from '../components/StatusBadge.vue'
+import WorkerCompleteForm from '../components/worker/WorkerCompleteForm.vue'
 import { deferTask, fetchTask, startTask } from '../api/complaintsApi'
 import { getErrorMessage } from '../utils/apiError'
 import { getFieldErrors } from '../utils/fieldErrors'
@@ -44,6 +45,8 @@ const canStart = computed(() => task.value?.status === 'Submitted')
 const canDefer = computed(
   () => task.value?.status === 'Submitted' || task.value?.status === 'In-Progress',
 )
+const canComplete = computed(() => task.value?.status === 'In-Progress')
+const isCompleted = computed(() => task.value?.status === 'Completed')
 const trimmedReason = computed(() => deferReason.value.trim())
 const trimmedReasonLength = computed(() => trimmedReason.value.length)
 const isReasonTooLong = computed(() => trimmedReasonLength.value > DEFER_REASON_MAX)
@@ -146,6 +149,13 @@ function openDeferForm() {
 function closeDeferForm() {
   showDeferForm.value = false
   reasonError.value = ''
+}
+
+function handleTaskCompleted(completedTask) {
+  task.value = completedTask
+  showDeferForm.value = false
+  actionError.value = ''
+  statusNotice.value = ''
 }
 
 function validateDeferReason() {
@@ -331,6 +341,23 @@ onBeforeUnmount(() => {
 
       <ErrorAlert v-if="actionError" title="Could not update task" :message="actionError" />
 
+      <section
+        v-if="isCompleted"
+        class="worker-detail-card worker-detail-completed d-flex flex-column gap-3"
+        role="status"
+      >
+        <p class="mb-0 fw-semibold">Work completed. Thank you.</p>
+        <RouterLink to="/worker" class="btn btn-primary worker-detail-action-btn w-100">
+          Back to my tasks
+        </RouterLink>
+      </section>
+
+      <WorkerCompleteForm
+        v-if="canComplete"
+        :task-id="String(task.id)"
+        @completed="handleTaskCompleted"
+      />
+
       <div v-if="canStart || canDefer" class="worker-detail-actions d-flex flex-column gap-2">
         <button
           v-if="canStart"
@@ -462,7 +489,8 @@ onBeforeUnmount(() => {
   padding: 16px;
 }
 
-.worker-detail-deferred {
+.worker-detail-deferred,
+.worker-detail-completed {
   background-color: var(--ns-success-bg);
   border-color: var(--ns-success-fg);
   color: var(--ns-success-fg);

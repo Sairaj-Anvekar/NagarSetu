@@ -50,7 +50,7 @@ export async function completeTask(id, { photo, note } = {}) {
   const trimmedNote = typeof note === 'string' ? note.trim() : ''
   formData.append('note', trimmedNote)
 
-  const { data } = await http.patch(url, formData)
+  const { data } = await http.patch(url, formData, { timeout: 60000 })
   return assertTask(data)
 }
 
