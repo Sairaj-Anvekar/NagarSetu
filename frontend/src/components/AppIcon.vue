@@ -10,6 +10,8 @@ const names = [
   'menu',
   'logout',
   'chevron-down',
+  'chevron-right',
+  'arrow-left',
   'tasks',
   'history',
   'user',
@@ -49,6 +51,8 @@ const names = [
       <path d="M16 8l4 4-4 4M20 12H9" />
     </template>
     <path v-else-if="name === 'chevron-down'" d="M6 9l6 6 6-6" />
+    <path v-else-if="name === 'chevron-right'" d="M9 6l6 6-6 6" />
+    <path v-else-if="name === 'arrow-left'" d="M19 12H5M12 19l-7-7 7-7" />
     <template v-else-if="name === 'tasks'">
       <rect x="5" y="4" width="14" height="17" rx="2" />
       <path d="M9 2.5h6v3H9z" />
