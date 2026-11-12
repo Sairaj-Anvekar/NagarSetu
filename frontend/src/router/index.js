@@ -6,6 +6,7 @@ import AdminWorkerCreateView from '../views/AdminWorkerCreateView.vue'
 import AdminLayout from '../components/admin/AdminLayout.vue'
 import WorkerLayout from '../components/worker/WorkerLayout.vue'
 import WorkerView from '../views/WorkerView.vue'
+import WorkerTaskDetailView from '../views/WorkerTaskDetailView.vue'
 import WorkerHistoryView from '../views/WorkerHistoryView.vue'
 import WorkerAccountView from '../views/WorkerAccountView.vue'
 import { authGuard } from './guards'
@@ -31,6 +32,7 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'worker', noNavbar: true },
       children: [
         { path: '', name: 'worker', component: WorkerView },
+        { path: 'tasks/:id', name: 'worker-task-detail', component: WorkerTaskDetailView },
         { path: 'history', name: 'worker-history', component: WorkerHistoryView },
         { path: 'account', name: 'worker-account', component: WorkerAccountView },
       ],

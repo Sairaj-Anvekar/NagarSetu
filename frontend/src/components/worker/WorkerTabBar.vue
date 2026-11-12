@@ -1,14 +1,34 @@
 <script setup>
-import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import AppIcon from '../AppIcon.vue'
+
+const route = useRoute()
+
+const isTasksActive = computed(() => {
+  return (
+    route.name === 'worker' ||
+    route.name === 'worker-task-detail' ||
+    route.path === '/worker' ||
+    route.path.startsWith('/worker/tasks/')
+  )
+})
 </script>
 
 <template>
   <nav class="ns-worker-tab-bar" aria-label="Worker navigation">
     <div class="ns-worker-tab-bar__row">
-      <RouterLink :to="{ name: 'worker' }" class="ns-worker-tab-bar__link">
-        <AppIcon name="tasks" :size="22" />
-        <span class="ns-worker-tab-bar__label">Tasks</span>
+      <RouterLink v-slot="{ href, navigate }" :to="{ name: 'worker' }" custom>
+        <a
+          :href="href"
+          class="ns-worker-tab-bar__link"
+          :class="{ 'router-link-active': isTasksActive }"
+          :aria-current="isTasksActive ? 'page' : undefined"
+          @click="navigate"
+        >
+          <AppIcon name="tasks" :size="22" />
+          <span class="ns-worker-tab-bar__label">Tasks</span>
+        </a>
       </RouterLink>
       <RouterLink :to="{ name: 'worker-history' }" class="ns-worker-tab-bar__link">
         <AppIcon name="history" :size="22" />

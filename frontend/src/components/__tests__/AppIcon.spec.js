@@ -9,6 +9,8 @@ describe('AppIcon', () => {
     'menu',
     'logout',
     'chevron-down',
+    'chevron-right',
+    'arrow-left',
     'tasks',
     'history',
     'user',

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
+import AppIcon from '../../AppIcon.vue'
 import WorkerTaskCard from '../WorkerTaskCard.vue'
 
 const baseTask = {
@@ -95,5 +97,88 @@ describe('WorkerTaskCard', () => {
     expect(wrapper.text()).not.toContain('19.076')
     expect(wrapper.text()).not.toContain('72.8777')
     expect(wrapper.find('img').exists()).toBe(false)
+  })
+
+  async function mountWithRouter(task = baseTask) {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/worker', component: { template: '<div>Queue</div>' } },
+        { path: '/worker/tasks/:id', component: { template: '<div>Detail</div>' } },
+      ],
+    })
+    await router.push('/worker')
+    await router.isReady()
+
+    const wrapper = mount(WorkerTaskCard, {
+      props: { task },
+      global: { plugins: [router] },
+    })
+    return { wrapper, router }
+  }
+
+  it('links the card to /worker/tasks/<id> with an accessible name and chevron-right icon', async () => {
+    const { wrapper, router } = await mountWithRouter()
+
+    const detailLink = wrapper.get('a.stretched-link')
+    expect(detailLink.attributes('href')).toBe('/worker/tasks/task-1')
+    expect(detailLink.attributes('aria-label')).toContain('GRV-2026-B2K9')
+    expect(detailLink.attributes('aria-label')).toContain('Drainage & Sewage')
+
+    const chevron = wrapper
+      .findAllComponents(AppIcon)
+      .find((icon) => icon.props('name') === 'chevron-right')
+    expect(chevron).toBeDefined()
+
+    await detailLink.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/worker/tasks/task-1')
+  })
+
+  it('keeps Get directions independently clickable without navigating to task detail', async () => {
+    const { wrapper, router } = await mountWithRouter()
+
+    const directionsLink = wrapper.get('a.btn')
+    expect(directionsLink.classes()).toContain('worker-task-card__directions-btn')
+    expect(directionsLink.classes()).not.toContain('stretched-link')
+
+    await directionsLink.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/worker')
+  })
+
+  it('renders photo thumbnail with alt text and falls back to placeholder on image error', async () => {
+    const taskWithPhoto = {
+      ...baseTask,
+      image_url: 'https://example.com/signed-photo.jpg',
+    }
+    const wrapper = mount(WorkerTaskCard, {
+      props: { task: taskWithPhoto },
+    })
+
+    const img = wrapper.get('img')
+    expect(img.attributes('src')).toBe('https://example.com/signed-photo.jpg')
+    expect(img.attributes('alt')).toContain('Drainage & Sewage')
+    expect(wrapper.find('.worker-task-card__thumb-placeholder').exists()).toBe(false)
+
+    await img.trigger('error')
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.find('.worker-task-card__thumb-placeholder').exists()).toBe(true)
+  })
+
+  it('never renders citizen personal info even if present on the task object', () => {
+    const taskWithPii = {
+      ...baseTask,
+      citizen_name: 'Asha Kulkarni',
+      citizen_phone: '+919988776655',
+    }
+    const wrapper = mount(WorkerTaskCard, {
+      props: { task: taskWithPii },
+    })
+
+    expect(wrapper.text()).not.toContain('Asha Kulkarni')
+    expect(wrapper.text()).not.toContain('+919988776655')
+    expect(wrapper.text()).not.toContain('19.076')
+    expect(wrapper.text()).not.toContain('72.8777')
   })
 })
