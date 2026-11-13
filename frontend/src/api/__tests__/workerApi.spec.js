@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import http from '../http'
 import { installMockApi, uninstallMockApi } from '../mock'
 import { saveAuth } from '../../utils/authStorage'
-import { fetchMyTasks } from '../workerApi'
+import { fetchMyHistory, fetchMyTasks } from '../workerApi'
 
 describe('workerApi - fetchMyTasks authentication and success', () => {
   beforeEach(() => {
@@ -85,6 +85,58 @@ describe('workerApi - fetchMyTasks authentication and success', () => {
     } finally {
       http.defaults.adapter = originalAdapter
     }
+  })
+})
+
+describe('workerApi - fetchMyHistory', () => {
+  const originalAdapter = http.defaults.adapter
+
+  afterEach(() => {
+    http.defaults.adapter = originalAdapter
+  })
+
+  it('calls /workers/me/history with page and page_size and returns normalized envelope', async () => {
+    let capturedConfig
+    const sampleItems = [{ id: 'c-1', tracking_code: 'GRV-2026-H1', status: 'Completed' }]
+    http.defaults.adapter = async (config) => {
+      capturedConfig = config
+      return {
+        data: { items: sampleItems, total: 12, page: 2, page_size: 20 },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config
+      }
+    }
+
+    const result = await fetchMyHistory({ page: 2, pageSize: 20 })
+
+    expect(capturedConfig.url).toBe('/workers/me/history')
+    expect(capturedConfig.method).toBe('get')
+    expect(capturedConfig.params).toEqual({ page: 2, page_size: 20 })
+    expect(result).toEqual({ items: sampleItems, total: 12, page: 2, pageSize: 20 })
+  })
+
+  it('omits unset paging params and propagates HTTP and shape errors', async () => {
+    let capturedConfig
+    http.defaults.adapter = async (config) => {
+      capturedConfig = config
+      return { data: { invalid: true }, status: 200, statusText: 'OK', headers: {}, config }
+    }
+
+    await expect(fetchMyHistory()).rejects.toThrow('Unexpected response from the server')
+    expect(capturedConfig.params).toEqual({})
+
+    http.defaults.adapter = async (config) => {
+      const error = new Error('Forbidden')
+      error.response = { status: 403, data: { detail: 'Workers only' } }
+      error.config = config
+      throw error
+    }
+
+    await expect(fetchMyHistory({ page: 1 })).rejects.toMatchObject({
+      response: { status: 403 }
+    })
   })
 })
 
