@@ -3,11 +3,13 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getInitials } from '../utils/initials'
+import { useInstallPrompt } from '../composables/useInstallPrompt'
 import PageHeader from '../components/PageHeader.vue'
 import AppCard from '../components/AppCard.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
+const { canInstall, isInstalled, isIos, install } = useInstallPrompt()
 
 const workerName = computed(() => {
   const name = auth.user?.name
@@ -15,6 +17,10 @@ const workerName = computed(() => {
 })
 
 const initials = computed(() => getInitials(workerName.value))
+
+const showInstallSection = computed(() =>
+  Boolean(canInstall.value || isInstalled.value || (isIos.value && !isInstalled.value))
+)
 
 function handleLogout() {
   auth.logout()
@@ -45,6 +51,26 @@ function handleLogout() {
     >
       Log out
     </button>
+
+    <div v-if="showInstallSection" class="ns-worker-account__install mt-4">
+      <AppCard>
+        <h3 class="h6 mb-3">Install this app</h3>
+        <button
+          v-if="canInstall"
+          type="button"
+          class="btn btn-primary btn-lg w-100 ns-worker-account__install-btn"
+          @click="install"
+        >
+          Install app
+        </button>
+        <p v-else-if="isInstalled" class="mb-0 ns-worker-account__installed-text">
+          App installed
+        </p>
+        <p v-else-if="isIos && !isInstalled" class="mb-0 ns-worker-account__ios-hint">
+          On iPhone: tap Share, then Add to Home Screen.
+        </p>
+      </AppCard>
+    </div>
   </div>
 </template>
 
@@ -70,6 +96,16 @@ function handleLogout() {
 }
 
 .ns-worker-account__role {
+  color: var(--ns-slate);
+  font-size: 0.875rem;
+}
+
+.ns-worker-account__install-btn {
+  min-height: 44px;
+}
+
+.ns-worker-account__installed-text,
+.ns-worker-account__ios-hint {
   color: var(--ns-slate);
   font-size: 0.875rem;
 }
