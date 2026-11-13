@@ -1,11 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { saveAuth } from '../../utils/authStorage'
+import { fetchMyHistory } from '../../api/workerApi'
 import WorkerHistoryView from '../WorkerHistoryView.vue'
 import WorkerAccountView from '../WorkerAccountView.vue'
 import EmptyState from '../../components/EmptyState.vue'
+
+vi.mock('../../api/workerApi', () => ({
+  fetchMyHistory: vi.fn(),
+}))
 
 describe('Worker placeholder pages', () => {
   let pinia
@@ -31,11 +36,13 @@ describe('Worker placeholder pages', () => {
     localStorage.clear()
   })
 
-  it('renders the History heading and empty state in WorkerHistoryView', () => {
+  it('renders the History heading and empty state in WorkerHistoryView', async () => {
+    fetchMyHistory.mockResolvedValueOnce({ items: [], total: 0, page: 1, pageSize: 50 })
     wrapper = mount(WorkerHistoryView)
+    await flushPromises()
 
     expect(wrapper.get('h1').text()).toBe('History')
-    expect(wrapper.get('header p').text()).toBe('Complaints you have completed.')
+    expect(wrapper.get('header p').text()).toBe('0 completed tasks')
 
     const emptyState = wrapper.getComponent(EmptyState)
     expect(emptyState.get('h3').text()).toBe('No completed tasks yet')
@@ -91,3 +98,4 @@ describe('Worker placeholder pages', () => {
     })
   })
 })
+
