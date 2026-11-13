@@ -10,6 +10,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { registerUnauthorizedHandler } from './stores/auth'
+import { registerServiceWorker } from './utils/registerServiceWorker'
 
 const app = createApp(App)
 
@@ -24,6 +25,7 @@ async function start() {
     installMockApi({ delayMs: Number(import.meta.env.VITE_MOCK_API_DELAY_MS ?? 400) })
   }
   app.mount('#app')
+  registerServiceWorker()
 }
 
 start()

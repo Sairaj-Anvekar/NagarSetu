@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -7,6 +8,17 @@ import { fetchMyHistory } from '../../api/workerApi'
 import WorkerHistoryView from '../WorkerHistoryView.vue'
 import WorkerAccountView from '../WorkerAccountView.vue'
 import EmptyState from '../../components/EmptyState.vue'
+
+const mockPromptState = {
+  canInstall: ref(false),
+  isInstalled: ref(false),
+  isIos: ref(false),
+  install: vi.fn(),
+}
+
+vi.mock('../../composables/useInstallPrompt', () => ({
+  useInstallPrompt: () => mockPromptState,
+}))
 
 vi.mock('../../api/workerApi', () => ({
   fetchMyHistory: vi.fn(),
@@ -19,6 +31,10 @@ describe('Worker placeholder pages', () => {
 
   beforeEach(() => {
     localStorage.clear()
+    mockPromptState.canInstall.value = false
+    mockPromptState.isInstalled.value = false
+    mockPromptState.isIos.value = false
+    mockPromptState.install.mockClear()
     pinia = createPinia()
     setActivePinia(pinia)
     router = createRouter({
@@ -95,6 +111,54 @@ describe('Worker placeholder pages', () => {
 
       expect(wrapper.get('.ns-worker-account__name').text()).toBe('Worker')
       expect(wrapper.get('.ns-worker-account__avatar').text()).toBe('W')
+    })
+
+    it('shows the "Install app" button when canInstall is true and clicking it calls install', async () => {
+      mockPromptState.canInstall.value = true
+      await router.push('/worker/account')
+      await router.isReady()
+      wrapper = mount(WorkerAccountView, { global: { plugins: [router] } })
+
+      const installBtn = wrapper.get('.ns-worker-account__install-btn')
+      expect(installBtn.text()).toBe('Install app')
+
+      await installBtn.trigger('click')
+      expect(mockPromptState.install).toHaveBeenCalledTimes(1)
+    })
+
+    it('shows "App installed" when isInstalled is true', async () => {
+      mockPromptState.isInstalled.value = true
+      await router.push('/worker/account')
+      await router.isReady()
+      wrapper = mount(WorkerAccountView, { global: { plugins: [router] } })
+
+      expect(wrapper.get('.ns-worker-account__installed-text').text()).toBe('App installed')
+      expect(wrapper.find('.ns-worker-account__install-btn').exists()).toBe(false)
+    })
+
+    it('shows the iPhone hint only when isIos is true and not installed', async () => {
+      mockPromptState.isIos.value = true
+      mockPromptState.isInstalled.value = false
+      await router.push('/worker/account')
+      await router.isReady()
+      wrapper = mount(WorkerAccountView, { global: { plugins: [router] } })
+
+      expect(wrapper.get('.ns-worker-account__ios-hint').text()).toBe(
+        'On iPhone: tap Share, then Add to Home Screen.'
+      )
+      expect(wrapper.find('.ns-worker-account__install-btn').exists()).toBe(false)
+    })
+
+    it('shows nothing of the install section when canInstall, isInstalled, and isIos are false', async () => {
+      mockPromptState.canInstall.value = false
+      mockPromptState.isInstalled.value = false
+      mockPromptState.isIos.value = false
+      await router.push('/worker/account')
+      await router.isReady()
+      wrapper = mount(WorkerAccountView, { global: { plugins: [router] } })
+
+      expect(wrapper.find('.ns-worker-account__install').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Install this app')
     })
   })
 })
