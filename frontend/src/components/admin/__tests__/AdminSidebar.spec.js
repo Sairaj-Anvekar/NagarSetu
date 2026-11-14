@@ -17,6 +17,11 @@ describe('AdminSidebar', () => {
           component: { template: '<div>Complaints</div>' },
         },
         {
+          path: '/admin/hotspots',
+          name: 'admin-hotspots',
+          component: { template: '<div>Hotspots</div>' },
+        },
+        {
           path: '/admin/workers',
           name: 'admin-workers',
           component: { template: '<div>Workers</div>' },
@@ -56,6 +61,43 @@ describe('AdminSidebar', () => {
       .find((link) => link.text().includes('Complaints'))
 
     expect(complaintsLink.attributes('aria-current')).toBe('page')
+
+    const dashboardLink = wrapper
+      .findAll('.ns-admin-sidebar__link')
+      .find((link) => link.text().includes('Dashboard'))
+
+    expect(dashboardLink.attributes('aria-current')).toBeUndefined()
+  })
+
+  it('renders a Hotspots link pointing to /admin/hotspots', () => {
+    const wrapper = mount(AdminSidebar, {
+      global: {
+        plugins: [router],
+      },
+    })
+
+    const links = wrapper.findAll('.ns-admin-sidebar__link')
+    const hotspotsLink = links.find((link) => link.text().includes('Hotspots'))
+
+    expect(hotspotsLink).toBeDefined()
+    expect(hotspotsLink.attributes('href')).toBe('/admin/hotspots')
+  })
+
+  it('sets aria-current="page" on the Hotspots link when active on that route', async () => {
+    await router.push('/admin/hotspots')
+    await flushPromises()
+
+    const wrapper = mount(AdminSidebar, {
+      global: {
+        plugins: [router],
+      },
+    })
+
+    const hotspotsLink = wrapper
+      .findAll('.ns-admin-sidebar__link')
+      .find((link) => link.text().includes('Hotspots'))
+
+    expect(hotspotsLink.attributes('aria-current')).toBe('page')
 
     const dashboardLink = wrapper
       .findAll('.ns-admin-sidebar__link')

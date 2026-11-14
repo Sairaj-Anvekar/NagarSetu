@@ -155,6 +155,50 @@ describe('Admin routes', () => {
 
     expect(router.currentRoute.value.path).toBe('/worker')
   })
+
+  it('resolves /admin/hotspots with route name admin-hotspots and inherited meta', () => {
+    const resolved = router.resolve('/admin/hotspots')
+
+    expect(resolved.name).toBe('admin-hotspots')
+    expect(resolved.meta).toMatchObject({
+      requiresAuth: true,
+      role: 'admin',
+      noNavbar: true,
+    })
+  })
+
+  it('allows an admin session to load /admin/hotspots', async () => {
+    saveAuth({
+      token: 'admin-routes-test-token',
+      role: 'admin',
+      user: { id: '1', name: 'Demo Admin', role: 'admin' },
+    })
+    await router.push('/admin/hotspots')
+
+    expect(router.currentRoute.value.path).toBe('/admin/hotspots')
+    expect(router.currentRoute.value.name).toBe('admin-hotspots')
+    expect(router.currentRoute.value.meta.requiresAuth).toBe(true)
+    expect(router.currentRoute.value.meta.role).toBe('admin')
+  })
+
+  it('redirects a logged-out visit to /admin/hotspots to login with redirect parameter', async () => {
+    await router.push('/admin/hotspots')
+
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(router.currentRoute.value.query.redirect).toBe('/admin/hotspots')
+  })
+
+  it('redirects a worker session pushing /admin/hotspots to /worker', async () => {
+    saveAuth({
+      token: 'worker-routes-test-token',
+      role: 'worker',
+      user: { id: '101', name: 'Demo Worker', role: 'worker' },
+    })
+    await router.push('/admin/hotspots')
+
+    expect(router.currentRoute.value.path).toBe('/worker')
+  })
 })
+
 
 

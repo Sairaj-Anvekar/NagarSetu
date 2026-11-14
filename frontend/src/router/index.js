@@ -29,6 +29,11 @@ const router = createRouter({
           name: 'admin-complaint-detail',
           component: () => import('../views/AdminComplaintDetailView.vue'),
         },
+        {
+          path: 'hotspots',
+          name: 'admin-hotspots',
+          component: () => import('../views/AdminHotspotsView.vue'),
+        },
         { path: 'workers', name: 'admin-workers', component: AdminWorkersView },
         { path: 'workers/new', name: 'admin-worker-new', component: AdminWorkerCreateView },
       ],

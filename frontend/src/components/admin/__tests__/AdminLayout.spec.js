@@ -8,6 +8,7 @@ import AdminLayout from '../AdminLayout.vue'
 
 const DashboardPage = defineComponent(() => () => h('p', 'Dashboard child content'))
 const ComplaintsPage = defineComponent(() => () => h('p', 'Complaints child content'))
+const HotspotsPage = defineComponent(() => () => h('p', 'Hotspots child content'))
 const WorkersPage = defineComponent(() => () => h('p', 'Workers child content'))
 const LoginPage = defineComponent(() => () => h('p', 'Login page'))
 const TestHost = defineComponent(() => () => h(RouterView))
@@ -35,6 +36,7 @@ describe('AdminLayout', () => {
           children: [
             { path: '', name: 'admin', component: DashboardPage },
             { path: 'complaints', name: 'admin-complaints', component: ComplaintsPage },
+            { path: 'hotspots', name: 'admin-hotspots', component: HotspotsPage },
             { path: 'workers', name: 'admin-workers', component: WorkersPage },
           ],
         },
@@ -126,16 +128,39 @@ describe('AdminLayout', () => {
     expect(wrapper.text()).toBe('Login page')
   })
 
-  it('shows Dashboard, Complaints, and Workers links in the sidebar', async () => {
+  it('shows Dashboard, Complaints, Hotspots, and Workers links in the sidebar in order', async () => {
     await mountLayout()
     const links = wrapper.get('nav[aria-label="Admin navigation"]').findAll('a')
 
-    expect(links.map((link) => link.text())).toEqual(['Dashboard', 'Complaints', 'Workers'])
+    expect(links.map((link) => link.text())).toEqual([
+      'Dashboard',
+      'Complaints',
+      'Hotspots',
+      'Workers',
+    ])
     expect(links.map((link) => link.attributes('href'))).toEqual([
       '/admin',
       '/admin/complaints',
+      '/admin/hotspots',
       '/admin/workers',
     ])
+  })
+
+  it('marks only the Hotspots page with aria-current="page" after navigating to Hotspots', async () => {
+    await mountLayout()
+    const nav = wrapper.get('nav[aria-label="Admin navigation"]')
+
+    expect(nav.get('a[href="/admin"]').attributes('aria-current')).toBe('page')
+    expect(nav.get('a[href="/admin/hotspots"]').attributes('aria-current')).toBeUndefined()
+
+    await nav.get('a[href="/admin/hotspots"]').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/admin/hotspots')
+    expect(nav.get('a[href="/admin/hotspots"]').attributes('aria-current')).toBe('page')
+    expect(nav.get('a[href="/admin"]').attributes('aria-current')).toBeUndefined()
+    expect(nav.get('a[href="/admin/complaints"]').attributes('aria-current')).toBeUndefined()
+    expect(nav.get('a[href="/admin/workers"]').attributes('aria-current')).toBeUndefined()
   })
 
   it('marks only the exact current page after navigating to Workers', async () => {
@@ -151,6 +176,7 @@ describe('AdminLayout', () => {
     expect(router.currentRoute.value.path).toBe('/admin/workers')
     expect(nav.get('a[href="/admin/workers"]').attributes('aria-current')).toBe('page')
     expect(nav.get('a[href="/admin"]').attributes('aria-current')).toBeUndefined()
+    expect(nav.get('a[href="/admin/hotspots"]').attributes('aria-current')).toBeUndefined()
   })
 
   it('marks only the Complaints page with aria-current="page" after navigating to Complaints', async () => {
@@ -166,6 +192,7 @@ describe('AdminLayout', () => {
     expect(router.currentRoute.value.path).toBe('/admin/complaints')
     expect(nav.get('a[href="/admin/complaints"]').attributes('aria-current')).toBe('page')
     expect(nav.get('a[href="/admin"]').attributes('aria-current')).toBeUndefined()
+    expect(nav.get('a[href="/admin/hotspots"]').attributes('aria-current')).toBeUndefined()
     expect(nav.get('a[href="/admin/workers"]').attributes('aria-current')).toBeUndefined()
   })
 })
