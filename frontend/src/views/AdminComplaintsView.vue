@@ -9,10 +9,11 @@ import DataTable from '../components/DataTable.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import ComplaintFilters from '../components/admin/ComplaintFilters.vue'
-import { fetchAdminComplaints, fetchStats } from '../api/adminApi'
+import { exportAdminComplaintsCsv, fetchAdminComplaints, fetchStats } from '../api/adminApi'
 import { fetchZones } from '../api/referenceApi'
 import { getErrorMessage } from '../utils/apiError'
 import { formatDateTime } from '../utils/formatDate'
+import { buildComplaintsCsvFilename, downloadBlob } from '../utils/downloadBlob'
 
 const columns = [
   { key: 'tracking_code', label: 'Tracking code' },
@@ -33,6 +34,8 @@ const pageSize = ref(20)
 const isLoading = ref(false)
 const hasLoaded = ref(false)
 const error = ref('')
+const isExporting = ref(false)
+const exportError = ref('')
 
 const route = useRoute()
 const router = useRouter()
@@ -160,6 +163,30 @@ function handleClearFilters() {
   })
 }
 
+async function handleExportCsv() {
+  if (isExporting.value) return
+
+  isExporting.value = true
+  exportError.value = ''
+
+  try {
+    const blob = await exportAdminComplaintsCsv({
+      status: filters.value.status,
+      category: filters.value.category,
+      zoneId: filters.value.zoneId,
+      overdue: filters.value.overdue,
+      unassigned: filters.value.unassigned,
+      q: filters.value.q,
+    })
+    const filename = buildComplaintsCsvFilename()
+    downloadBlob(blob, filename)
+  } catch (err) {
+    exportError.value = getErrorMessage(err, 'Failed to export complaints. Please try again.')
+  } finally {
+    isExporting.value = false
+  }
+}
+
 function goToPage(newPage) {
   if (newPage < 1 || newPage > totalPages.value || newPage === page.value || isLoading.value) {
     return
@@ -214,7 +241,26 @@ onMounted(() => {
 
 <template>
   <div class="admin-complaints-view">
-    <PageHeader title="Complaints" :subtitle="subtitle" />
+    <PageHeader title="Complaints" :subtitle="subtitle">
+      <template #actions>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
+          :disabled="isExporting"
+          @click="handleExportCsv"
+        >
+          <LoadingSpinner v-if="isExporting" size="sm" label="Preparing export..." />
+          <span>{{ isExporting ? 'Preparing...' : 'Download CSV' }}</span>
+        </button>
+      </template>
+    </PageHeader>
+
+    <ErrorAlert
+      v-if="exportError"
+      class="mb-3"
+      title="Export failed"
+      :message="exportError"
+    />
 
     <ComplaintFilters
       :filters="filters"

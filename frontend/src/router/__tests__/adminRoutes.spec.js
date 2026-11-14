@@ -125,5 +125,36 @@ describe('Admin routes', () => {
 
     expect(router.currentRoute.value.path).toBe('/worker')
   })
+
+  it('resolves /admin/complaints/:id with route name admin-complaint-detail and inherited meta', () => {
+    const resolved = router.resolve('/admin/complaints/c-123')
+
+    expect(resolved.name).toBe('admin-complaint-detail')
+    expect(resolved.params.id).toBe('c-123')
+    expect(resolved.meta).toMatchObject({
+      requiresAuth: true,
+      role: 'admin',
+      noNavbar: true,
+    })
+  })
+
+  it('redirects a logged-out visit to /admin/complaints/:id to login with redirect parameter', async () => {
+    await router.push('/admin/complaints/c-123')
+
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(router.currentRoute.value.query.redirect).toBe('/admin/complaints/c-123')
+  })
+
+  it('redirects a worker session pushing /admin/complaints/:id to /worker', async () => {
+    saveAuth({
+      token: 'worker-routes-test-token',
+      role: 'worker',
+      user: { id: '101', name: 'Demo Worker', role: 'worker' },
+    })
+    await router.push('/admin/complaints/c-123')
+
+    expect(router.currentRoute.value.path).toBe('/worker')
+  })
 })
+
 

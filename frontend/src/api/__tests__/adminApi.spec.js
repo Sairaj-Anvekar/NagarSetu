@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import http from '../http'
-import { fetchAdminComplaints, fetchStats, fetchTrends, normalizeStats } from '../adminApi'
+import {
+  exportAdminComplaintsCsv,
+  fetchAdminComplaints,
+  fetchAdminComplaint,
+  fetchStats,
+  fetchTrends,
+  normalizeAdminComplaint,
+  normalizeStats,
+} from '../adminApi'
 
 describe('normalizeStats', () => {
   it('normalizes a complete stats payload', () => {
@@ -281,4 +289,247 @@ describe('fetchAdminComplaints', () => {
     await expect(fetchAdminComplaints()).rejects.toThrow('Network disconnected')
   })
 })
+
+describe('normalizeAdminComplaint', () => {
+  it('normalizes a full complaint detail payload with zone, worker, logs, and resolution', () => {
+    const raw = {
+      id: 'c-101',
+      tracking_code: 'SAN-20261114-1029',
+      category: 'Garbage Dump',
+      status: 'Completed',
+      priority: 'high',
+      zone: { id: 1, name: 'Zone A' },
+      assigned_worker: { id: 2, name: 'Ramesh Patil' },
+      description: 'Piles of uncollected waste near market',
+      sla_deadline: '2026-11-14T18:00:00Z',
+      is_overdue: true,
+      created_at: '2026-11-14T10:00:00Z',
+      resolved_at: '2026-11-14T17:30:00Z',
+      image_url: 'https://storage.local/complaint.jpg',
+      latitude: 17.68,
+      longitude: 75.88,
+      carry_forward_count: 2,
+      logs: [
+        {
+          event_type: 'created',
+          actor_type: 'citizen',
+          created_at: '2026-11-14T10:00:00Z',
+          details: null,
+        },
+        {
+          event_type: 'resolved',
+          actor_type: 'worker',
+          created_at: '2026-11-14T17:30:00Z',
+          details: { worker_id: 2 },
+        },
+      ],
+      resolution: {
+        note: 'Waste cleared completely.',
+        photo_url: 'https://storage.local/resolution.jpg',
+        completed_at: '2026-11-14T17:30:00Z',
+        worker: { id: 2, name: 'Ramesh Patil' },
+      },
+    }
+
+    const result = normalizeAdminComplaint(raw)
+
+    expect(result).toEqual({
+      id: 'c-101',
+      tracking_code: 'SAN-20261114-1029',
+      category: 'Garbage Dump',
+      status: 'Completed',
+      priority: 'high',
+      zone: { id: '1', name: 'Zone A' },
+      assigned_worker: { id: '2', name: 'Ramesh Patil' },
+      description: 'Piles of uncollected waste near market',
+      sla_deadline: '2026-11-14T18:00:00Z',
+      is_overdue: true,
+      created_at: '2026-11-14T10:00:00Z',
+      resolved_at: '2026-11-14T17:30:00Z',
+      image_url: 'https://storage.local/complaint.jpg',
+      latitude: 17.68,
+      longitude: 75.88,
+      carry_forward_count: 2,
+      logs: [
+        {
+          event_type: 'created',
+          actor_type: 'citizen',
+          created_at: '2026-11-14T10:00:00Z',
+          details: null,
+        },
+        {
+          event_type: 'resolved',
+          actor_type: 'worker',
+          created_at: '2026-11-14T17:30:00Z',
+          details: { worker_id: 2 },
+        },
+      ],
+      resolution: {
+        note: 'Waste cleared completely.',
+        photo_url: 'https://storage.local/resolution.jpg',
+        completed_at: '2026-11-14T17:30:00Z',
+        worker: { id: '2', name: 'Ramesh Patil' },
+      },
+    })
+  })
+
+  it('safely defaults missing fields, nulls, and empty structures', () => {
+    expect(normalizeAdminComplaint(null)).toEqual({
+      id: '',
+      tracking_code: '',
+      category: '',
+      status: '',
+      priority: '',
+      zone: null,
+      assigned_worker: null,
+      description: '',
+      sla_deadline: '',
+      is_overdue: false,
+      created_at: '',
+      resolved_at: null,
+      image_url: null,
+      latitude: null,
+      longitude: null,
+      carry_forward_count: 0,
+      logs: [],
+      resolution: null,
+    })
+
+    const partial = {
+      id: 'c-202',
+      tracking_code: 'SAN-202',
+      carry_forward_count: 'not-a-number',
+      logs: null,
+      resolution: null,
+    }
+
+    const result = normalizeAdminComplaint(partial)
+    expect(result.id).toBe('c-202')
+    expect(result.carry_forward_count).toBe(0)
+    expect(result.logs).toEqual([])
+    expect(result.resolution).toBeNull()
+    expect(result.zone).toBeNull()
+    expect(result.assigned_worker).toBeNull()
+  })
+})
+
+describe('fetchAdminComplaint', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('calls GET /admin/complaints/:id with encoded id and returns normalized data', async () => {
+    const mockRaw = {
+      id: 'uuid-1234',
+      tracking_code: 'SAN-20261114-1234',
+      category: 'Garbage Dump',
+      status: 'In-Progress',
+      priority: 'medium',
+      sla_deadline: '2026-11-15T10:00:00Z',
+      is_overdue: false,
+      created_at: '2026-11-14T09:00:00Z',
+    }
+
+    const spy = vi.spyOn(http, 'get').mockResolvedValueOnce({ data: mockRaw })
+
+    const result = await fetchAdminComplaint('uuid-1234')
+
+    expect(spy).toHaveBeenCalledWith('/admin/complaints/uuid-1234')
+    expect(result.id).toBe('uuid-1234')
+    expect(result.tracking_code).toBe('SAN-20261114-1234')
+    expect(result.logs).toEqual([])
+    expect(result.resolution).toBeNull()
+  })
+
+  it('throws an error when no complaint id is supplied', async () => {
+    await expect(fetchAdminComplaint('')).rejects.toThrow('A complaint ID must be provided')
+    await expect(fetchAdminComplaint(null)).rejects.toThrow('A complaint ID must be provided')
+  })
+
+  it('throws unexpected response error when server returns non-object or null', async () => {
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: null })
+    await expect(fetchAdminComplaint('id-1')).rejects.toThrow('Unexpected response from the server')
+
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: 'invalid' })
+    await expect(fetchAdminComplaint('id-1')).rejects.toThrow('Unexpected response from the server')
+  })
+
+  it('propagates server errors such as 404', async () => {
+    const error404 = new Error('Request failed with status code 404')
+    error404.response = { status: 404, data: { detail: 'Complaint not found' } }
+
+    vi.spyOn(http, 'get').mockRejectedValueOnce(error404)
+
+    await expect(fetchAdminComplaint('missing-uuid')).rejects.toMatchObject({
+      response: { status: 404 },
+    })
+  })
+})
+
+describe('exportAdminComplaintsCsv', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('sends set filters, maps zoneId to zone_id, requests a blob, and returns a Blob', async () => {
+    const mockBlob = new Blob(['tracking_code,category\nSAN-1,Garbage'], { type: 'text/csv' })
+    const spy = vi.spyOn(http, 'get').mockResolvedValueOnce({ data: mockBlob })
+
+    const result = await exportAdminComplaintsCsv({
+      status: 'In-Progress',
+      category: 'Garbage Dump',
+      zoneId: '2',
+      overdue: true,
+      unassigned: true,
+      q: '  market  ',
+    })
+
+    expect(spy).toHaveBeenCalledWith('/admin/complaints/export', {
+      params: {
+        status: 'In-Progress',
+        category: 'Garbage Dump',
+        zone_id: '2',
+        overdue: true,
+        unassigned: true,
+        q: 'market',
+      },
+      responseType: 'blob',
+    })
+    expect(result).toBeInstanceOf(Blob)
+    expect(result).toBe(mockBlob)
+  })
+
+  it('omits unset, empty, and falsy filters', async () => {
+    const mockBlob = new Blob([''], { type: 'text/csv' })
+    const spy = vi.spyOn(http, 'get').mockResolvedValueOnce({ data: mockBlob })
+
+    await exportAdminComplaintsCsv({
+      status: '',
+      category: '',
+      zoneId: '',
+      overdue: false,
+      unassigned: false,
+      q: '   ',
+    })
+
+    expect(spy).toHaveBeenCalledWith('/admin/complaints/export', {
+      params: {},
+      responseType: 'blob',
+    })
+  })
+
+  it('wraps non-blob responses into a Blob instance', async () => {
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: 'raw,csv,string' })
+
+    const result = await exportAdminComplaintsCsv()
+    expect(result).toBeInstanceOf(Blob)
+  })
+
+  it('propagates server errors', async () => {
+    vi.spyOn(http, 'get').mockRejectedValueOnce(new Error('Export failed'))
+    await expect(exportAdminComplaintsCsv()).rejects.toThrow('Export failed')
+  })
+})
+
+
 
