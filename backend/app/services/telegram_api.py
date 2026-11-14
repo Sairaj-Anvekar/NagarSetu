@@ -317,3 +317,11 @@ class TelegramClient:
 
         return content
 
+    def get_me(self) -> dict:
+        res = self._call("getMe")
+        return res if isinstance(res, dict) else {}
+
+    def delete_webhook(self) -> None:
+        self._call("deleteWebhook", json={"drop_pending_updates": False})
+
+
