@@ -8,9 +8,14 @@ import ErrorAlert from '../../components/ErrorAlert.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import * as adminApi from '../../api/adminApi'
 import * as referenceApi from '../../api/referenceApi'
+import { downloadBlob, buildComplaintsCsvFilename } from '../../utils/downloadBlob'
 
 vi.mock('../../api/adminApi')
 vi.mock('../../api/referenceApi')
+vi.mock('../../utils/downloadBlob', () => ({
+  downloadBlob: vi.fn(),
+  buildComplaintsCsvFilename: vi.fn(() => 'complaints-2026-11-14.csv'),
+}))
 
 function createTestRouter() {
   return createRouter({
@@ -515,5 +520,145 @@ describe('AdminComplaintsView — filters, debounced search, URL sync, and auxil
     expect(wrapper.text()).toContain('SAN-001')
   })
 })
+
+describe('AdminComplaintsView — CSV export trigger and active filters', () => {
+  const dummyBlob = new Blob(['tracking_code,category\nSAN-001,Garbage'], { type: 'text/csv' })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(adminApi, 'fetchStats').mockResolvedValue({
+      by_category: [{ category: 'Garbage Dump', count: 5 }],
+      by_zone: [],
+    })
+    vi.spyOn(referenceApi, 'fetchZones').mockResolvedValue([
+      { id: '1', name: 'Zone A' },
+      { id: '2', name: 'Zone B' },
+    ])
+    vi.spyOn(adminApi, 'fetchAdminComplaints').mockResolvedValue({
+      items: [
+        {
+          id: '1',
+          tracking_code: 'SAN-001',
+          category: 'Garbage Dump',
+          status: 'Submitted',
+          priority: 'high',
+          zone: { id: '1', name: 'Zone A' },
+          assigned_worker: null,
+          sla_deadline: '2026-11-20T10:00:00Z',
+          is_overdue: false,
+          created_at: '2026-11-14T09:00:00Z',
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    })
+    vi.spyOn(adminApi, 'exportAdminComplaintsCsv').mockResolvedValue(dummyBlob)
+  })
+
+  it('calls exportAdminComplaintsCsv with current active filters and triggers downloadBlob', async () => {
+    const { wrapper } = await mountView({
+      status: 'Submitted',
+      category: 'Garbage Dump',
+      zone_id: '1',
+      overdue: 'true',
+      unassigned: 'true',
+      q: 'corner',
+    })
+    await flushPromises()
+
+    const exportBtn = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Download CSV'))
+    expect(exportBtn).toBeDefined()
+
+    await exportBtn.trigger('click')
+    await flushPromises()
+
+    expect(adminApi.exportAdminComplaintsCsv).toHaveBeenCalledWith({
+      status: 'Submitted',
+      category: 'Garbage Dump',
+      zoneId: '1',
+      overdue: true,
+      unassigned: true,
+      q: 'corner',
+    })
+    expect(buildComplaintsCsvFilename).toHaveBeenCalled()
+    expect(downloadBlob).toHaveBeenCalledWith(dummyBlob, 'complaints-2026-11-14.csv')
+  })
+
+  it('calls exportAdminComplaintsCsv with empty filter defaults when no filters are active', async () => {
+    const { wrapper } = await mountView()
+    await flushPromises()
+
+    const exportBtn = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Download CSV'))
+
+    await exportBtn.trigger('click')
+    await flushPromises()
+
+    expect(adminApi.exportAdminComplaintsCsv).toHaveBeenCalledWith({
+      status: '',
+      category: '',
+      zoneId: '',
+      overdue: false,
+      unassigned: false,
+      q: '',
+    })
+    expect(buildComplaintsCsvFilename).toHaveBeenCalled()
+    expect(downloadBlob).toHaveBeenCalledWith(dummyBlob, 'complaints-2026-11-14.csv')
+  })
+
+  it('disables button and displays "Preparing..." while export is in progress', async () => {
+    let resolveExport
+    vi.spyOn(adminApi, 'exportAdminComplaintsCsv').mockReturnValueOnce(
+      new Promise((res) => {
+        resolveExport = res
+      }),
+    )
+
+    const { wrapper } = await mountView()
+    await flushPromises()
+
+    const exportBtn = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Download CSV'))
+
+    await exportBtn.trigger('click')
+
+    expect(exportBtn.attributes('disabled')).toBeDefined()
+    expect(exportBtn.text()).toContain('Preparing...')
+
+    resolveExport(dummyBlob)
+    await flushPromises()
+
+    expect(exportBtn.attributes('disabled')).toBeUndefined()
+    expect(exportBtn.text()).toContain('Download CSV')
+  })
+
+  it('shows inline ErrorAlert and re-enables button upon export failure', async () => {
+    vi.spyOn(adminApi, 'exportAdminComplaintsCsv').mockRejectedValueOnce({
+      response: { status: 403 },
+    })
+
+    const { wrapper } = await mountView()
+    await flushPromises()
+
+    const exportBtn = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Download CSV'))
+
+    await exportBtn.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Export failed')
+    expect(wrapper.text()).toContain('You do not have permission to do this.')
+    expect(exportBtn.attributes('disabled')).toBeUndefined()
+    expect(exportBtn.text()).toContain('Download CSV')
+  })
+})
+
+
 
 

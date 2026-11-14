@@ -24,6 +24,11 @@ const router = createRouter({
       children: [
         { path: '', name: 'admin', component: AdminView },
         { path: 'complaints', name: 'admin-complaints', component: AdminComplaintsView },
+        {
+          path: 'complaints/:id',
+          name: 'admin-complaint-detail',
+          component: () => import('../views/AdminComplaintDetailView.vue'),
+        },
         { path: 'workers', name: 'admin-workers', component: AdminWorkersView },
         { path: 'workers/new', name: 'admin-worker-new', component: AdminWorkerCreateView },
       ],
