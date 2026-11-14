@@ -129,3 +129,69 @@ export async function fetchTrends({ days = 14 } = {}) {
   }))
 }
 
+/**
+ * Fetches the paginated list of department grievances for administrative review.
+ *
+ * @param {{
+ *   status?: string,
+ *   category?: string,
+ *   zoneId?: string | number,
+ *   overdue?: boolean,
+ *   unassigned?: boolean,
+ *   q?: string,
+ *   page?: number,
+ *   pageSize?: number
+ * }} [filters]
+ * @returns {Promise<{ items: Array<object>, total: number, page: number, pageSize: number }>}
+ */
+export async function fetchAdminComplaints({
+  status,
+  category,
+  zoneId,
+  overdue,
+  unassigned,
+  q,
+  page,
+  pageSize,
+} = {}) {
+  const params = {}
+
+  if (status) {
+    params.status = status
+  }
+  if (category) {
+    params.category = category
+  }
+  if (zoneId !== undefined && zoneId !== null && zoneId !== '') {
+    params.zone_id = zoneId
+  }
+  if (overdue === true) {
+    params.overdue = true
+  }
+  if (unassigned === true) {
+    params.unassigned = true
+  }
+  if (typeof q === 'string' && q.trim() !== '') {
+    params.q = q.trim()
+  }
+  if (page !== undefined && page !== null && page !== '') {
+    params.page = page
+  }
+  if (pageSize !== undefined && pageSize !== null && pageSize !== '') {
+    params.page_size = pageSize
+  }
+
+  const { data } = await http.get('/admin/complaints', { params })
+
+  if (!data || typeof data !== 'object' || !Array.isArray(data.items)) {
+    throw new Error('Unexpected response from the server')
+  }
+
+  return {
+    items: data.items,
+    total: typeof data.total === 'number' ? data.total : data.items.length,
+    page: typeof data.page === 'number' ? data.page : (page ?? 1),
+    pageSize: typeof data.page_size === 'number' ? data.page_size : (pageSize ?? 20),
+  }
+}
+

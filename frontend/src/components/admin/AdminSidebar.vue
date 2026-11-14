@@ -19,6 +19,12 @@ import AppIcon from '../AppIcon.vue'
           </RouterLink>
         </li>
         <li>
+          <RouterLink class="ns-admin-sidebar__link" :to="{ name: 'admin-complaints' }">
+            <AppIcon name="tasks" />
+            <span>Complaints</span>
+          </RouterLink>
+        </li>
+        <li>
           <RouterLink class="ns-admin-sidebar__link" :to="{ name: 'admin-workers' }">
             <AppIcon name="users" />
             <span>Workers</span>

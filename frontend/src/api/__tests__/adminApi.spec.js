@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import http from '../http'
-import { fetchStats, fetchTrends, normalizeStats } from '../adminApi'
+import { fetchAdminComplaints, fetchStats, fetchTrends, normalizeStats } from '../adminApi'
 
 describe('normalizeStats', () => {
   it('normalizes a complete stats payload', () => {
@@ -174,6 +174,111 @@ describe('fetchTrends', () => {
   it('propagates server errors', async () => {
     vi.spyOn(http, 'get').mockRejectedValueOnce(new Error('500 Server Error'))
     await expect(fetchTrends()).rejects.toThrow('500 Server Error')
+  })
+})
+
+describe('fetchAdminComplaints', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('sends only the set filters, maps zoneId and pageSize, and omits false booleans', async () => {
+    const mockResponse = {
+      items: [{ id: '1', tracking_code: 'SAN-001', category: 'Garbage' }],
+      total: 1,
+      page: 2,
+      page_size: 20,
+    }
+
+    const spy = vi.spyOn(http, 'get').mockResolvedValueOnce({ data: mockResponse })
+
+    const result = await fetchAdminComplaints({
+      status: 'Submitted',
+      category: 'Garbage',
+      zoneId: 3,
+      overdue: true,
+      unassigned: false,
+      q: 'SAN',
+      page: 2,
+      pageSize: 20,
+    })
+
+    expect(spy).toHaveBeenCalledWith('/admin/complaints', {
+      params: {
+        status: 'Submitted',
+        category: 'Garbage',
+        zone_id: 3,
+        overdue: true,
+        q: 'SAN',
+        page: 2,
+        page_size: 20,
+      },
+    })
+
+    expect(result).toEqual({
+      items: mockResponse.items,
+      total: 1,
+      page: 2,
+      pageSize: 20,
+    })
+  })
+
+  it('omits empty strings and falsy filters when called with defaults or empty options', async () => {
+    const mockResponse = {
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    }
+
+    const spy = vi.spyOn(http, 'get').mockResolvedValueOnce({ data: mockResponse })
+
+    const result = await fetchAdminComplaints({
+      status: '',
+      category: '',
+      zoneId: '',
+      overdue: false,
+      unassigned: false,
+      q: '   ',
+    })
+
+    expect(spy).toHaveBeenCalledWith('/admin/complaints', { params: {} })
+    expect(result).toEqual({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    })
+  })
+
+  it('returns default page and pageSize if backend response omits them', async () => {
+    const mockResponse = {
+      items: [{ id: '10' }],
+    }
+
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: mockResponse })
+
+    const result = await fetchAdminComplaints({ page: 3, pageSize: 50 })
+
+    expect(result).toEqual({
+      items: mockResponse.items,
+      total: 1,
+      page: 3,
+      pageSize: 50,
+    })
+  })
+
+  it('throws unexpected response error when items is not an array', async () => {
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: { items: 'not-an-array' } })
+    await expect(fetchAdminComplaints()).rejects.toThrow('Unexpected response from the server')
+
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: null })
+    await expect(fetchAdminComplaints()).rejects.toThrow('Unexpected response from the server')
+  })
+
+  it('propagates server errors', async () => {
+    vi.spyOn(http, 'get').mockRejectedValueOnce(new Error('Network disconnected'))
+    await expect(fetchAdminComplaints()).rejects.toThrow('Network disconnected')
   })
 })
 

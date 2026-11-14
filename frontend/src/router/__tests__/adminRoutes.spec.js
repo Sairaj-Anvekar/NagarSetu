@@ -82,4 +82,48 @@ describe('Admin routes', () => {
 
     expect(router.currentRoute.value.path).toBe('/worker')
   })
+
+  it('resolves /admin/complaints with route name admin-complaints and inherited meta', () => {
+    const resolved = router.resolve('/admin/complaints')
+
+    expect(resolved.name).toBe('admin-complaints')
+    expect(resolved.meta).toMatchObject({
+      requiresAuth: true,
+      role: 'admin',
+      noNavbar: true,
+    })
+  })
+
+  it('allows an admin session to load /admin/complaints', async () => {
+    saveAuth({
+      token: 'admin-routes-test-token',
+      role: 'admin',
+      user: { id: '1', name: 'Demo Admin', role: 'admin' },
+    })
+    await router.push('/admin/complaints')
+
+    expect(router.currentRoute.value.path).toBe('/admin/complaints')
+    expect(router.currentRoute.value.name).toBe('admin-complaints')
+    expect(router.currentRoute.value.meta.requiresAuth).toBe(true)
+    expect(router.currentRoute.value.meta.role).toBe('admin')
+  })
+
+  it('redirects a logged-out visit to /admin/complaints to login with redirect parameter', async () => {
+    await router.push('/admin/complaints')
+
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(router.currentRoute.value.query.redirect).toBe('/admin/complaints')
+  })
+
+  it('redirects a worker session pushing /admin/complaints to /worker', async () => {
+    saveAuth({
+      token: 'worker-routes-test-token',
+      role: 'worker',
+      user: { id: '101', name: 'Demo Worker', role: 'worker' },
+    })
+    await router.push('/admin/complaints')
+
+    expect(router.currentRoute.value.path).toBe('/worker')
+  })
 })
+

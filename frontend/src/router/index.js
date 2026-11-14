@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import AdminView from '../views/AdminView.vue'
+import AdminComplaintsView from '../views/AdminComplaintsView.vue'
 import AdminWorkersView from '../views/AdminWorkersView.vue'
 import AdminWorkerCreateView from '../views/AdminWorkerCreateView.vue'
 import AdminLayout from '../components/admin/AdminLayout.vue'
@@ -22,6 +23,7 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'admin', noNavbar: true },
       children: [
         { path: '', name: 'admin', component: AdminView },
+        { path: 'complaints', name: 'admin-complaints', component: AdminComplaintsView },
         { path: 'workers', name: 'admin-workers', component: AdminWorkersView },
         { path: 'workers/new', name: 'admin-worker-new', component: AdminWorkerCreateView },
       ],
