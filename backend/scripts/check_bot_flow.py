@@ -22,6 +22,7 @@ from app.models import (
 from app.services import (
     bot_handler,
     bot_messages,
+    geocode_service,
     image_service,
     notification_service,
     nsfw_check_service,
@@ -67,6 +68,17 @@ class FakeBotClient:
             {"chat_id": chat_id, "photo": photo, "caption": caption}
         )
         return {"ok": True}
+
+    def send_chat_action(self, chat_id: int, action: str = "typing") -> None:
+        pass
+
+    def edit_message_reply_markup(
+        self,
+        chat_id: int,
+        message_id: int,
+        reply_markup: dict[str, Any] | None = None,
+    ) -> None:
+        pass
 
     def answer_callback(
         self,
@@ -192,6 +204,7 @@ def main() -> None:
     db = Session(engine)
 
     real_storage = storage_service.get_storage()
+    real_redis = session_service.get_redis()
     uploaded_storage_keys: set[str] = set()
 
     orig_put = real_storage.put_object
@@ -201,6 +214,11 @@ def main() -> None:
         return orig_put(key, data, content_type)
 
     real_storage.put_object = tracking_put
+
+    orig_reverse_geocode = geocode_service.reverse_geocode
+    geocode_service.reverse_geocode = (
+        lambda lat, lon, client=None: "Test Locality, Solapur"
+    )
 
     orig_make_client = notification_service._make_client
 
@@ -233,120 +251,77 @@ def main() -> None:
             for t in tables_to_check
         }
 
-        # Check 1: /start replies and session is AWAITING_INPUT
+        # Check 1: /start replies with the 3-label menu and creates no session
         cid_1 = next_chat_id()
         client_1 = FakeBotClient()
         bot_handler.handle_update(
             db, client_1, make_msg(next_uid(), cid_1, text="/start"), commit=db.flush
         )
         sess_1 = session_service.load_session(cid_1)
-        ok_1 = (
-            len(client_1.messages) >= 2
-            and bot_messages.WELCOME_TEXT in client_1.messages[0]["text"]
-            and bot_messages.MSG_NEW_REPORT in client_1.messages[1]["text"]
-            and sess_1 is not None
-            and sess_1["state"] == session_service.State.AWAITING_INPUT
+        kb_1 = (
+            client_1.messages[0].get("reply_markup", {}).get("keyboard", [])
+            if client_1.messages
+            else []
         )
-        run_check(1, "start initializes session", ok_1)
+        labels_1 = [btn["text"] for row in kb_1 for btn in row]
+        ok_1 = (
+            len(client_1.messages) >= 1
+            and bot_messages.WELCOME_TEXT in client_1.messages[0]["text"]
+            and labels_1
+            == ["Lodge Complaint", "Track Complaint", "My Complaints"]
+            and sess_1 is None
+            and real_redis.exists(session_service.session_key(cid_1)) == 0
+        )
+        run_check(1, "start replies with 3-label menu and creates no session", ok_1)
 
-        # Check 2: text flow -> Streetlight & Power Outage, Zone A,
-        # Submitted, 3 logs, no triage, no assignment
+        # Check 2: "Lodge Complaint" creates a session in AWAITING_INPUT
         cid_2 = next_chat_id()
         client_2 = FakeBotClient()
         bot_handler.handle_update(
             db,
             client_2,
-            make_msg(
-                next_uid(),
-                cid_2,
-                text="Streetlights not working on the main road",
-            ),
+            make_msg(next_uid(), cid_2, text="Lodge Complaint"),
             commit=db.flush,
         )
-        bot_handler.handle_update(
-            db,
-            client_2,
-            make_cb(next_uid(), cid_2, "cat:ok"),
-            commit=db.flush,
-        )
-        bot_handler.handle_update(
-            db,
-            client_2,
-            make_msg(next_uid(), cid_2, latitude=17.684, longitude=75.880),
-            commit=db.flush,
-        )
-        bot_handler.handle_update(
-            db,
-            client_2,
-            make_cb(next_uid(), cid_2, "sub:yes"),
-            commit=db.flush,
-        )
-
-        citizen_2 = db.execute(
-            select(Citizen).where(Citizen.telegram_chat_id == cid_2)
-        ).scalar_one()
-        complaint_2 = db.execute(
-            select(Complaint).where(Complaint.citizen_id == citizen_2.id)
-        ).scalar_one()
-        logs_2 = db.execute(
-            select(ComplaintLog).where(
-                ComplaintLog.complaint_id == complaint_2.id
-            )
-        ).scalars().all()
-        triage_2 = db.execute(
-            select(TriageQueue).where(
-                TriageQueue.complaint_id == complaint_2.id
-            )
-        ).scalars().all()
-        assigns_2 = db.execute(
-            select(ComplaintAssignment).where(
-                ComplaintAssignment.complaint_id == complaint_2.id,
-                ComplaintAssignment.is_active.is_(True),
-            )
-        ).scalars().all()
-
+        sess_2 = session_service.load_session(cid_2)
+        ttl_2 = real_redis.ttl(session_service.session_key(cid_2))
         ok_2 = (
-            complaint_2.category == "Streetlight & Power Outage"
-            and complaint_2.zone is not None
-            and complaint_2.zone.name == "Zone A"
-            and complaint_2.status == "Submitted"
-            and complaint_2.ai_classification_source == "text"
-            and len(logs_2) == 3
-            and len(triage_2) == 0
-            and len(assigns_2) == 0
-            and complaint_2.tracking_code in client_2.messages[-1]["text"]
-            and session_service.load_session(cid_2) is None
+            len(client_2.messages) >= 1
+            and bot_messages.MSG_NEW_REPORT in client_2.messages[0]["text"]
+            and sess_2 is not None
+            and sess_2["state"] == session_service.State.AWAITING_INPUT
+            and real_redis.exists(session_service.session_key(cid_2)) == 1
+            and 1 <= ttl_2 <= 1200
         )
-        run_check(2, "full text complaint flow", ok_2)
+        run_check(2, "Lodge Complaint creates session in AWAITING_INPUT", ok_2)
 
-        # Check 3: photo with caption -> Potholes, assigned to worker +919000000002, storage exists
+        # Check 3: text "Streetlights not working on the main road", location 17.684, 75.880,
+        # then "sub:yes"
         cid_3 = next_chat_id()
         client_3 = FakeBotClient()
-        jpeg_3 = make_jpeg_bytes()
-        client_3.files["photo_3"] = jpeg_3
         bot_handler.handle_update(
             db,
             client_3,
             make_msg(
                 next_uid(),
                 cid_3,
-                photo_file_id="photo_3",
-                photo_file_size=len(jpeg_3),
-                caption="huge pothole on the road",
+                text="Streetlights not working on the main road",
             ),
             commit=db.flush,
         )
         bot_handler.handle_update(
             db,
             client_3,
-            make_cb(next_uid(), cid_3, "cat:ok"),
+            make_msg(next_uid(), cid_3, latitude=17.684, longitude=75.880),
             commit=db.flush,
         )
-        bot_handler.handle_update(
-            db,
-            client_3,
-            make_msg(next_uid(), cid_3, latitude=17.68, longitude=75.875),
-            commit=db.flush,
+        summary_msg_3 = client_3.messages[-1]["text"]
+        sess_3_mid = session_service.load_session(cid_3)
+        ttl_3_mid = real_redis.ttl(session_service.session_key(cid_3))
+        mid_flow_ok_3 = (
+            sess_3_mid is not None
+            and real_redis.exists(session_service.session_key(cid_3)) == 1
+            and 1 <= ttl_3_mid <= 1200
         )
         bot_handler.handle_update(
             db,
@@ -361,24 +336,41 @@ def main() -> None:
         complaint_3 = db.execute(
             select(Complaint).where(Complaint.citizen_id == citizen_3.id)
         ).scalar_one()
-        assign_3 = db.execute(
+        logs_3 = db.execute(
+            select(ComplaintLog).where(
+                ComplaintLog.complaint_id == complaint_3.id
+            )
+        ).scalars().all()
+        triage_3 = db.execute(
+            select(TriageQueue).where(
+                TriageQueue.complaint_id == complaint_3.id
+            )
+        ).scalars().all()
+        assigns_3 = db.execute(
             select(ComplaintAssignment).where(
                 ComplaintAssignment.complaint_id == complaint_3.id,
                 ComplaintAssignment.is_active.is_(True),
             )
-        ).scalar_one_or_none()
+        ).scalars().all()
 
         ok_3 = (
-            complaint_3.category == "Potholes & Road Damage"
-            and assign_3 is not None
-            and assign_3.worker is not None
-            and assign_3.worker.phone == "+919000000002"
-            and complaint_3.image_object_key is not None
-            and real_storage.object_exists(complaint_3.image_object_key)
+            complaint_3.category == "Streetlight"
+            and complaint_3.zone is not None
+            and complaint_3.zone.name == "Zone A"
+            and complaint_3.status == "Submitted"
+            and complaint_3.ai_classification_source == "text"
+            and len(logs_3) == 3
+            and len(triage_3) == 0
+            and len(assigns_3) == 0
+            and complaint_3.tracking_code in client_3.messages[-1]["text"]
+            and session_service.load_session(cid_3) is None
+            and real_redis.exists(session_service.session_key(cid_3)) == 0
+            and mid_flow_ok_3
+            and "Test Locality, Solapur" in summary_msg_3
         )
-        run_check(3, "photo with caption assigned to worker", ok_3)
+        run_check(3, "full text complaint flow and summary locality", ok_3)
 
-        # Check 4: photo without caption -> asks description, desc:skip, submit -> triage row 0.30
+        # Check 4: photo with caption -> Potholes, assigned to worker +919000000002, storage exists
         cid_4 = next_chat_id()
         client_4 = FakeBotClient()
         jpeg_4 = make_jpeg_bytes()
@@ -391,28 +383,14 @@ def main() -> None:
                 cid_4,
                 photo_file_id="photo_4",
                 photo_file_size=len(jpeg_4),
+                caption="huge pothole on the road",
             ),
             commit=db.flush,
         )
         bot_handler.handle_update(
             db,
             client_4,
-            make_cb(next_uid(), cid_4, "cat:ok"),
-            commit=db.flush,
-        )
-        bot_handler.handle_update(
-            db,
-            client_4,
-            make_msg(next_uid(), cid_4, latitude=17.675, longitude=75.865),
-            commit=db.flush,
-        )
-        asked_desc = (
-            bot_messages.MSG_ASK_DESCRIPTION in client_4.messages[-1]["text"]
-        )
-        bot_handler.handle_update(
-            db,
-            client_4,
-            make_cb(next_uid(), cid_4, "desc:skip"),
+            make_msg(next_uid(), cid_4, latitude=17.68, longitude=75.875),
             commit=db.flush,
         )
         bot_handler.handle_update(
@@ -428,46 +406,45 @@ def main() -> None:
         complaint_4 = db.execute(
             select(Complaint).where(Complaint.citizen_id == citizen_4.id)
         ).scalar_one()
-        triage_4 = db.execute(
-            select(TriageQueue).where(
-                TriageQueue.complaint_id == complaint_4.id
+        assign_4 = db.execute(
+            select(ComplaintAssignment).where(
+                ComplaintAssignment.complaint_id == complaint_4.id,
+                ComplaintAssignment.is_active.is_(True),
             )
         ).scalar_one_or_none()
 
         ok_4 = (
-            asked_desc
-            and complaint_4.description is None
-            and triage_4 is not None
-            and round(triage_4.ai_confidence, 2) == 0.30
+            complaint_4.category == "Potholes & Road Damage"
+            and assign_4 is not None
+            and assign_4.worker is not None
+            and assign_4.worker.phone == "+919000000002"
+            and complaint_4.image_object_key is not None
+            and real_storage.object_exists(complaint_4.image_object_key)
         )
-        run_check(4, "photo without caption queues triage", ok_4)
+        run_check(4, "captioned photo assigned to worker", ok_4)
 
-        # Check 5: text "qqzz xx" -> cat:no -> cat:4 -> location -> sub:yes
-        # -> Illegal Encroachment, manual, NO triage
+        # Check 5: photo without caption -> reply has "not fully sure", submit -> triage row 0.30
         cid_5 = next_chat_id()
         client_5 = FakeBotClient()
+        jpeg_5 = make_jpeg_bytes()
+        client_5.files["photo_5"] = jpeg_5
         bot_handler.handle_update(
             db,
             client_5,
-            make_msg(next_uid(), cid_5, text="qqzz xx"),
+            make_msg(
+                next_uid(),
+                cid_5,
+                photo_file_id="photo_5",
+                photo_file_size=len(jpeg_5),
+            ),
             commit=db.flush,
         )
+        not_sure_present = "not fully sure" in client_5.messages[-1]["text"]
+
         bot_handler.handle_update(
             db,
             client_5,
-            make_cb(next_uid(), cid_5, "cat:no"),
-            commit=db.flush,
-        )
-        bot_handler.handle_update(
-            db,
-            client_5,
-            make_cb(next_uid(), cid_5, "cat:4"),
-            commit=db.flush,
-        )
-        bot_handler.handle_update(
-            db,
-            client_5,
-            make_msg(next_uid(), cid_5, latitude=17.684, longitude=75.880),
+            make_msg(next_uid(), cid_5, latitude=17.675, longitude=75.865),
             commit=db.flush,
         )
         bot_handler.handle_update(
@@ -487,37 +464,42 @@ def main() -> None:
             select(TriageQueue).where(
                 TriageQueue.complaint_id == complaint_5.id
             )
-        ).scalars().all()
+        ).scalar_one_or_none()
 
         ok_5 = (
-            complaint_5.category == "Illegal Encroachment"
-            and complaint_5.ai_classification_source == "manual"
-            and len(triage_5) == 0
+            not_sure_present
+            and triage_5 is not None
+            and triage_5.status.lower() == "pending"
+            and round(triage_5.ai_confidence, 2) == 0.30
         )
-        run_check(5, "manual category override", ok_5)
+        run_check(5, "photo without caption queues triage with confidence 0.30", ok_5)
 
-        # Check 6: location 17.00, 75.50 (outside every zone) -> zone None,
-        # no assignment, gets tracking code
+        # Check 6: text "qqzz xx" -> sub:cat -> cat:4 -> sub:yes
+        # -> Illegal Encroachment, manual, NO triage
         cid_6 = next_chat_id()
         client_6 = FakeBotClient()
         bot_handler.handle_update(
             db,
             client_6,
-            make_msg(
-                next_uid(), cid_6, text="Streetlight outage outside zones"
-            ),
+            make_msg(next_uid(), cid_6, text="qqzz xx"),
             commit=db.flush,
         )
         bot_handler.handle_update(
             db,
             client_6,
-            make_cb(next_uid(), cid_6, "cat:ok"),
+            make_msg(next_uid(), cid_6, latitude=17.684, longitude=75.880),
             commit=db.flush,
         )
         bot_handler.handle_update(
             db,
             client_6,
-            make_msg(next_uid(), cid_6, latitude=17.00, longitude=75.50),
+            make_cb(next_uid(), cid_6, "sub:cat"),
+            commit=db.flush,
+        )
+        bot_handler.handle_update(
+            db,
+            client_6,
+            make_cb(next_uid(), cid_6, "cat:4"),
             commit=db.flush,
         )
         bot_handler.handle_update(
@@ -533,51 +515,66 @@ def main() -> None:
         complaint_6 = db.execute(
             select(Complaint).where(Complaint.citizen_id == citizen_6.id)
         ).scalar_one()
-        assign_6 = db.execute(
-            select(ComplaintAssignment).where(
-                ComplaintAssignment.complaint_id == complaint_6.id,
-                ComplaintAssignment.is_active.is_(True),
+        triage_6 = db.execute(
+            select(TriageQueue).where(
+                TriageQueue.complaint_id == complaint_6.id
             )
         ).scalars().all()
 
         ok_6 = (
-            complaint_6.zone_id is None
-            and len(assign_6) == 0
-            and complaint_6.tracking_code in client_6.messages[-1]["text"]
+            complaint_6.category == "Illegal Encroachment"
+            and complaint_6.ai_classification_source == "manual"
+            and len(triage_6) == 0
         )
-        run_check(6, "outside zones stored with zone None", ok_6)
+        run_check(6, "manual category override", ok_6)
 
-        # Check 7: text message while in AWAITING_LOCATION replies reminder, session unchanged
+        # Check 7: location 17.00, 75.50 (outside every zone) -> zone None,
+        # no assignment, gets tracking code
         cid_7 = next_chat_id()
         client_7 = FakeBotClient()
         bot_handler.handle_update(
             db,
             client_7,
-            make_msg(next_uid(), cid_7, text="Garbage dump on street"),
+            make_msg(
+                next_uid(), cid_7, text="Streetlight outage outside zones"
+            ),
             commit=db.flush,
         )
         bot_handler.handle_update(
             db,
             client_7,
-            make_cb(next_uid(), cid_7, "cat:ok"),
+            make_msg(next_uid(), cid_7, latitude=17.00, longitude=75.50),
             commit=db.flush,
         )
         bot_handler.handle_update(
             db,
             client_7,
-            make_msg(next_uid(), cid_7, text="near bus stand"),
+            make_cb(next_uid(), cid_7, "sub:yes"),
             commit=db.flush,
         )
-        sess_7 = session_service.load_session(cid_7)
-        ok_7 = (
-            bot_messages.MSG_LOCATION_NOT_EXPECTED
-            in client_7.messages[-1]["text"]
-            and sess_7 is not None
-            and sess_7["state"] == session_service.State.AWAITING_LOCATION
-        )
-        run_check(7, "location reminder leaves session unchanged", ok_7)
 
-        # Check 8: text /cancel -> session gone; photo /cancel -> uploaded object deleted
+        citizen_7 = db.execute(
+            select(Citizen).where(Citizen.telegram_chat_id == cid_7)
+        ).scalar_one()
+        complaint_7 = db.execute(
+            select(Complaint).where(Complaint.citizen_id == citizen_7.id)
+        ).scalar_one()
+        assign_7 = db.execute(
+            select(ComplaintAssignment).where(
+                ComplaintAssignment.complaint_id == complaint_7.id,
+                ComplaintAssignment.is_active.is_(True),
+            )
+        ).scalars().all()
+
+        ok_7 = (
+            complaint_7.zone_id is None
+            and len(assign_7) == 0
+            and complaint_7.tracking_code in client_7.messages[-1]["text"]
+        )
+        run_check(7, "outside zones stored with zone None", ok_7)
+
+        # Check 8: text /cancel -> session gone; photo /cancel -> uploaded object deleted;
+        # sub:no button -> session gone
         cid_8a = next_chat_id()
         client_8a = FakeBotClient()
         bot_handler.handle_update(
@@ -586,6 +583,11 @@ def main() -> None:
             make_msg(next_uid(), cid_8a, text="Pothole problem cancel test"),
             commit=db.flush,
         )
+        ttl_8a_mid = real_redis.ttl(session_service.session_key(cid_8a))
+        mid_ok_8a = (
+            real_redis.exists(session_service.session_key(cid_8a)) == 1
+            and 1 <= ttl_8a_mid <= 1200
+        )
         bot_handler.handle_update(
             db,
             client_8a,
@@ -593,6 +595,7 @@ def main() -> None:
             commit=db.flush,
         )
         sess_8a = session_service.load_session(cid_8a)
+        redis_no_8a = real_redis.exists(session_service.session_key(cid_8a)) == 0
 
         cid_8b = next_chat_id()
         client_8b = FakeBotClient()
@@ -610,8 +613,14 @@ def main() -> None:
             commit=db.flush,
         )
         sess_8b = session_service.load_session(cid_8b)
+        assert sess_8b is not None
         key_8b = sess_8b["image_key"]
         obj_existed_before = real_storage.object_exists(key_8b)
+        ttl_8b_mid = real_redis.ttl(session_service.session_key(cid_8b))
+        mid_ok_8b = (
+            real_redis.exists(session_service.session_key(cid_8b)) == 1
+            and 1 <= ttl_8b_mid <= 1200
+        )
         bot_handler.handle_update(
             db,
             client_8b,
@@ -620,14 +629,58 @@ def main() -> None:
         )
         obj_exists_after = real_storage.object_exists(key_8b)
         sess_8b_after = session_service.load_session(cid_8b)
+        redis_no_8b = real_redis.exists(session_service.session_key(cid_8b)) == 0
+
+        # sub:no button cancel test
+        cid_8c = next_chat_id()
+        client_8c = FakeBotClient()
+        bot_handler.handle_update(
+            db,
+            client_8c,
+            make_msg(next_uid(), cid_8c, text="Encroachment problem cancel sub:no test"),
+            commit=db.flush,
+        )
+        bot_handler.handle_update(
+            db,
+            client_8c,
+            make_msg(next_uid(), cid_8c, latitude=17.684, longitude=75.880),
+            commit=db.flush,
+        )
+        sess_8c_mid = session_service.load_session(cid_8c)
+        ttl_8c_mid = real_redis.ttl(session_service.session_key(cid_8c))
+        mid_ok_8c = (
+            sess_8c_mid is not None
+            and real_redis.exists(session_service.session_key(cid_8c)) == 1
+            and 1 <= ttl_8c_mid <= 1200
+        )
+        bot_handler.handle_update(
+            db,
+            client_8c,
+            make_cb(next_uid(), cid_8c, "sub:no"),
+            commit=db.flush,
+        )
+        redis_no_8c = real_redis.exists(session_service.session_key(cid_8c)) == 0
+        sess_8c_after = session_service.load_session(cid_8c)
+        sub_no_msg_ok = (
+            len(client_8c.messages) >= 1
+            and bot_messages.MSG_CANCELLED in client_8c.messages[-1]["text"]
+        )
 
         ok_8 = (
-            sess_8a is None
+            mid_ok_8a
+            and sess_8a is None
+            and redis_no_8a
+            and mid_ok_8b
             and obj_existed_before
             and not obj_exists_after
             and sess_8b_after is None
+            and redis_no_8b
+            and mid_ok_8c
+            and sess_8c_after is None
+            and redis_no_8c
+            and sub_no_msg_ok
         )
-        run_check(8, "cancel clears session and storage", ok_8)
+        run_check(8, "cancel and sub:no clear session, redis keys, and storage", ok_8)
 
         # Check 9: NSFW photo -> rejected, no session, nothing uploaded
         cid_9 = next_chat_id()
@@ -656,14 +709,14 @@ def main() -> None:
             nsfw_check_service.set_classifier(None)
         run_check(9, "NSFW photo rejected", ok_9)
 
-        # Check 10: /status with lower-case tracking code -> Status: Submitted;
-        # other citizen gets not found; /mycomplaints lists newest first
+        # Check 10: tracking code typed in lower case returns "Status: Submitted"
+        # for own citizen and not-found for other; "My Complaints" lists newest first
         client_10 = FakeBotClient()
-        code_lower = complaint_2.tracking_code.lower()
+        code_lower = complaint_3.tracking_code.lower()
         bot_handler.handle_update(
             db,
             client_10,
-            make_msg(next_uid(), cid_2, text=f"/status {code_lower}"),
+            make_msg(next_uid(), cid_3, text=code_lower),
             commit=db.flush,
         )
         reply_status_own = client_10.messages[-1]["text"]
@@ -672,7 +725,7 @@ def main() -> None:
         bot_handler.handle_update(
             db,
             client_10,
-            make_msg(next_uid(), cid_10_other, text=f"/status {code_lower}"),
+            make_msg(next_uid(), cid_10_other, text=code_lower),
             commit=db.flush,
         )
         reply_status_other = client_10.messages[-1]["text"]
@@ -680,18 +733,18 @@ def main() -> None:
         bot_handler.handle_update(
             db,
             client_10,
-            make_msg(next_uid(), cid_2, text="/mycomplaints"),
+            make_msg(next_uid(), cid_3, text="My Complaints"),
             commit=db.flush,
         )
         reply_mycomplaints = client_10.messages[-1]["text"]
 
         ok_10 = (
             "Status: Submitted" in reply_status_own
-            and complaint_2.category in reply_status_own
+            and complaint_3.category in reply_status_own
             and bot_messages.MSG_STATUS_NOT_FOUND in reply_status_other
-            and complaint_2.tracking_code in reply_mycomplaints
+            and complaint_3.tracking_code in reply_mycomplaints
         )
-        run_check(10, "status and mycomplaints commands", ok_10)
+        run_check(10, "tracking code lookup and my complaints", ok_10)
 
         # Check 11: callback with no session replies expired
         cid_11 = next_chat_id()
@@ -699,19 +752,19 @@ def main() -> None:
         bot_handler.handle_update(
             db,
             client_11,
-            make_cb(next_uid(), cid_11, "cat:ok"),
+            make_cb(next_uid(), cid_11, "sub:yes"),
             commit=db.flush,
         )
         ok_11 = bot_messages.MSG_EXPIRED in client_11.messages[-1]["text"]
         run_check(11, "callback without session expires", ok_11)
 
-        # Check 12: completion notice -> complete complaint from check 3,
+        # Check 12: completion notice -> complete complaint from check 4,
         # prepare notice, send photo and fallback to message
         worker = db.execute(
             select(Worker).where(Worker.phone == "+919000000002")
         ).scalar_one()
         task_service.start_task(
-            db=db, worker=worker, complaint_id=complaint_3.id
+            db=db, worker=worker, complaint_id=complaint_4.id
         )
 
         comp_jpeg = make_jpeg_bytes()
@@ -720,7 +773,7 @@ def main() -> None:
         comp_res = task_service.complete_task(
             db=db,
             worker=worker,
-            complaint_id=complaint_3.id,
+            complaint_id=complaint_4.id,
             note=note,
             photo_bytes=comp_jpeg,
             image=validated_comp,
@@ -728,11 +781,11 @@ def main() -> None:
         uploaded_storage_keys.add(comp_res.photo_key)
 
         notice = notification_service.prepare_completion_notice(
-            db, complaint_3.id
+            db, complaint_4.id
         )
         assert notice is not None
-        assert notice["chat_id"] == cid_3
-        assert notice["tracking_code"] == complaint_3.tracking_code
+        assert notice["chat_id"] == cid_4
+        assert notice["tracking_code"] == complaint_4.tracking_code
 
         # Photo delivery
         fake_comp_client = FakeCompletionClient(photo_error=False)
@@ -804,6 +857,7 @@ def main() -> None:
     finally:
         db.rollback()
         real_storage.put_object = orig_put
+        geocode_service.reverse_geocode = orig_reverse_geocode
         notification_service._make_client = orig_make_client
         nsfw_check_service.set_classifier(None)
 

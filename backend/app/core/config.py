@@ -29,8 +29,12 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = None
     telegram_api_base: str = "https://api.telegram.org"
     telegram_poll_timeout: int = 30
-    telegram_session_ttl_seconds: int = 3600
+    telegram_session_ttl_seconds: int = 1200
     ai_confidence_threshold: float = 0.70
+
+    geocode_enabled: bool = True
+    geocode_url: str = "https://nominatim.openstreetmap.org/reverse"
+    geocode_timeout: float = 3.0
 
 
 @lru_cache

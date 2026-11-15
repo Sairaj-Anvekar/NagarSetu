@@ -118,7 +118,7 @@ def run_checks() -> bool:
             c4 = complaint_service.create_complaint(
                 db,
                 citizen_id=citizen.id,
-                category="Streetlight & Power Outage",
+                category="Streetlight",
                 latitude=17.684,
                 longitude=75.880,
             )

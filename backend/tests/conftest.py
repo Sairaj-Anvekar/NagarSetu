@@ -8,6 +8,7 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-tests-only-0123456789")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 os.environ["TELEGRAM_BOT_TOKEN"] = ""
+os.environ["GEOCODE_ENABLED"] = "false"
 
 
 @pytest.fixture

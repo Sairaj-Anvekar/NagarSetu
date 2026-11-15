@@ -19,14 +19,14 @@ CATEGORIES: dict[str, CategoryInfo] = {
         name="Solid Waste & Garbage",
         input_type="image",
         department_name="Sanitation",
-        sla_hours=48,
+        sla_hours=24,
         priority="medium",
     ),
     "Potholes & Road Damage": CategoryInfo(
         name="Potholes & Road Damage",
         input_type="image",
         department_name="Public Works Department",
-        sla_hours=72,
+        sla_hours=48,
         priority="high",
     ),
     "Waterlogging & Drainage": CategoryInfo(
@@ -36,11 +36,11 @@ CATEGORIES: dict[str, CategoryInfo] = {
         sla_hours=24,
         priority="high",
     ),
-    "Streetlight & Power Outage": CategoryInfo(
-        name="Streetlight & Power Outage",
+    "Streetlight": CategoryInfo(
+        name="Streetlight",
         input_type="text",
-        department_name="MSEB",
-        sla_hours=48,
+        department_name="Electrical Department",
+        sla_hours=4,
         priority="medium",
     ),
     "Illegal Encroachment": CategoryInfo(

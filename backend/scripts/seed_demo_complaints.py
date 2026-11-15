@@ -38,7 +38,7 @@ CATEGORY_COLORS = {
     "Solid Waste & Garbage": "#3f6e49",
     "Waterlogging & Drainage": "#2c5d88",
     "Potholes & Road Damage": "#8a4b38",
-    "Streetlight & Power Outage": "#b8860b",
+    "Streetlight": "#b8860b",
 }
 
 
@@ -185,7 +185,7 @@ def seed_demo_complaints() -> None:
                 "source": "image",
             },
             {
-                "category": "Streetlight & Power Outage",
+                "category": "Streetlight",
                 "lat": 17.684,
                 "lon": 75.880,
                 "description": "Three streetlights not working on the main road",
