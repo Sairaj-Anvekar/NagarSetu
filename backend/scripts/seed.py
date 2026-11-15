@@ -11,7 +11,7 @@ from app.models.zone import Zone
 DEPARTMENTS: list[tuple[str, str]] = [
     ("Sanitation", "Solid waste, garbage, waterlogging and drainage"),
     ("Public Works Department", "Potholes and road damage"),
-    ("MSEB", "Streetlights and power outage"),
+    ("Electrical Department", "Streetlights and power outage"),
     ("Encroachments Department", "Illegal encroachment"),
     ("Public Health & Veterinary", "Stray animals and pest control"),
 ]

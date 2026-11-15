@@ -56,6 +56,22 @@ def main() -> None:
             type(exc).__name__,
         )
 
+    try:
+        client.set_my_commands(
+            [
+                ("new", "Report a problem"),
+                ("status", "Check a complaint: /status CODE"),
+                ("mycomplaints", "See your recent complaints"),
+                ("help", "How to use this bot"),
+                ("cancel", "Cancel the current report"),
+            ]
+        )
+    except TelegramError as exc:
+        logger.warning(
+            "set_my_commands failed (%s); continuing",
+            type(exc).__name__,
+        )
+
     running = True
 
     def _handle_stop(signum: int, frame: Any) -> None:

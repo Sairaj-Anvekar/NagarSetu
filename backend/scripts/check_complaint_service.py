@@ -64,7 +64,7 @@ def main() -> None:
         c3 = create_complaint(
             session,
             citizen_id=citizen.id,
-            category="Streetlight & Power Outage",
+            category="Streetlight",
             latitude=17.64,
             longitude=75.88,
             ai_classification_source="text",
@@ -108,7 +108,7 @@ def main() -> None:
         check_3 = [d1, d2, d3, d4] == [
             "Sanitation",
             "Public Works Department",
-            "MSEB",
+            "Electrical Department",
             "Encroachments Department",
         ]
         report("Department assignment check", check_3)
@@ -129,7 +129,7 @@ def main() -> None:
             (c3.sla_deadline - now).total_seconds() / 3600,
             (c4.sla_deadline - now).total_seconds() / 3600,
         ]
-        check_5 = durations == [48.0, 72.0, 48.0, 168.0]
+        check_5 = durations == [24.0, 48.0, 4.0, 168.0]
         report("SLA deadline calculation check", check_5)
 
         # Check 6: 3 log rows per complaint ordered CREATED, CLASSIFIED, CONFIRMED

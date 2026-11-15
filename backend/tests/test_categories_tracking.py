@@ -29,7 +29,7 @@ def test_categories_departments_and_mapping():
     expected_departments = {
         "Sanitation",
         "Public Works Department",
-        "MSEB",
+        "Electrical Department",
         "Encroachments Department",
         "Public Health & Veterinary",
     }
@@ -47,10 +47,10 @@ def test_categories_departments_and_mapping():
 
 def test_categories_sla_and_priority_values():
     expected_values = {
-        "Solid Waste & Garbage": (48, "medium"),
-        "Potholes & Road Damage": (72, "high"),
+        "Solid Waste & Garbage": (24, "medium"),
+        "Potholes & Road Damage": (48, "high"),
         "Waterlogging & Drainage": (24, "high"),
-        "Streetlight & Power Outage": (48, "medium"),
+        "Streetlight": (4, "medium"),
         "Illegal Encroachment": (168, "low"),
         "Stray Animals & Pest Control": (48, "high"),
     }

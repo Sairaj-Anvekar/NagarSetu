@@ -172,6 +172,17 @@ def remove_keyboard() -> dict:
     return {"remove_keyboard": True}
 
 
+def main_menu_keyboard() -> dict:
+    return {
+        "keyboard": [
+            [{"text": "Lodge Complaint"}, {"text": "Track Complaint"}],
+            [{"text": "My Complaints"}],
+        ],
+        "resize_keyboard": True,
+        "is_persistent": True,
+    }
+
+
 class TelegramClient:
     def __init__(
         self,
@@ -323,5 +334,37 @@ class TelegramClient:
 
     def delete_webhook(self) -> None:
         self._call("deleteWebhook", json={"drop_pending_updates": False})
+
+    def send_chat_action(
+        self,
+        chat_id: int,
+        action: str = "typing",
+    ) -> None:
+        self._call("sendChatAction", json={"chat_id": chat_id, "action": action})
+
+    def edit_message_reply_markup(
+        self,
+        chat_id: int,
+        message_id: int,
+        reply_markup: dict | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "reply_markup": reply_markup if reply_markup is not None else {"inline_keyboard": []},
+        }
+        self._call("editMessageReplyMarkup", json=payload)
+
+    def set_my_commands(
+        self,
+        commands: list[tuple[str, str]],
+    ) -> None:
+        payload = {
+            "commands": [
+                {"command": command, "description": description}
+                for command, description in commands
+            ]
+        }
+        self._call("setMyCommands", json=payload)
 
 

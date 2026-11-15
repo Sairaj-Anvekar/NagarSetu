@@ -59,7 +59,7 @@ def test_text_illegal_encroachment():
 
 def test_text_streetlight_power_outage():
     pred = classify_text("Streetlight not working")
-    assert pred.category == "Streetlight & Power Outage"
+    assert pred.category == "Streetlight"
     assert pred.source == "text"
     assert pred.model == "stub-keywords-v1"
 
@@ -159,7 +159,7 @@ def test_registered_text_classifier_raises_fallback():
 
 
 def test_registered_image_classifier_returning_text_category_falls_back():
-    set_image_classifier(lambda *a, **kw: ("Streetlight & Power Outage", 0.99))
+    set_image_classifier(lambda *a, **kw: ("Streetlight", 0.99))
     pred = classify_image(b"fake-bytes", hint="big garbage dump near the market")
     assert pred.category == "Solid Waste & Garbage"
     assert pred.model == "stub-keywords-v1"

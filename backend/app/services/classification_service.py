@@ -29,7 +29,7 @@ IMAGE_KEYWORDS: dict[str, list[str]] = {
 }
 
 TEXT_KEYWORDS: dict[str, list[str]] = {
-    "Streetlight & Power Outage": [
+    "Streetlight": [
         "streetlight",
         "street light",
         "lamp",
