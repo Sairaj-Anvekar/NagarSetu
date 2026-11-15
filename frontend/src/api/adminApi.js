@@ -402,5 +402,135 @@ export async function exportAdminComplaintsCsv({
   return new Blob([data], { type: 'text/csv;charset=utf-8' })
 }
 
+/**
+ * Normalizes a raw hotspot item into a safe, consistent representation.
+ *
+ * @param {unknown} item
+ * @param {number} [index]
+ * @param {string} [fallbackCategory]
+ * @returns {{ id: string, lat: number, lng: number, count: number, label: string, category: string }}
+ */
+export function normalizeHotspotItem(item, index = 0, fallbackCategory = '') {
+  if (!item || typeof item !== 'object') {
+    return {
+      id: `hotspot-${index + 1}`,
+      lat: 0,
+      lng: 0,
+      count: 0,
+      label: `Hotspot ${index + 1}`,
+      category: fallbackCategory || '',
+    }
+  }
+
+  const lat =
+    typeof item.lat === 'number' && !Number.isNaN(item.lat)
+      ? item.lat
+      : typeof item.latitude === 'number' && !Number.isNaN(item.latitude)
+        ? item.latitude
+        : 0
+
+  const lng =
+    typeof item.lng === 'number' && !Number.isNaN(item.lng)
+      ? item.lng
+      : typeof item.longitude === 'number' && !Number.isNaN(item.longitude)
+        ? item.longitude
+        : 0
+
+  const count =
+    typeof item.count === 'number' && !Number.isNaN(item.count) && item.count >= 0 ? item.count : 0
+
+  const id =
+    item.id !== undefined && item.id !== null && String(item.id).trim() !== ''
+      ? String(item.id)
+      : lat !== 0 || lng !== 0
+        ? `${lat}_${lng}`
+        : `hotspot-${index + 1}`
+
+  const label =
+    typeof item.label === 'string' && item.label.trim() !== ''
+      ? item.label.trim()
+      : typeof item.area_label === 'string' && item.area_label.trim() !== ''
+        ? item.area_label.trim()
+        : `Hotspot ${index + 1}`
+
+  const category =
+    typeof item.category === 'string' && item.category.trim() !== ''
+      ? item.category.trim()
+      : fallbackCategory || ''
+
+  return {
+    id,
+    lat,
+    lng,
+    count,
+    label,
+    category,
+  }
+}
+
+/**
+ * Fetches complaint hotspot clusters for department geographic analysis.
+ *
+ * @param {{ days?: number, category?: string }} [filters]
+ * @returns {Promise<{ items: Array<{ id: string, lat: number, lng: number, count: number, label: string, category: string }> }>}
+ */
+export async function fetchHotspots({ days, category } = {}) {
+  const params = {}
+
+  if (days !== undefined && days !== null && days !== '') {
+    params.days = days
+  }
+  if (typeof category === 'string' && category.trim() !== '') {
+    params.category = category.trim()
+  }
+
+  const { data } = await http.get('/admin/hotspots', { params })
+
+  const rawList = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : null
+  if (!rawList) {
+    throw new Error('Unexpected response from the server')
+  }
+
+  const fallbackCategory =
+    typeof category === 'string' && category.trim() !== '' ? category.trim() : ''
+
+  const extracted = rawList.map((raw) => {
+    const lat =
+      typeof raw?.lat === 'number' && !Number.isNaN(raw.lat)
+        ? raw.lat
+        : typeof raw?.latitude === 'number' && !Number.isNaN(raw.latitude)
+          ? raw.latitude
+          : 0
+
+    const lng =
+      typeof raw?.lng === 'number' && !Number.isNaN(raw.lng)
+        ? raw.lng
+        : typeof raw?.longitude === 'number' && !Number.isNaN(raw.longitude)
+          ? raw.longitude
+          : 0
+
+    const count =
+      typeof raw?.count === 'number' && !Number.isNaN(raw.count) && raw.count >= 0 ? raw.count : 0
+
+    return { raw, lat, lng, count }
+  })
+
+  extracted.sort((a, b) => {
+    if (b.count !== a.count) {
+      return b.count - a.count
+    }
+    if (a.lat !== b.lat) {
+      return a.lat - b.lat
+    }
+    return a.lng - b.lng
+  })
+
+  const items = extracted.map(({ raw }, index) =>
+    normalizeHotspotItem(raw, index, fallbackCategory)
+  )
+
+  return { items }
+}
+
 
 

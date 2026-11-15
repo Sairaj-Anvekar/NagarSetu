@@ -4,9 +4,11 @@ import {
   exportAdminComplaintsCsv,
   fetchAdminComplaints,
   fetchAdminComplaint,
+  fetchHotspots,
   fetchStats,
   fetchTrends,
   normalizeAdminComplaint,
+  normalizeHotspotItem,
   normalizeStats,
 } from '../adminApi'
 
@@ -530,6 +532,190 @@ describe('exportAdminComplaintsCsv', () => {
     await expect(exportAdminComplaintsCsv()).rejects.toThrow('Export failed')
   })
 })
+
+describe('normalizeHotspotItem', () => {
+  it('normalizes complete hotspot data safely', () => {
+    const raw = {
+      id: 'hs-101',
+      latitude: 17.685,
+      longitude: 75.885,
+      count: 9,
+      label: 'Main Market Cluster',
+      category: 'Garbage Dump',
+    }
+
+    expect(normalizeHotspotItem(raw, 0)).toEqual({
+      id: 'hs-101',
+      lat: 17.685,
+      lng: 75.885,
+      count: 9,
+      label: 'Main Market Cluster',
+      category: 'Garbage Dump',
+    })
+  })
+
+  it('safely defaults missing fields, nulls, and empty values', () => {
+    expect(normalizeHotspotItem(null, 2, 'Fallback Cat')).toEqual({
+      id: 'hotspot-3',
+      lat: 0,
+      lng: 0,
+      count: 0,
+      label: 'Hotspot 3',
+      category: 'Fallback Cat',
+    })
+
+    const partial = {
+      latitude: 'invalid',
+      longitude: null,
+      count: -5,
+    }
+
+    expect(normalizeHotspotItem(partial, 0)).toEqual({
+      id: 'hotspot-1',
+      lat: 0,
+      lng: 0,
+      count: 0,
+      label: 'Hotspot 1',
+      category: '',
+    })
+  })
+})
+
+describe('fetchHotspots', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('sends only set params', async () => {
+    const spy = vi.spyOn(http, 'get').mockResolvedValueOnce({
+      data: [{ latitude: 17.68, longitude: 75.88, count: 5 }],
+    })
+
+    await fetchHotspots({ days: 7, category: 'Garbage Dump' })
+
+    expect(spy).toHaveBeenCalledWith('/admin/hotspots', {
+      params: {
+        days: 7,
+        category: 'Garbage Dump',
+      },
+    })
+
+    spy.mockResolvedValueOnce({ data: [] })
+    await fetchHotspots({ days: undefined, category: '   ' })
+
+    expect(spy).toHaveBeenCalledWith('/admin/hotspots', {
+      params: {},
+    })
+
+    spy.mockResolvedValueOnce({ data: [] })
+    await fetchHotspots()
+
+    expect(spy).toHaveBeenCalledWith('/admin/hotspots', {
+      params: {},
+    })
+  })
+
+  it('normalizes items with safe defaults and sorts them by count descending', async () => {
+    vi.spyOn(http, 'get').mockResolvedValueOnce({
+      data: [
+        { lat: 17.66, lng: 75.85, count: 3, label: 'Zone A Depot', category: 'Drainage' },
+        { latitude: 17.68, longitude: 75.88, count: 12 },
+      ],
+    })
+
+    const result = await fetchHotspots({ days: 30, category: 'Garbage Dump' })
+
+    expect(result).toEqual({
+      items: [
+        {
+          id: '17.68_75.88',
+          lat: 17.68,
+          lng: 75.88,
+          count: 12,
+          label: 'Hotspot 1',
+          category: 'Garbage Dump',
+        },
+        {
+          id: '17.66_75.85',
+          lat: 17.66,
+          lng: 75.85,
+          count: 3,
+          label: 'Zone A Depot',
+          category: 'Drainage',
+        },
+      ],
+    })
+  })
+
+  it('tie-breaks by latitude then longitude deterministically when counts are equal', async () => {
+    vi.spyOn(http, 'get').mockResolvedValueOnce({
+      data: [
+        { latitude: 17.7, longitude: 75.88, count: 5 },
+        { latitude: 17.65, longitude: 75.9, count: 5 },
+        { latitude: 17.65, longitude: 75.8, count: 5 },
+      ],
+    })
+
+    const result = await fetchHotspots()
+
+    expect(result.items.map((i) => i.label)).toEqual(['Hotspot 1', 'Hotspot 2', 'Hotspot 3'])
+    expect(result.items.map((i) => ({ lat: i.lat, lng: i.lng }))).toEqual([
+      { lat: 17.65, lng: 75.8 },
+      { lat: 17.65, lng: 75.9 },
+      { lat: 17.7, lng: 75.88 },
+    ])
+  })
+
+  it('returns an empty items array when the server returns an empty list', async () => {
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: [] })
+
+    const result = await fetchHotspots()
+
+    expect(result).toEqual({ items: [] })
+  })
+
+  it('handles responses wrapped in an items array', async () => {
+    vi.spyOn(http, 'get').mockResolvedValueOnce({
+      data: {
+        items: [{ latitude: 17.69, longitude: 75.89, count: 8 }],
+      },
+    })
+
+    const result = await fetchHotspots()
+
+    expect(result).toEqual({
+      items: [
+        {
+          id: '17.69_75.89',
+          lat: 17.69,
+          lng: 75.89,
+          count: 8,
+          label: 'Hotspot 1',
+          category: '',
+        },
+      ],
+    })
+  })
+
+  it('throws on a non-array list', async () => {
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: null })
+    await expect(fetchHotspots()).rejects.toThrow('Unexpected response from the server')
+
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: 'invalid' })
+    await expect(fetchHotspots()).rejects.toThrow('Unexpected response from the server')
+
+    vi.spyOn(http, 'get').mockResolvedValueOnce({ data: { message: 'not a list' } })
+    await expect(fetchHotspots()).rejects.toThrow('Unexpected response from the server')
+  })
+
+  it('propagates server errors', async () => {
+    const error500 = new Error('Request failed with status code 500')
+    vi.spyOn(http, 'get').mockRejectedValueOnce(error500)
+
+    await expect(fetchHotspots()).rejects.toThrow('Request failed with status code 500')
+  })
+})
+
 
 
 
