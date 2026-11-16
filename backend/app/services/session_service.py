@@ -59,6 +59,7 @@ def new_session() -> dict[str, Any]:
         "longitude": None,
         "address": None,
         "hint": None,
+        "needs_review": False,
     })
 
 

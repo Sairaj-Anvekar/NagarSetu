@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     geocode_url: str = "https://nominatim.openstreetmap.org/reverse"
     geocode_timeout: float = 3.0
 
+    image_model_enabled: bool = True
+    image_model_path: str = "/app/app/ml/models/smart_grievance_mobilenetv2_v2_with_rejection.keras"
+    image_min_side_px: int = 100
+    image_review_margin: float = 0.4
+
 
 @lru_cache
 def get_settings() -> Settings:

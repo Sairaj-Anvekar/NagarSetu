@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 
+from app.services import image_model_service
 from app.services.classification_service import (
+    ImageNotAccepted,
     Prediction,
     categories_for,
     classify_image,
@@ -10,6 +12,10 @@ from app.services.classification_service import (
     is_confident,
     set_image_classifier,
     set_text_classifier,
+)
+from app.services.image_model_service import (
+    ImageModelUnavailable,
+    ImageVerdict,
 )
 
 
@@ -163,4 +169,84 @@ def test_registered_image_classifier_returning_text_category_falls_back():
     pred = classify_image(b"fake-bytes", hint="big garbage dump near the market")
     assert pred.category == "Solid Waste & Garbage"
     assert pred.model == "stub-keywords-v1"
+
+
+def test_classify_image_uses_model_when_available(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(image_model_service, "is_available", lambda: True)
+    verdict = ImageVerdict(
+        accepted=True,
+        category="Potholes & Road Damage",
+        confidence=0.88,
+        needs_review=True,
+        reason="accepted",
+    )
+    monkeypatch.setattr(image_model_service, "predict", lambda data: verdict)
+
+    pred = classify_image(b"fake-bytes", hint="pothole")
+    assert pred.category == "Potholes & Road Damage"
+    assert pred.confidence == pytest.approx(0.88)
+    assert pred.source == "image"
+    assert pred.model == "mobilenetv2-v2"
+    assert pred.needs_review is True
+
+
+def test_classify_image_rejected_verdict_raises_image_not_accepted(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(image_model_service, "is_available", lambda: True)
+    verdict = ImageVerdict(
+        accepted=False,
+        category=None,
+        confidence=None,
+        needs_review=False,
+        reason="not accepted by the model",
+    )
+    monkeypatch.setattr(image_model_service, "predict", lambda data: verdict)
+
+    with pytest.raises(ImageNotAccepted):
+        classify_image(b"fake-bytes")
+
+
+def test_classify_image_model_unavailable_falls_back_to_stub(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(image_model_service, "is_available", lambda: True)
+
+    def fake_predict(data: bytes):
+        raise ImageModelUnavailable("Model file missing")
+
+    monkeypatch.setattr(image_model_service, "predict", fake_predict)
+    pred = classify_image(b"fake-bytes", hint="big garbage dump near the market")
+    assert pred.category == "Solid Waste & Garbage"
+    assert pred.model == "stub-keywords-v1"
+
+
+def test_registered_custom_classifier_wins_over_model(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(image_model_service, "is_available", lambda: True)
+
+    def fake_model_predict(data: bytes):
+        raise AssertionError("Model should not be called when custom classifier is registered")
+
+    monkeypatch.setattr(image_model_service, "predict", fake_model_predict)
+    set_image_classifier(lambda data, hint=None: ("Waterlogging & Drainage", 0.92))
+
+    pred = classify_image(b"fake-bytes")
+    assert pred.category == "Waterlogging & Drainage"
+    assert pred.confidence == pytest.approx(0.92)
+    assert pred.source == "image"
+    assert pred.model == "custom"
+
+
+def test_is_confident_false_when_needs_review_true():
+    pred = Prediction(
+        category="Solid Waste & Garbage",
+        confidence=0.99,
+        source="image",
+        model="mobilenetv2-v2",
+        needs_review=True,
+    )
+    assert is_confident(pred) is False
+
 

@@ -25,6 +25,7 @@ def test_message_constants_non_empty_and_no_brackets() -> None:
         bot_messages.MSG_PHOTO_DOWNLOAD_FAILED,
         bot_messages.MSG_PHOTO_TOO_LARGE,
         bot_messages.MSG_IMAGE_REJECTED,
+        bot_messages.MSG_IMAGE_UNCLEAR,
         bot_messages.MSG_STORAGE_DOWN,
         bot_messages.MSG_TEXT_TOO_SHORT,
         bot_messages.MSG_SAVE_FAILED,
@@ -38,6 +39,17 @@ def test_message_constants_non_empty_and_no_brackets() -> None:
         assert len(text.strip()) > 0
         assert "<" not in text
         assert ">" not in text
+
+
+def test_msg_image_unclear_exact_and_no_class_names() -> None:
+    expected = (
+        "Unable to process this image. Please retake the photo or re-upload a clear image."
+    )
+    assert bot_messages.MSG_IMAGE_UNCLEAR == expected
+    lower = bot_messages.MSG_IMAGE_UNCLEAR.lower()
+    assert "garbage" not in lower
+    assert "pothole" not in lower
+    assert "waterlogging" not in lower
 
 
 def test_format_ist() -> None:

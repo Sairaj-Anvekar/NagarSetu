@@ -243,10 +243,10 @@ def _submit(
 
         source = session.get("source")
         confidence = session.get("confidence")
-        if (
-            source in ("image", "text")
-            and confidence is not None
-            and confidence < settings.ai_confidence_threshold
+        needs_review = session.get("needs_review", False)
+        if source in ("image", "text") and (
+            (confidence is not None and confidence < settings.ai_confidence_threshold)
+            or needs_review
         ):
             triage_service.create_triage_entry(
                 db,
@@ -417,16 +417,6 @@ def _handle_new_input(
     inc: Incoming,
     session: dict | None,
 ) -> None:
-    if session is None:
-        session = session_service.new_session()
-
-    if session.get("image_key"):
-        try:
-            storage_service.get_storage().delete_object(session["image_key"])
-        except Exception:
-            pass
-        session["image_key"] = None
-
     settings = get_settings()
 
     if inc.photo_file_id is not None:
@@ -462,7 +452,22 @@ def _handle_new_input(
             _say(client, inc.chat_id, bot_messages.MSG_IMAGE_REJECTED)
             return
 
-        prediction = classification_service.classify_image(data, hint=inc.caption)
+        try:
+            prediction = classification_service.classify_image(data, hint=inc.caption)
+        except classification_service.ImageNotAccepted:
+            _say(client, inc.chat_id, bot_messages.MSG_IMAGE_UNCLEAR)
+            return
+
+        if session is None:
+            session = session_service.new_session()
+
+        if session.get("image_key"):
+            try:
+                storage_service.get_storage().delete_object(session["image_key"])
+            except Exception:
+                pass
+            session["image_key"] = None
+
         key = f"complaints/{uuid.uuid4()}/photo.{image.extension}"
         try:
             storage_service.get_storage().put_object(
@@ -481,6 +486,7 @@ def _handle_new_input(
         session["input_type"] = "image"
         session["source"] = "image"
         session["image_key"] = key
+        session["needs_review"] = prediction.needs_review
     elif inc.text is not None:
         _typing(client, inc.chat_id)
         text = inc.text.strip()
@@ -488,11 +494,22 @@ def _handle_new_input(
             _say(client, inc.chat_id, bot_messages.MSG_TEXT_TOO_SHORT)
             return
 
+        if session is None:
+            session = session_service.new_session()
+
+        if session.get("image_key"):
+            try:
+                storage_service.get_storage().delete_object(session["image_key"])
+            except Exception:
+                pass
+            session["image_key"] = None
+
         prediction = classification_service.classify_text(text)
         session["description"] = text[:1000]
         session["input_type"] = "text"
         session["source"] = "text"
         session["image_key"] = None
+        session["needs_review"] = prediction.needs_review
     else:
         return
 

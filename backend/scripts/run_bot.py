@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_engine
-from app.services import bot_handler, bot_messages, telegram_api
+from app.services import bot_handler, bot_messages, image_model_service, telegram_api
 from app.services.telegram_api import TelegramClient, TelegramError
 
 logging.basicConfig(
@@ -55,6 +55,14 @@ def main() -> None:
             "delete_webhook failed (%s); continuing",
             type(exc).__name__,
         )
+
+    try:
+        if image_model_service.warm_up():
+            logger.info("Image model ready")
+        else:
+            logger.info("Image model not available, using the keyword fallback")
+    except Exception:
+        logger.info("Image model not available, using the keyword fallback")
 
     try:
         client.set_my_commands(

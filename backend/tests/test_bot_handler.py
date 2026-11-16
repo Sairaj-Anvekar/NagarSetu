@@ -1214,3 +1214,249 @@ def test_group_chat_update_ignored_by_parser() -> None:
         },
     }
     assert parse_update(raw) is None
+
+
+def test_photo_image_not_accepted_rejection(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+    mock_domain_services: dict[str, list[Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_classify(data: bytes, hint: str | None = None):
+        raise classification_service.ImageNotAccepted("blurry image")
+
+    monkeypatch.setattr(classification_service, "classify_image", fake_classify)
+
+    jpeg = _make_jpeg_bytes()
+    fake_client.files["f_unclear"] = jpeg
+
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(
+            update_id=1,
+            photo_file_id="f_unclear",
+            photo_file_size=len(jpeg),
+        ),
+    )
+
+    last_msg = fake_client.sent_messages[-1]["text"]
+    assert last_msg == bot_messages.MSG_IMAGE_UNCLEAR
+
+    msg_lower = last_msg.lower()
+    assert "garbage" not in msg_lower
+    assert "pothole" not in msg_lower
+    assert "waterlogging" not in msg_lower
+
+    assert len(fake_storage.put_calls) == 0
+    assert session_service.load_session(123456) is None
+    assert len(mock_domain_services["created_complaints"]) == 0
+    _assert_message_invariants(fake_client)
+
+
+def test_photo_needs_review_confidence_055_shows_not_sure_and_creates_triage(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+    mock_domain_services: dict[str, list[Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pred = classification_service.Prediction(
+        category="Potholes & Road Damage",
+        confidence=0.55,
+        source="image",
+        model="mobilenetv2-v2",
+        needs_review=True,
+    )
+    monkeypatch.setattr(classification_service, "classify_image", lambda *a, **kw: pred)
+
+    jpeg = _make_jpeg_bytes()
+    fake_client.files["f_review"] = jpeg
+
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(
+            update_id=1,
+            photo_file_id="f_review",
+            photo_file_size=len(jpeg),
+        ),
+    )
+    detected_msg = fake_client.sent_messages[-1]["text"]
+    assert "not fully sure" in detected_msg
+
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+    )
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _cb_update(update_id=3, callback_data="sub:yes"),
+    )
+
+    assert len(mock_domain_services["triage_entries"]) == 1
+    complaint, cat, conf = mock_domain_services["triage_entries"][0]
+    assert cat == "Potholes & Road Damage"
+    assert conf == 0.55
+    _assert_message_invariants(fake_client)
+
+
+def test_photo_needs_review_confidence_095_creates_triage(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+    mock_domain_services: dict[str, list[Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pred = classification_service.Prediction(
+        category="Solid Waste & Garbage",
+        confidence=0.95,
+        source="image",
+        model="mobilenetv2-v2",
+        needs_review=True,
+    )
+    monkeypatch.setattr(classification_service, "classify_image", lambda *a, **kw: pred)
+
+    jpeg = _make_jpeg_bytes()
+    fake_client.files["f_rev95"] = jpeg
+
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(
+            update_id=1,
+            photo_file_id="f_rev95",
+            photo_file_size=len(jpeg),
+        ),
+    )
+    detected_msg = fake_client.sent_messages[-1]["text"]
+    assert "not fully sure" in detected_msg
+
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+    )
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _cb_update(update_id=3, callback_data="sub:yes"),
+    )
+
+    assert len(mock_domain_services["triage_entries"]) == 1
+    complaint, cat, conf = mock_domain_services["triage_entries"][0]
+    assert cat == "Solid Waste & Garbage"
+    assert conf == 0.95
+    _assert_message_invariants(fake_client)
+
+
+def test_photo_clear_prediction_confidence_095_creates_no_triage(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+    mock_domain_services: dict[str, list[Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pred = classification_service.Prediction(
+        category="Waterlogging & Drainage",
+        confidence=0.95,
+        source="image",
+        model="mobilenetv2-v2",
+        needs_review=False,
+    )
+    monkeypatch.setattr(classification_service, "classify_image", lambda *a, **kw: pred)
+
+    jpeg = _make_jpeg_bytes()
+    fake_client.files["f_clear"] = jpeg
+
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(
+            update_id=1,
+            photo_file_id="f_clear",
+            photo_file_size=len(jpeg),
+        ),
+    )
+    detected_msg = fake_client.sent_messages[-1]["text"]
+    assert "not fully sure" not in detected_msg
+
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+    )
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _cb_update(update_id=3, callback_data="sub:yes"),
+    )
+
+    assert len(mock_domain_services["triage_entries"]) == 0
+    _assert_message_invariants(fake_client)
+
+
+def test_manual_category_choice_after_needs_review_creates_no_triage(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+    mock_domain_services: dict[str, list[Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pred = classification_service.Prediction(
+        category="Solid Waste & Garbage",
+        confidence=0.55,
+        source="image",
+        model="mobilenetv2-v2",
+        needs_review=True,
+    )
+    monkeypatch.setattr(classification_service, "classify_image", lambda *a, **kw: pred)
+
+    jpeg = _make_jpeg_bytes()
+    fake_client.files["f_manual"] = jpeg
+
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(
+            update_id=1,
+            photo_file_id="f_manual",
+            photo_file_size=len(jpeg),
+        ),
+    )
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+    )
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _cb_update(update_id=3, callback_data="sub:cat"),
+    )
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _cb_update(update_id=4, callback_data="cat:1"),
+    )
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _cb_update(update_id=5, callback_data="sub:yes"),
+    )
+
+    assert len(mock_domain_services["triage_entries"]) == 0
+    created = mock_domain_services["created_complaints"]
+    assert len(created) == 1
+    assert created[0]["category"] == "Potholes & Road Damage"
+    assert created[0]["ai_classification_source"] == "manual"
+    _assert_message_invariants(fake_client)
+
