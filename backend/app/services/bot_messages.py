@@ -14,6 +14,7 @@ __all__ = [
     "MSG_EXPIRED",
     "MSG_GENERIC_ERROR",
     "MSG_IMAGE_REJECTED",
+    "MSG_IMAGE_UNCLEAR",
     "MSG_LOCATION_NOT_EXPECTED",
     "MSG_LOCATION_RECEIVED",
     "MSG_NEW_REPORT",
@@ -87,6 +88,10 @@ MSG_PHOTO_TOO_LARGE = "⚠️ That photo is too large. Please send a smaller one
 
 MSG_IMAGE_REJECTED = (
     "🚫 I cannot accept this image. Please send a different photo of the problem."
+)
+
+MSG_IMAGE_UNCLEAR = (
+    "Unable to process this image. Please retake the photo or re-upload a clear image."
 )
 
 MSG_STORAGE_DOWN = (

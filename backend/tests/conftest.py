@@ -9,6 +9,7 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-tests-only-01234567
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 os.environ["TELEGRAM_BOT_TOKEN"] = ""
 os.environ["GEOCODE_ENABLED"] = "false"
+os.environ["IMAGE_MODEL_ENABLED"] = "false"
 
 
 @pytest.fixture

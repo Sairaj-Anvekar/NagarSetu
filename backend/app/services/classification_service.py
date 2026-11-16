@@ -17,6 +17,11 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+
+class ImageNotAccepted(Exception):
+    """Raised when an uploaded photo cannot be processed or accepted by the classifier."""
+
+
 ClassifierCallable = Callable[..., tuple[str, float]]
 
 _image_classifier: ClassifierCallable | None = None
@@ -60,6 +65,7 @@ class Prediction:
     confidence: float
     source: str
     model: str
+    needs_review: bool = False
 
 
 def set_image_classifier(fn_or_none: ClassifierCallable | None) -> None:
@@ -77,6 +83,8 @@ def categories_for(input_type: str) -> list[str]:
 
 
 def is_confident(pred: Prediction) -> bool:
+    if pred.needs_review:
+        return False
     settings = get_settings()
     return pred.confidence >= settings.ai_confidence_threshold
 
@@ -148,6 +156,33 @@ def classify_image(data: bytes, hint: str | None = None) -> Prediction:
             logger.warning("Custom image classifier returned invalid output: %r", res)
         except Exception as exc:
             logger.warning("Custom image classifier raised exception: %s", exc)
+
+    from app.services import image_model_service
+
+    if image_model_service.is_available():
+        try:
+            verdict = image_model_service.predict(data)
+            if not verdict.accepted:
+                raise ImageNotAccepted(verdict.reason)
+            return Prediction(
+                category=verdict.category,  # type: ignore[arg-type]
+                confidence=verdict.confidence,  # type: ignore[arg-type]
+                source="image",
+                model="mobilenetv2-v2",
+                needs_review=verdict.needs_review,
+            )
+        except ImageNotAccepted:
+            raise
+        except image_model_service.ImageModelUnavailable as exc:
+            logger.warning(
+                "Image model unavailable, falling back to stub: %s",
+                type(exc).__name__,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Unexpected error in image model, falling back to stub: %s",
+                type(exc).__name__,
+            )
 
     return _stub_classify(hint, "image")
 

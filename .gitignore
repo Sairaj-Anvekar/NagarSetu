@@ -106,3 +106,6 @@ minio_data/
 *.local
 uploads/
 tmp/
+
+backend/app/ml/models/
+backend/app/ml/samples/

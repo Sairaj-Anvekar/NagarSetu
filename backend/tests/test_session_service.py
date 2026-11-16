@@ -64,11 +64,36 @@ def test_new_session_has_all_keys():
         "latitude",
         "longitude",
         "hint",
+        "needs_review",
     }
     assert set(session.keys()) == expected_keys
     for k in expected_keys:
-        if k != "state":
+        if k == "state":
+            assert session[k] == State.AWAITING_INPUT
+        elif k == "needs_review":
+            assert session[k] is False
+        else:
             assert session[k] is None
+
+
+def test_load_session_without_needs_review_defaults_to_false(fake_redis: FakeRedis):
+    chat_id = 999123
+    data = {
+        "state": State.AWAITING_INPUT.value,
+        "input_type": None,
+        "category": None,
+        "confidence": None,
+        "source": None,
+        "image_key": None,
+        "description": None,
+        "latitude": None,
+        "longitude": None,
+        "hint": None,
+    }
+    save_session(chat_id, data)
+    loaded = load_session(chat_id)
+    assert loaded is not None
+    assert loaded.get("needs_review", False) is False
 
 
 def test_save_load_round_trip_and_ttl(fake_redis: FakeRedis):
