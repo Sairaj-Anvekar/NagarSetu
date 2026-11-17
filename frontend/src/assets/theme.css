@@ -10,21 +10,149 @@
   --ns-line: #E3E8EE;
   --ns-navy: #0F2233;
   --ns-surface-2: #F8FAFC;
-  --ns-radius-card: 12px;
-  --ns-radius-control: 8px;
+  --ns-radius-sm: 8px;
+  --ns-radius-md: 12px;
+  --ns-radius-lg: 16px;
+  --ns-radius-card: var(--ns-radius-lg);
+  --ns-radius-control: 10px;
   --ns-radius-pill: 999px;
-  --ns-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --ns-shadow-pop: 0 8px 24px rgba(16, 24, 40, 0.12);
+
+  --ns-space-4: 4px;
+  --ns-space-8: 8px;
+  --ns-space-12: 12px;
+  --ns-space-16: 16px;
+  --ns-space-24: 24px;
+  --ns-space-32: 32px;
+  --ns-space-48: 48px;
+  --ns-admin-content-max-width: 1440px;
+  --ns-page-padding: var(--ns-space-16);
+
+  /* A close shadow defines the edge, a wider shadow adds depth. */
+  --ns-shadow-xs: 0 1px 2px rgba(15, 34, 51, 0.04), 0 1px 3px rgba(15, 34, 51, 0.02);
+  --ns-shadow-sm: 0 1px 3px rgba(15, 34, 51, 0.06), 0 3px 8px rgba(15, 34, 51, 0.03);
+  --ns-shadow-md: 0 2px 5px rgba(15, 34, 51, 0.07), 0 8px 20px rgba(15, 34, 51, 0.05);
+  --ns-shadow-lg: 0 4px 8px rgba(15, 34, 51, 0.08), 0 14px 32px rgba(15, 34, 51, 0.07);
+  --ns-shadow-card: var(--ns-shadow-sm);
+  --ns-shadow-pop: var(--ns-shadow-md);
+
+  --ns-focus-ring-color: rgba(20, 168, 154, 0.35);
+  --ns-focus-ring: 2px solid var(--ns-focus-ring-color);
+  --ns-focus-ring-offset: 2px;
+
+  --ns-duration-fast: 120ms;
+  --ns-duration-base: 180ms;
+  --ns-easing: ease;
+
+  --ns-z-base: 0;
+  --ns-z-sticky: 1020;
+  --ns-z-skip-link: 1080;
+
   --ns-font-body: 'Public Sans Variable', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ns-font-display: 'Sora Variable', 'Public Sans Variable', system-ui, sans-serif;
 
-  /* Semantic soft tints: background and foreground text */
+  /* Typography roles */
+  --ns-type-page-title-family: var(--ns-font-display);
+  --ns-type-page-title-size: 1.75rem;
+  --ns-type-page-title-weight: 600;
+  --ns-type-page-title-line-height: 1.2;
+
+  --ns-type-section-title-family: var(--ns-font-display);
+  --ns-type-section-title-size: 1.375rem;
+  --ns-type-section-title-weight: 600;
+  --ns-type-section-title-line-height: 1.2;
+
+  --ns-type-card-title-family: var(--ns-font-display);
+  --ns-type-card-title-size: 1.125rem;
+  --ns-type-card-title-weight: 600;
+  --ns-type-card-title-line-height: 1.2;
+
+  --ns-type-body-family: var(--ns-font-body);
+  --ns-type-body-size: 1rem;
+  --ns-type-body-weight: 400;
+  --ns-type-body-line-height: 1.55;
+
+  --ns-type-small-family: var(--ns-font-body);
+  --ns-type-small-size: 0.8125rem;
+  --ns-type-small-weight: 400;
+  --ns-type-small-line-height: 1.5;
+
+  --ns-type-caption-family: var(--ns-font-body);
+  --ns-type-caption-size: 0.75rem;
+  --ns-type-caption-weight: 400;
+  --ns-type-caption-line-height: 1.5;
+
+  --ns-type-overline-family: var(--ns-font-body);
+  --ns-type-overline-size: 0.75rem;
+  --ns-type-overline-weight: 600;
+  --ns-type-overline-line-height: 1.4;
+  --ns-type-overline-letter-spacing: 0.04em;
+  --ns-type-numeric-variant: tabular-nums;
+
+  /* Brand and neutral scales, ordered from light to dark */
+  --ns-primary-50: #F0F8FC;
+  --ns-primary-100: #DEEFF7;
+  --ns-primary-200: #BDDFEE;
+  --ns-primary-300: #8CC8E0;
+  --ns-primary-400: #54ABCB;
+  --ns-primary-500: #278AAF;
+  --ns-primary-600: var(--ns-harbour);
+  --ns-primary-700: var(--ns-harbour-dark);
+  --ns-primary-800: #084662;
+  --ns-primary-900: #07344A;
+
+  --ns-teal-50: #EFFAF8;
+  --ns-teal-100: #D9F3EE;
+  --ns-teal-200: #AFE7DE;
+  --ns-teal-300: #7AD6CA;
+  --ns-teal-400: #43BFB1;
+  --ns-teal-500: var(--ns-span);
+  --ns-teal-600: #0D8379;
+  --ns-teal-700: #09645D;
+
+  --ns-navy-50: #F1F5F8;
+  --ns-navy-100: #DDE6ED;
+  --ns-navy-200: #BCCDD9;
+  --ns-navy-300: #94ACBD;
+  --ns-navy-400: #6C899F;
+  --ns-navy-500: #4C6B81;
+  --ns-navy-600: #355268;
+  --ns-navy-700: #233E52;
+  --ns-navy-800: #192F41;
+  --ns-navy-900: var(--ns-navy);
+
+  --ns-gray-0: var(--ns-paper);
+  --ns-gray-50: var(--ns-surface-2);
+  --ns-gray-100: var(--ns-mist);
+  --ns-gray-200: var(--ns-line);
+  --ns-gray-300: #CBD4DC;
+  --ns-gray-400: #A6B4C0;
+  --ns-gray-500: #7E8E9D;
+  --ns-gray-600: var(--ns-slate);
+  --ns-gray-700: #40505E;
+  --ns-gray-800: #293845;
+  --ns-gray-900: var(--ns-ink);
+
+  /* Surface and border roles */
+  --ns-app-bg: var(--ns-mist);
+  --ns-surface: var(--ns-paper);
+  --ns-surface-raised: var(--ns-paper);
+  --ns-sidebar: var(--ns-navy);
+  --ns-overlay: rgba(15, 34, 51, 0.4);
+  --ns-border-subtle: var(--ns-neutral-bg);
+  --ns-border-default: var(--ns-line);
+  --ns-border-strong: var(--ns-gray-400);
+
+  /* Semantic colors: solid accents, soft backgrounds and foreground text */
+  --ns-success-solid: #14804F;
   --ns-success-bg: #E6F6EE;
   --ns-success-fg: #0F7A4A;
+  --ns-warning-solid: #986400;
   --ns-warning-bg: #FFF4DB;
   --ns-warning-fg: #8A5A00;
+  --ns-danger-solid: #C52D22;
   --ns-danger-bg: #FDECEC;
   --ns-danger-fg: #B42318;
+  --ns-info-solid: var(--ns-harbour);
   --ns-info-bg: #E4F1F8;
   --ns-info-fg: #0B5C80;
   --ns-orange-bg: #FFEDE0;
@@ -32,13 +160,40 @@
   --ns-neutral-bg: #EEF1F5;
   --ns-neutral-fg: #475467;
 
+  /* Complaint status badge colors */
+  --ns-status-submitted-bg: var(--ns-info-bg);
+  --ns-status-submitted-text: var(--ns-info-fg);
+  --ns-status-submitted-dot: var(--ns-info-solid);
+  --ns-status-in-progress-bg: var(--ns-warning-bg);
+  --ns-status-in-progress-text: var(--ns-warning-fg);
+  --ns-status-in-progress-dot: var(--ns-warning-solid);
+  --ns-status-completed-bg: var(--ns-success-bg);
+  --ns-status-completed-text: var(--ns-success-fg);
+  --ns-status-completed-dot: var(--ns-success-solid);
+
+  /* Complaint priority badge colors */
+  --ns-priority-critical-bg: var(--ns-danger-bg);
+  --ns-priority-critical-text: var(--ns-danger-fg);
+  --ns-priority-critical-dot: var(--ns-danger-solid);
+  --ns-priority-high-bg: var(--ns-orange-bg);
+  --ns-priority-high-text: var(--ns-orange-fg);
+  --ns-priority-high-dot: var(--ns-orange-fg);
+  --ns-priority-medium-bg: var(--ns-neutral-bg);
+  --ns-priority-medium-text: var(--ns-neutral-fg);
+  --ns-priority-medium-dot: var(--ns-neutral-fg);
+  --ns-priority-low-bg: var(--ns-paper);
+  --ns-priority-low-text: var(--ns-slate);
+  --ns-priority-low-dot: var(--ns-slate);
+
   /* Bootstrap Root Overrides */
   --bs-body-bg: var(--ns-mist);
   --bs-body-bg-rgb: 245, 247, 250;
   --bs-body-color: var(--ns-ink);
   --bs-body-color-rgb: 20, 32, 43;
-  --bs-body-font-family: var(--ns-font-body);
-  --bs-body-line-height: 1.55;
+  --bs-body-font-family: var(--ns-type-body-family);
+  --bs-body-font-size: var(--ns-type-body-size);
+  --bs-body-font-weight: var(--ns-type-body-weight);
+  --bs-body-line-height: var(--ns-type-body-line-height);
   --bs-primary: var(--ns-harbour);
   --bs-primary-rgb: 11, 110, 153;
   --bs-link-color: var(--ns-harbour);
@@ -48,12 +203,32 @@
   --bs-border-color: var(--ns-line);
   --bs-secondary-color: var(--ns-slate);
   --bs-secondary-color-rgb: 91, 107, 122;
-  --bs-focus-ring-color: rgba(20, 168, 154, 0.25);
+  --bs-focus-ring-color: var(--ns-focus-ring-color);
 }
 
-body {
-  font-size: 1rem;
-  line-height: 1.55;
+@media (min-width: 768px) {
+  :root {
+    --ns-page-padding: var(--ns-space-24);
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --ns-page-padding: var(--ns-space-32);
+  }
+}
+
+:root {
+  scrollbar-color: var(--ns-gray-500) var(--ns-gray-100);
+}
+
+::selection {
+  color: var(--ns-ink);
+  background-color: var(--ns-primary-200);
+}
+
+a[href] {
+  text-underline-offset: 0.15em;
 }
 
 /* Headings & Display Typography */
@@ -66,15 +241,24 @@ h1, h2, h3, h4, h5, h6,
 }
 
 h1, .h1 {
-  font-size: 1.75rem;
+  font-family: var(--ns-type-page-title-family);
+  font-size: var(--ns-type-page-title-size);
+  font-weight: var(--ns-type-page-title-weight);
+  line-height: var(--ns-type-page-title-line-height);
 }
 
 h2, .h2 {
-  font-size: 1.375rem;
+  font-family: var(--ns-type-section-title-family);
+  font-size: var(--ns-type-section-title-size);
+  font-weight: var(--ns-type-section-title-weight);
+  line-height: var(--ns-type-section-title-line-height);
 }
 
 h3, .h3 {
-  font-size: 1.125rem;
+  font-family: var(--ns-type-card-title-family);
+  font-size: var(--ns-type-card-title-size);
+  font-weight: var(--ns-type-card-title-weight);
+  line-height: var(--ns-type-card-title-line-height);
 }
 
 h4, .h4 {
@@ -82,38 +266,49 @@ h4, .h4 {
 }
 
 small, .small {
-  font-size: 0.8125rem;
+  font-size: var(--ns-type-small-size);
 }
 
 .ns-num,
 .table {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: var(--ns-type-numeric-variant);
 }
 
 /* Buttons */
 .btn {
   --bs-btn-border-radius: var(--ns-radius-control);
   --bs-btn-font-weight: 600;
-  min-height: 40px;
+  min-height: 44px;
   border-radius: var(--ns-radius-control);
   font-weight: 600;
 }
 
 .btn-primary {
-  --bs-btn-color: #ffffff;
+  --bs-btn-color: var(--ns-paper);
   --bs-btn-bg: var(--ns-harbour);
   --bs-btn-border-color: var(--ns-harbour);
-  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-color: var(--ns-paper);
   --bs-btn-hover-bg: var(--ns-harbour-dark);
   --bs-btn-hover-border-color: var(--ns-harbour-dark);
   --bs-btn-focus-shadow-rgb: 20, 168, 154;
   --bs-btn-focus-box-shadow: 0 0 0 3px var(--bs-focus-ring-color);
-  --bs-btn-active-color: #ffffff;
-  --bs-btn-active-bg: var(--ns-harbour-dark);
-  --bs-btn-active-border-color: var(--ns-harbour-dark);
-  --bs-btn-disabled-color: #ffffff;
-  --bs-btn-disabled-bg: var(--ns-harbour);
-  --bs-btn-disabled-border-color: var(--ns-harbour);
+  --bs-btn-active-color: var(--ns-paper);
+  --bs-btn-active-bg: var(--ns-primary-800);
+  --bs-btn-active-border-color: var(--ns-primary-800);
+  --bs-btn-disabled-color: var(--ns-neutral-fg);
+  --bs-btn-disabled-bg: var(--ns-gray-200);
+  --bs-btn-disabled-border-color: var(--ns-gray-300);
+  --bs-btn-disabled-opacity: 1;
+}
+
+.btn-primary:where(:not(:hover, :focus-visible, :active, :disabled, .active, .disabled, .show)) {
+  background-image: linear-gradient(to top, var(--ns-harbour), rgba(255, 255, 255, 0.05));
+}
+
+.btn-check:checked + .btn-primary,
+.btn-check:focus-visible + .btn-primary,
+fieldset:disabled .btn-primary {
+  background-image: none;
 }
 
 .btn-outline-primary {
@@ -199,17 +394,23 @@ small, .small {
 
 .form-control,
 .form-select {
-  min-height: 42px;
-  background-color: var(--ns-paper);
-  border-color: var(--ns-line);
+  min-height: 44px;
+  background-color: var(--ns-surface);
+  border-color: var(--ns-border-default);
   border-radius: var(--ns-radius-control);
 }
 
 .form-control:focus,
 .form-select:focus {
-  background-color: var(--ns-paper);
-  border-color: var(--ns-span);
-  box-shadow: 0 0 0 3px var(--bs-focus-ring-color);
+  background-color: var(--ns-surface);
+  border-color: var(--ns-teal-600);
+  box-shadow: 0 0 0 2px var(--ns-focus-ring-color);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  color: var(--ns-slate);
+  background-color: var(--ns-gray-100);
 }
 
 .form-control::placeholder {
@@ -223,14 +424,6 @@ small, .small {
   }
 }
 
-@media (pointer: coarse) {
-  .btn,
-  .form-control,
-  .form-select {
-    min-height: 44px;
-  }
-}
-
 .btn-lg,
 .btn-group-lg > .btn {
   min-height: 48px;
@@ -238,8 +431,8 @@ small, .small {
 
 /* Cards */
 .card {
-  --bs-card-bg: var(--ns-paper);
-  --bs-card-border-color: var(--ns-line);
+  --bs-card-bg: var(--ns-surface-raised);
+  --bs-card-border-color: var(--ns-border-default);
   --bs-card-border-radius: var(--ns-radius-card);
   --bs-card-box-shadow: var(--ns-shadow-card);
   --bs-box-shadow-sm: var(--ns-shadow-card);
@@ -249,41 +442,55 @@ small, .small {
   box-shadow: var(--bs-card-box-shadow);
 }
 
+/* Worker task links cover the whole card. Ordinary cards stay at resting elevation. */
+@media (hover: hover) {
+  .worker-task-card:hover,
+  a.card[href]:hover,
+  button.card:enabled:hover {
+    --ns-shadow-card: var(--ns-shadow-md);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .worker-task-card,
+  a.card[href],
+  button.card:enabled {
+    transition: box-shadow var(--ns-duration-fast) var(--ns-easing);
+  }
+}
+
 .card-header {
   --bs-card-cap-bg: transparent;
   background-color: var(--bs-card-cap-bg);
-  border-bottom: 1px solid var(--ns-line);
+  border-bottom: 1px solid var(--ns-border-default);
   font-family: var(--ns-font-display);
   font-weight: 600;
 }
 
 /* Tables */
 .table {
-  --bs-table-bg: var(--ns-paper);
+  --bs-table-bg: var(--ns-surface);
   --bs-table-color: var(--ns-ink);
-  --bs-table-border-color: var(--ns-line);
-  --bs-table-hover-bg: var(--ns-surface-2);
+  --bs-table-border-color: var(--ns-border-subtle);
+  --bs-table-hover-bg: var(--ns-primary-50);
   --bs-table-hover-color: var(--ns-ink);
 }
 
 .table > thead > tr > th,
 .table th {
-  color: var(--ns-slate);
-  font-weight: 600;
-  font-size: 0.8125rem;
-  background-color: var(--ns-surface-2);
-  border-bottom: 1px solid var(--ns-line);
-  --bs-table-bg: var(--ns-surface-2);
-  --bs-table-color: var(--ns-slate);
-}
-
-.table > :not(caption) > * > * {
-  border-bottom-color: var(--ns-line);
+  --bs-table-bg: var(--ns-gray-100);
+  --bs-table-color: var(--ns-gray-700);
+  color: var(--bs-table-color);
+  font-weight: var(--ns-type-overline-weight);
+  font-size: var(--ns-type-small-size);
+  background-color: var(--bs-table-bg);
+  border-bottom: 1px solid var(--ns-border-default);
 }
 
 /* Alerts */
 .alert {
   --bs-alert-border-radius: var(--ns-radius-card);
+  border-color: color-mix(in srgb, var(--bs-alert-border-color) 32%, var(--bs-alert-bg));
   border-radius: var(--ns-radius-card);
   border-width: 1px;
 }
@@ -323,9 +530,11 @@ small, .small {
   --bs-alert-link-color: var(--ns-neutral-fg);
 }
 
-:focus-visible {
-  outline: 2px solid var(--ns-span);
-  outline-offset: 2px;
+/* Keep the keyboard indicator visible even on controls that reset their outline. */
+:focus-visible,
+.btn-check:focus-visible + .btn {
+  outline: 2px solid var(--ns-teal-600) !important;
+  outline-offset: var(--ns-focus-ring-offset);
 }
 
 /* Badges */
@@ -335,6 +544,7 @@ small, .small {
 }
 
 .ns-badge {
+  --ns-badge-dot: currentColor;
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -356,22 +566,25 @@ small, .small {
   height: 0.375rem;
   flex-shrink: 0;
   border-radius: var(--ns-radius-pill);
-  background-color: currentColor;
+  background-color: var(--ns-badge-dot);
 }
 
 .ns-badge--submitted {
-  background-color: var(--ns-info-bg);
-  color: var(--ns-info-fg);
+  --ns-badge-dot: var(--ns-status-submitted-dot);
+  background-color: var(--ns-status-submitted-bg);
+  color: var(--ns-status-submitted-text);
 }
 
 .ns-badge--in-progress {
-  background-color: var(--ns-warning-bg);
-  color: var(--ns-warning-fg);
+  --ns-badge-dot: var(--ns-status-in-progress-dot);
+  background-color: var(--ns-status-in-progress-bg);
+  color: var(--ns-status-in-progress-text);
 }
 
 .ns-badge--completed {
-  background-color: var(--ns-success-bg);
-  color: var(--ns-success-fg);
+  --ns-badge-dot: var(--ns-status-completed-dot);
+  background-color: var(--ns-status-completed-bg);
+  color: var(--ns-status-completed-text);
 }
 
 .ns-badge--unknown {
@@ -379,24 +592,28 @@ small, .small {
 }
 
 .ns-badge--critical {
-  background-color: var(--ns-danger-bg);
-  color: var(--ns-danger-fg);
+  --ns-badge-dot: var(--ns-priority-critical-dot);
+  background-color: var(--ns-priority-critical-bg);
+  color: var(--ns-priority-critical-text);
 }
 
 .ns-badge--high {
-  background-color: var(--ns-orange-bg);
-  color: var(--ns-orange-fg);
+  --ns-badge-dot: var(--ns-priority-high-dot);
+  background-color: var(--ns-priority-high-bg);
+  color: var(--ns-priority-high-text);
 }
 
 .ns-badge--medium {
-  background-color: var(--ns-neutral-bg);
-  color: var(--ns-neutral-fg);
+  --ns-badge-dot: var(--ns-priority-medium-dot);
+  background-color: var(--ns-priority-medium-bg);
+  color: var(--ns-priority-medium-text);
 }
 
 /* Unknown priorities also use the low-priority style. */
 .ns-badge--low {
-  background-color: var(--ns-paper);
-  color: var(--ns-slate);
+  --ns-badge-dot: var(--ns-priority-low-dot);
+  background-color: var(--ns-priority-low-bg);
+  color: var(--ns-priority-low-text);
   border-color: var(--ns-line);
 }
 
@@ -424,4 +641,27 @@ small, .small {
 .ns-navbar .nav-link.router-link-active {
   box-shadow: inset 0 -2px 0 var(--ns-span);
   color: var(--bs-navbar-active-color);
+}
+
+/* A static placeholder for one line of loading content. */
+.ns-skeleton {
+  display: block;
+  min-height: 1em;
+  background-color: var(--ns-gray-200);
+  border-radius: var(--ns-radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ns-duration-fast: 0s;
+    --ns-duration-base: 0s;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

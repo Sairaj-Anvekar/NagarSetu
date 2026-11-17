@@ -24,48 +24,55 @@ const buttonSizes = [
   { label: 'Large', className: 'btn-lg' },
 ]
 
-const colorTokens = [
-  { name: '--ns-ink', value: '#14202B' },
-  { name: '--ns-harbour', value: '#0B6E99' },
-  { name: '--ns-harbour-dark', value: '#095A7E' },
-  { name: '--ns-span', value: '#14A89A' },
-  { name: '--ns-mist', value: '#F5F7FA' },
-  { name: '--ns-paper', value: '#FFFFFF' },
-  { name: '--ns-slate', value: '#5B6B7A' },
-  { name: '--ns-line', value: '#E3E8EE' },
-  { name: '--ns-navy', value: '#0F2233' },
-  { name: '--ns-surface-2', value: '#F8FAFC' },
-  { name: '--ns-success-bg', value: '#E6F6EE' },
-  { name: '--ns-success-fg', value: '#0F7A4A' },
-  { name: '--ns-warning-bg', value: '#FFF4DB' },
-  { name: '--ns-warning-fg', value: '#8A5A00' },
-  { name: '--ns-danger-bg', value: '#FDECEC' },
-  { name: '--ns-danger-fg', value: '#B42318' },
-  { name: '--ns-info-bg', value: '#E4F1F8' },
-  { name: '--ns-info-fg', value: '#0B5C80' },
-  { name: '--ns-orange-bg', value: '#FFEDE0' },
-  { name: '--ns-orange-fg', value: '#B54708' },
-  { name: '--ns-neutral-bg', value: '#EEF1F5' },
-  { name: '--ns-neutral-fg', value: '#475467' },
-]
+const shades = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]
+function variants(families, suffixes) {
+  return families.flatMap((family) => suffixes.map((suffix) => `${family}-${suffix}`))
+}
 
-const foundationTokens = [
-  { name: '--ns-radius-card', value: '12px' },
-  { name: '--ns-radius-control', value: '8px' },
-  { name: '--ns-radius-pill', value: '999px' },
-  { name: '--ns-shadow-card', value: '0 1px 2px rgba(16, 24, 40, 0.05)' },
-  { name: '--ns-shadow-pop', value: '0 8px 24px rgba(16, 24, 40, 0.12)' },
-  {
-    name: '--ns-font-body',
-    value:
-      "'Public Sans Variable', 'Noto Sans Devanagari', system-ui, -apple-system, " +
-      "'Segoe UI', sans-serif",
-  },
-  {
-    name: '--ns-font-display',
-    value: "'Sora Variable', 'Public Sans Variable', system-ui, sans-serif",
-  },
-]
+const colorGroups = {
+  'Brand anchors': ['ink', 'harbour', 'harbour-dark', 'span', 'mist', 'paper', 'slate', 'line', 'navy'],
+  'Primary blue': variants(['primary'], shades),
+  Teal: variants(['teal'], shades.filter((shade) => shade <= 700)),
+  Navy: variants(['navy'], shades),
+  'Cool gray': variants(['gray'], [0, ...shades]),
+  Surfaces: ['app-bg', 'surface', 'surface-2', 'surface-raised', 'sidebar', 'overlay'],
+  Borders: ['border-subtle', 'border-default', 'border-strong', 'focus-ring-color'],
+  'Semantic colors': [
+    ...variants(['success', 'warning', 'danger', 'info'], ['solid', 'bg', 'fg']),
+    ...variants(['orange', 'neutral'], ['bg', 'fg']),
+  ],
+  'Complaint statuses': variants(
+    ['status-submitted', 'status-in-progress', 'status-completed'], ['bg', 'text', 'dot'],
+  ),
+  Priorities: variants(
+    ['priority-critical', 'priority-high', 'priority-medium', 'priority-low'], ['bg', 'text', 'dot'],
+  ),
+}
+
+const theme = getComputedStyle(document.documentElement)
+
+const foundationGroups = {
+  Spacing: variants(['space'], [4, 8, 12, 16, 24, 32, 48]),
+  Corners: variants(['radius'], ['sm', 'md', 'lg', 'control', 'card', 'pill']),
+  Shadows: variants(['shadow'], ['xs', 'sm', 'md', 'lg', 'card', 'pop']),
+  Focus: ['focus-ring', 'focus-ring-offset'],
+  Motion: ['duration-fast', 'duration-base', 'easing'],
+  Layout: ['admin-content-max-width', 'page-padding', 'z-base', 'z-sticky', 'z-skip-link'],
+  Fonts: ['font-body', 'font-display', 'type-numeric-variant'],
+}
+const typeSamples = {
+  'page-title': 'Civic grievance overview', 'section-title': 'Assigned tasks',
+  'card-title': 'Grievance details', body: 'Review assigned tasks and keep their progress up to date.',
+  small: 'An internet connection is required to load current tasks.',
+  caption: 'Last updated at 09:30', overline: 'ZONE A',
+}
+function typeStyle(role) {
+  const token = (part) => `var(--ns-type-${role}-${part})`
+  return {
+    fontFamily: token('family'), fontSize: token('size'), fontWeight: token('weight'),
+    lineHeight: token('line-height'), letterSpacing: role === 'overline' ? token('letter-spacing') : undefined,
+  }
+}
 
 const sampleColumns = [
   { key: 'code', label: 'Code' },
@@ -133,43 +140,55 @@ const priorityVariants = [
     <section class="mb-5" aria-labelledby="foundations-heading">
       <h2 id="foundations-heading" class="h4 mb-3">Foundations</h2>
       <h3 class="h6 mb-3">Color tokens</h3>
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 mb-4">
-        <div v-for="token in colorTokens" :key="token.name" class="col">
-          <div class="card h-100">
-            <div class="card-body">
-              <div
-                class="border rounded mb-3"
-                :style="{ backgroundColor: `var(${token.name})`, height: '3rem' }"
-                aria-hidden="true"
-              ></div>
-              <code class="d-block text-body text-break">{{ token.name }}</code>
-              <small class="text-secondary ns-num">{{ token.value }}</small>
+      <div v-for="(tokens, group) in colorGroups" :key="group" class="mb-4">
+        <h4 class="h6">{{ group }}</h4>
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2">
+          <div v-for="token in tokens" :key="token" class="col">
+            <div class="card h-100">
+              <div class="card-body">
+                <div
+                  class="border rounded mb-3"
+                  :style="{ backgroundColor: `var(--ns-${token})`, height: '3rem' }"
+                  aria-hidden="true"
+                ></div>
+                <code class="d-block text-body text-break">--ns-{{ token }}</code>
+                <small class="text-secondary ns-num">
+                  {{ theme.getPropertyValue(`--ns-${token}`).trim() }}
+                </small>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <h3 class="h6 mb-3">Corners, shadows, and fonts</h3>
-      <dl class="row mb-0">
-        <template v-for="token in foundationTokens" :key="token.name">
-          <dt class="col-md-4 mb-1"><code class="text-body">{{ token.name }}</code></dt>
-          <dd class="col-md-8 mb-3 text-secondary text-break">{{ token.value }}</dd>
-        </template>
-      </dl>
+      <div v-for="(tokens, group) in foundationGroups" :key="group" class="mb-4">
+        <h3 class="h6">{{ group }}</h3>
+        <dl class="mb-0">
+          <template v-for="token in tokens" :key="token">
+            <dt><code class="text-body">--ns-{{ token }}</code></dt>
+            <dd class="text-secondary text-break">
+              {{ theme.getPropertyValue(`--ns-${token}`).trim() }}
+              <span v-if="group === 'Spacing'" class="d-block bg-primary py-1"
+                :style="{ width: `var(--ns-${token})` }" aria-hidden="true"></span>
+              <span v-if="group === 'Corners' || group === 'Shadows'"
+                class="d-block bg-white border p-3 my-2" aria-hidden="true"
+                :style="{ width: '5rem', [group === 'Corners' ? 'borderRadius' : 'boxShadow']: `var(--ns-${token})` }"></span>
+            </dd>
+          </template>
+        </dl>
+        <button v-if="group === 'Motion'" type="button" class="btn btn-outline-primary"
+          :style="{ transition: 'background-color var(--ns-duration-base) var(--ns-easing), color var(--ns-duration-fast) var(--ns-easing)' }">
+          Hover or focus to preview
+        </button>
+        <div v-if="group === 'Layout'" class="border bg-white py-2"
+          :style="{ paddingInline: 'var(--ns-page-padding)', maxWidth: 'var(--ns-admin-content-max-width)' }">
+          <div class="bg-body-secondary">Page content</div>
+        </div>
+      </div>
       <h3 class="h6 mt-4 mb-3">Type scale</h3>
-      <div class="card">
-        <div class="card-body">
-          <small class="d-block text-secondary mb-1">h1 · Sora · 1.75rem · weight 600</small>
-          <p class="h1 mb-4">Civic grievance overview</p>
-          <small class="d-block text-secondary mb-1">h2 · Sora · 1.375rem · weight 600</small>
-          <p class="h2 mb-4">Assigned tasks</p>
-          <small class="d-block text-secondary mb-1">h3 · Sora · 1.125rem · weight 600</small>
-          <p class="h3 mb-4">Grievance details</p>
-          <small class="d-block text-secondary mb-1">h4 · Sora · 1rem · weight 600</small>
-          <p class="h4 mb-4">Latest update</p>
-          <small class="d-block text-secondary mb-1">Body · Public Sans · 1rem</small>
-          <p class="mb-4">Review assigned tasks and keep their progress up to date.</p>
-          <small class="d-block text-secondary mb-1">Small · Public Sans · 0.8125rem</small>
-          <small class="d-block">An internet connection is required to load current tasks.</small>
+      <div class="card card-body">
+        <div v-for="(sample, role) in typeSamples" :key="role">
+          <small class="text-secondary">{{ role }}</small>
+          <p :style="typeStyle(role)">{{ sample }}</p>
         </div>
       </div>
     </section>
@@ -193,7 +212,24 @@ const priorityVariants = [
               </button>
             </div>
           </div>
-          <small class="text-secondary">Preview only. Use Tab to inspect keyboard focus.</small>
+          <p class="small text-secondary">
+            Hover over an enabled button, then hold the pointer down to see its pressed state.
+            Use Tab to see the keyboard focus ring.
+          </p>
+          <h3 class="h6 mt-4 mb-3">Pressed buttons</h3>
+          <div class="d-flex flex-wrap gap-3">
+            <button
+              v-for="variant in buttonVariants"
+              :key="variant.className"
+              type="button"
+              class="btn active"
+              :class="variant.className"
+              aria-pressed="true"
+              data-bs-toggle="button"
+            >
+              {{ variant.label }}
+            </button>
+          </div>
           <h3 class="h6 mt-4 mb-3">Disabled buttons</h3>
           <p class="small text-secondary">
             These actions are unavailable. Disabled buttons are skipped during Tab navigation.
@@ -254,6 +290,16 @@ const priorityVariants = [
               />
               <div id="design-invalid-feedback" class="invalid-feedback">Enter a work note.</div>
             </div>
+            <div class="col-md-6">
+              <label for="design-zone-disabled" class="form-label">Assigned zone (disabled)</label>
+              <input id="design-zone-disabled" class="form-control" value="Zone A" disabled />
+            </div>
+            <div class="col-md-6">
+              <label for="design-dept-disabled" class="form-label">Department (disabled)</label>
+              <select id="design-dept-disabled" class="form-select" disabled>
+                <option>Sanitation</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -293,6 +339,13 @@ const priorityVariants = [
 
     <section class="mt-5">
       <h2 class="h4 mb-3">Loading states</h2>
+      <figure class="card card-body mb-3">
+        <figcaption class="mb-2">Skeleton for a task summary</figcaption>
+        <div aria-hidden="true">
+          <span class="ns-skeleton w-50 mb-2"></span>
+          <span class="ns-skeleton w-75"></span>
+        </div>
+      </figure>
       <div class="row g-3">
         <div class="col-12 col-md-4">
           <div class="card h-100 shadow-sm">
@@ -366,7 +419,16 @@ const priorityVariants = [
     </section>
 
     <section class="mt-5">
+      <h2 class="h4 mb-3">Alerts</h2>
+      <div class="alert alert-success">Completed. The resolution photo was saved.</div>
+      <div class="alert alert-warning">Offline. Reconnect to update this task.</div>
+      <div class="alert alert-info">Zone A is selected. The list shows tasks in this zone.</div>
+      <div class="alert alert-secondary">No filters applied. Showing all priorities.</div>
+    </section>
+
+    <section class="mt-5">
       <h2 class="h4 mb-3">Cards</h2>
+      <a href="#design-tables" class="card card-body mb-3">View the sample complaints table</a>
       <div class="row g-3">
         <div class="col-12 col-md-4">
           <AppCard title="Grievance Details">
@@ -390,7 +452,7 @@ const priorityVariants = [
     </section>
 
     <section class="mt-5">
-      <h2 class="h4 mb-3">Tables</h2>
+      <h2 id="design-tables" class="h4 mb-3" tabindex="-1">Tables</h2>
       <div class="card shadow-sm mb-4">
         <div class="card-body">
           <DataTable :columns="sampleColumns" :rows="sampleRows">
