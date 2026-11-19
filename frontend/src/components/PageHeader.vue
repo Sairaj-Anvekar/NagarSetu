@@ -22,22 +22,33 @@ defineProps({
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: var(--ns-space-16);
+  margin-bottom: var(--ns-space-24);
 }
 .ns-page-header__text {
   flex: 1 1 16rem;
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.ns-page-header__text > h1 {
+  font-family: var(--ns-type-page-title-family);
+  font-size: var(--ns-type-page-title-size);
+  font-weight: 700;
+  line-height: var(--ns-type-page-title-line-height);
+  color: var(--ns-ink);
+}
 .ns-page-header__subtitle {
-  margin: 0.5rem 0 0;
+  margin: var(--ns-space-8) 0 0;
   color: var(--ns-slate);
+  font-family: var(--ns-type-body-family);
+  font-size: var(--ns-type-body-size);
+  line-height: var(--ns-type-body-line-height);
 }
 .ns-page-header__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  align-items: center;
+  gap: var(--ns-space-8);
   margin-left: auto;
   max-width: 100%;
 }

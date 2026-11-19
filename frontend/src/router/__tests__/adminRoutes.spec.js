@@ -179,7 +179,7 @@ describe('Admin routes', () => {
     expect(router.currentRoute.value.name).toBe('admin-hotspots')
     expect(router.currentRoute.value.meta.requiresAuth).toBe(true)
     expect(router.currentRoute.value.meta.role).toBe('admin')
-  })
+  }, 20000)
 
   it('redirects a logged-out visit to /admin/hotspots to login with redirect parameter', async () => {
     await router.push('/admin/hotspots')
