@@ -3,6 +3,32 @@ import { mount } from '@vue/test-utils'
 import ZoneBreakdown from '../ZoneBreakdown.vue'
 
 describe('ZoneBreakdown', () => {
+  it('shows zone letters and shares of the total, including a zero total', async () => {
+    const wrapper = mount(ZoneBreakdown, {
+      props: {
+        zones: [
+          { zone: 'Zone A', count: 20 },
+          { zone: 'Zone B', count: 10 },
+          { zone: 'Zone C', count: 0 },
+        ],
+      },
+    })
+
+    expect(wrapper.findAll('.zone-breakdown__chip').map((chip) => chip.text())).toEqual([
+      'A',
+      'B',
+      'C',
+    ])
+    expect(wrapper.findAll('.zone-breakdown__percentage').map((item) => item.text())).toEqual([
+      '67%',
+      '33%',
+      '0%',
+    ])
+    await wrapper.setProps({ zones: [{ zone: 'Zone A', count: 0 }] })
+    expect(wrapper.find('.zone-breakdown__percentage').text()).toBe('0%')
+    expect(wrapper.find('.zone-breakdown__bar').attributes('style')).toContain('width: 0%')
+  })
+
   it('renders each zone with name and count', () => {
     const zones = [
       { zone: 'Zone A', count: 20 },

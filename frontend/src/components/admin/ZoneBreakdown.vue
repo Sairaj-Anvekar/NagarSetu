@@ -16,6 +16,14 @@ const maxCount = computed(() => {
   )
 })
 
+const totalCount = computed(() =>
+  (props.zones || []).reduce((total, item) => total + (Number(item.count) || 0), 0),
+)
+
+function getPercentage(count) {
+  return totalCount.value > 0 ? Math.round((count / totalCount.value) * 100) : 0
+}
+
 function getBarWidth(count) {
   if (maxCount.value <= 0 || !count) return '0%'
   const pct = (count / maxCount.value) * 100
@@ -31,8 +39,14 @@ function getBarWidth(count) {
     <div v-else class="zone-breakdown__list" role="list">
       <div v-for="item in zones" :key="item.zone" class="zone-breakdown__item" role="listitem">
         <div class="zone-breakdown__header">
+          <span class="zone-breakdown__chip" aria-hidden="true">
+            {{ item.zone.replace(/^Zone\s+/i, '').charAt(0) }}
+          </span>
           <span class="zone-breakdown__name">{{ item.zone }}</span>
           <span class="zone-breakdown__count ns-num">{{ item.count }}</span>
+          <span class="zone-breakdown__percentage ns-num">
+            {{ getPercentage(item.count) }}%
+          </span>
         </div>
         <div class="zone-breakdown__track">
           <div
@@ -76,14 +90,35 @@ function getBarWidth(count) {
 
 .zone-breakdown__header {
   display: flex;
-  justify-content: space-between;
+  gap: 0.5rem;
   align-items: center;
   font-size: 0.875rem;
 }
 
 .zone-breakdown__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--ns-ink);
   font-weight: 500;
+}
+
+.zone-breakdown__chip {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ns-radius-sm);
+  background: var(--ns-info-bg);
+  color: var(--ns-harbour);
+  font-weight: 600;
+}
+
+.zone-breakdown__percentage {
+  min-width: 4ch;
+  text-align: right;
+  color: var(--ns-slate);
 }
 
 .zone-breakdown__count {
@@ -101,7 +136,7 @@ function getBarWidth(count) {
 
 .zone-breakdown__bar {
   height: 100%;
-  background-color: var(--ns-harbour);
+  background: linear-gradient(90deg, var(--ns-harbour), var(--ns-span));
   border-radius: var(--ns-radius-pill);
 }
 </style>

@@ -20,8 +20,25 @@ vi.mock('vue-chartjs', () => ({
 }))
 
 import CategoryChart from '../CategoryChart.vue'
+import { getChartTheme } from '../../../utils/chartTheme'
 
 describe('CategoryChart', () => {
+  it('applies six palette colors and rounds both ends of the bars', () => {
+    const categories = ['A', 'B', 'C', 'D', 'E', 'F'].map((category, index) => ({
+      category, count: 6 - index,
+    }))
+    const wrapper = mount(CategoryChart, { props: { categories } })
+    const bar = wrapper.getComponent({ name: 'Bar' })
+    const dataset = bar.props('data').datasets[0]
+    expect(dataset.backgroundColor).toEqual(getChartTheme().palette)
+    expect(new Set(dataset.backgroundColor).size).toBe(6)
+    expect(dataset.borderRadius).toBeGreaterThan(0)
+    expect(dataset.borderSkipped).toBe(false)
+    expect(bar.props('options').scales.x.border.dash).toEqual([2, 4])
+    expect(bar.props('data').labels).toEqual(['A', 'B', 'C', 'D', 'E', 'F'])
+    wrapper.unmount()
+  })
+
   it('sorts dataset values and labels by count descending and sets horizontal axis', () => {
     const categories = [
       { category: 'Drainage', count: 4 },

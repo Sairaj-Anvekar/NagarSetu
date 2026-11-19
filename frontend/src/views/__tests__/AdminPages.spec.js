@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import AdminView from '../AdminView.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import LoadingSpinner from '../../components/LoadingSpinner.vue'
@@ -12,6 +13,7 @@ vi.mock('chart.js', () => ({
   Title: {},
   Tooltip: {},
   Legend: {},
+  Filler: {},
   BarElement: {},
   LineElement: {},
   PointElement: {},
@@ -24,7 +26,29 @@ vi.mock('vue-chartjs', () => ({
 }))
 
 describe('AdminView dashboard - state and errors', () => {
+  let router
+  let dashboard
+
+  beforeEach(async () => {
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/admin', component: { template: '<div />' } },
+        { path: '/admin/complaints', component: { template: '<div />' } },
+      ],
+    })
+    await router.push('/admin')
+    await router.isReady()
+  })
+
+  function mountDashboard() {
+    dashboard = mount(AdminView, { global: { plugins: [router] } })
+    return dashboard
+  }
+
   afterEach(() => {
+    dashboard?.unmount()
+    dashboard = undefined
     vi.restoreAllMocks()
   })
 
@@ -37,7 +61,7 @@ describe('AdminView dashboard - state and errors', () => {
     })
     vi.spyOn(adminApi, 'fetchTrends').mockResolvedValueOnce([])
 
-    const wrapper = mount(AdminView)
+    const wrapper = mountDashboard()
     await flushPromises()
 
     expect(wrapper.get('h1').text()).toBe('Dashboard')
@@ -51,7 +75,7 @@ describe('AdminView dashboard - state and errors', () => {
     vi.spyOn(adminApi, 'fetchStats').mockReturnValueOnce(new Promise(() => {}))
     vi.spyOn(adminApi, 'fetchTrends').mockReturnValueOnce(new Promise(() => {}))
 
-    const wrapper = mount(AdminView)
+    const wrapper = mountDashboard()
     expect(wrapper.findComponent(LoadingSpinner).exists()).toBe(true)
   })
 
@@ -74,7 +98,7 @@ describe('AdminView dashboard - state and errors', () => {
       })
     const trendsSpy = vi.spyOn(adminApi, 'fetchTrends').mockResolvedValue([])
 
-    const wrapper = mount(AdminView)
+    const wrapper = mountDashboard()
     await flushPromises()
 
     const alert = wrapper.findComponent(ErrorAlert)
@@ -105,7 +129,7 @@ describe('AdminView dashboard - state and errors', () => {
     })
     vi.spyOn(adminApi, 'fetchTrends').mockResolvedValueOnce([])
 
-    const wrapper = mount(AdminView)
+    const wrapper = mountDashboard()
     await flushPromises()
 
     const tiles = wrapper.findAllComponents({ name: 'StatTile' })
@@ -142,7 +166,7 @@ describe('AdminView dashboard - state and errors', () => {
     })
     vi.spyOn(adminApi, 'fetchTrends').mockResolvedValueOnce([])
 
-    const wrapper = mount(AdminView)
+    const wrapper = mountDashboard()
     await flushPromises()
 
     const badges = wrapper.findAll('.ns-badge')
@@ -167,7 +191,7 @@ describe('AdminView dashboard - state and errors', () => {
     })
     vi.spyOn(adminApi, 'fetchTrends').mockRejectedValueOnce(new Error('Trends endpoint 500'))
 
-    const wrapper = mount(AdminView)
+    const wrapper = mountDashboard()
     await flushPromises()
 
     const tiles = wrapper.findAllComponents({ name: 'StatTile' })
@@ -197,7 +221,7 @@ describe('AdminView dashboard - state and errors', () => {
     })
     const trendsSpy = vi.spyOn(adminApi, 'fetchTrends').mockResolvedValue([])
 
-    const wrapper = mount(AdminView)
+    const wrapper = mountDashboard()
     await flushPromises()
 
     const rangeButtons = wrapper.findAll('.range-btn')
@@ -220,6 +244,34 @@ describe('AdminView dashboard - state and errors', () => {
     expect(rangeButtons[0].attributes('aria-pressed')).toBe('false')
   })
 
+  it('renders the segmented range group and keeps exactly one selection after each refetch', async () => {
+    const statsSpy = vi.spyOn(adminApi, 'fetchStats').mockResolvedValueOnce({
+      totals: { total: 1, submitted: 1, in_progress: 0, completed: 0, overdue: 0, unassigned: 0 },
+      by_category: [],
+      by_zone: [],
+    })
+    const trendsSpy = vi.spyOn(adminApi, 'fetchTrends').mockResolvedValue([])
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const group = wrapper.get('.trend-range')
+    expect(group.attributes('role')).toBe('group')
+    expect(group.attributes('aria-label')).toBe('Trend duration range')
+    expect(group.findAll('button').map((button) => button.text())).toEqual([
+      '7 days', '14 days', '30 days',
+    ])
+    expect(group.get('[aria-pressed="true"]').text()).toBe('14 days')
+    trendsSpy.mockClear()
+    for (const [index, days] of [7, 14, 30].entries()) {
+      await group.findAll('button')[index].trigger('click')
+      await flushPromises()
+      expect(group.findAll('[aria-pressed="true"]')).toHaveLength(1)
+      expect(group.get('[aria-pressed="true"]').text()).toBe(`${days} days`)
+      expect(trendsSpy).toHaveBeenNthCalledWith(index + 1, { days })
+    }
+    expect(trendsSpy).toHaveBeenCalledTimes(3)
+    expect(statsSpy).toHaveBeenCalledTimes(1)
+  })
+
   it('Refresh button refetches both stats and trends', async () => {
     const statsSpy = vi.spyOn(adminApi, 'fetchStats').mockResolvedValue({
       department: { id: 'd1', name: 'Solid Waste' },
@@ -229,7 +281,7 @@ describe('AdminView dashboard - state and errors', () => {
     })
     const trendsSpy = vi.spyOn(adminApi, 'fetchTrends').mockResolvedValue([])
 
-    const wrapper = mount(AdminView)
+    const wrapper = mountDashboard()
     await flushPromises()
 
     expect(statsSpy).toHaveBeenCalledTimes(1)
@@ -241,5 +293,52 @@ describe('AdminView dashboard - state and errors', () => {
 
     expect(statsSpy).toHaveBeenCalledTimes(2)
     expect(trendsSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('connects all tiles to filters and derives captions from the displayed totals', async () => {
+    vi.spyOn(adminApi, 'fetchStats').mockResolvedValueOnce({
+      totals: { total: 10, submitted: 2, in_progress: 3, completed: 5, overdue: 1, unassigned: 2 },
+      by_category: [], by_zone: [],
+    })
+    vi.spyOn(adminApi, 'fetchTrends').mockResolvedValueOnce([])
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const tiles = wrapper.findAll('.stat-tile')
+    expect(tiles.map((tile) => tile.attributes('href'))).toEqual([
+      '/admin/complaints',
+      '/admin/complaints?status=Submitted',
+      '/admin/complaints?status=In-Progress',
+      '/admin/complaints?status=Completed',
+      '/admin/complaints?overdue=true',
+      '/admin/complaints?unassigned=true',
+    ])
+    expect(tiles.slice(1).map((tile) => tile.get('.stat-tile__hint').text())).toEqual([
+      '20% of total', '30% of total', '50% of total', 'Needs attention', 'Needs attention',
+    ])
+    expect(wrapper.findAll('.stat-tile--attention')).toHaveLength(2)
+    const strip = wrapper.get('.attention-strip')
+    expect(strip.text()).toContain('1 complaint is overdue')
+    expect(strip.text()).toContain('2 complaints are unassigned')
+    expect(strip.findAll('a').map((link) => link.attributes('href'))).toEqual([
+      '/admin/complaints?overdue=true', '/admin/complaints?unassigned=true',
+    ])
+  })
+
+  it('hides percentages and attention messages when all totals are zero', async () => {
+    vi.spyOn(adminApi, 'fetchStats').mockResolvedValueOnce({
+      totals: { total: 0, submitted: 0, in_progress: 0, completed: 0, overdue: 0, unassigned: 0 },
+      by_category: [], by_zone: [],
+    })
+    vi.spyOn(adminApi, 'fetchTrends').mockResolvedValueOnce([])
+    const wrapper = mountDashboard()
+    await flushPromises()
+    expect(wrapper.find('.attention-strip').exists()).toBe(false)
+    expect(wrapper.findAll('.stat-tile--attention')).toHaveLength(0)
+    expect(wrapper.findAll('.stat-tile__hint').map((hint) => hint.text())).toEqual([
+      'All clear', 'All clear',
+    ])
+    expect(wrapper.findAll('.stat-tile__value').map((value) => value.text())).toEqual([
+      '0', '0', '0', '0', '0', '0',
+    ])
   })
 })
