@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { saveAuth } from '../../../utils/authStorage'
+import { useAuthStore } from '../../../stores/auth'
 import AdminLayout from '../AdminLayout.vue'
 
 const DashboardPage = defineComponent(() => () => h('p', 'Dashboard child content'))
@@ -38,6 +39,8 @@ describe('AdminLayout', () => {
             { path: 'complaints', name: 'admin-complaints', component: ComplaintsPage },
             { path: 'hotspots', name: 'admin-hotspots', component: HotspotsPage },
             { path: 'workers', name: 'admin-workers', component: WorkersPage },
+            { path: 'complaints/:id', name: 'admin-complaint-detail', component: ComplaintsPage },
+            { path: 'workers/new', name: 'admin-worker-new', component: WorkersPage },
           ],
         },
         { path: '/login', component: LoginPage },
@@ -48,6 +51,7 @@ describe('AdminLayout', () => {
   afterEach(() => {
     wrapper?.unmount()
     wrapper = undefined
+    vi.useRealTimers()
     localStorage.clear()
   })
 
@@ -57,6 +61,42 @@ describe('AdminLayout', () => {
     wrapper = mount(TestHost, { global: { plugins: [pinia, router] } })
     await flushPromises()
   }
+
+  it.each([
+    ['/admin', 'Dashboard'],
+    ['/admin/complaints', 'Complaints'],
+    ['/admin/complaints/123', 'Complaint details'],
+    ['/admin/hotspots', 'Hotspots'],
+    ['/admin/workers', 'Workers'],
+    ['/admin/workers/new', 'Add worker'],
+  ])('updates the breadcrumb title when navigating to %s', async (path, title) => {
+    await mountLayout()
+    await router.push(path)
+    await flushPromises()
+    expect(wrapper.get('.ns-admin-topbar__page').text()).toBe(`Admin / ${title}`)
+  })
+
+  it('shows the session department and a fallback when it is missing', async () => {
+    await mountLayout()
+    const pill = wrapper.get('.ns-admin-topbar__department')
+    expect(pill.text()).toBe('Department unavailable')
+    useAuthStore(pinia).user.department = { id: '1', name: 'Sanitation' }
+    await flushPromises()
+    expect(pill.text()).toBe('Sanitation')
+  })
+
+  it('shows the local date and refreshes it across midnight', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(new Date(2026, 10, 17, 23, 59, 30))
+    await mountLayout()
+    const date = wrapper.get('.ns-admin-topbar time')
+    expect(date.text()).toBe('Tue, 17 Nov')
+    expect(date.attributes('datetime')).toBe('2026-11-17')
+    await vi.advanceTimersByTimeAsync(60000)
+    await flushPromises()
+    expect(date.text()).toBe('Wed, 18 Nov')
+    expect(date.attributes('datetime')).toBe('2026-11-18')
+  })
 
   it('shows the admin name and initials in the top bar', async () => {
     await mountLayout()

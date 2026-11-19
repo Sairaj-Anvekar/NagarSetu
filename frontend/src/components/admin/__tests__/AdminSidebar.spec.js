@@ -1,12 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createPinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import AdminSidebar from '../AdminSidebar.vue'
+import { useAuthStore } from '../../../stores/auth'
 
 describe('AdminSidebar', () => {
   let router
+  let pinia
 
   beforeEach(async () => {
+    localStorage.clear()
+    pinia = createPinia()
     router = createRouter({
       history: createMemoryHistory(),
       routes: [
@@ -32,10 +37,54 @@ describe('AdminSidebar', () => {
     await router.isReady()
   })
 
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('groups exactly four ordered links under non-link section labels', () => {
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const nav = wrapper.get('nav[aria-label="Admin navigation"]')
+    const labels = nav.findAll('.ns-admin-sidebar__section-label')
+    expect(labels.map((label) => label.text())).toEqual(['Overview', 'Manage'])
+    labels.forEach((label) => {
+      expect(label.element.closest('a')).toBeNull()
+      expect(label.find('a').exists()).toBe(false)
+    })
+    expect(labels[0].element.nextElementSibling.textContent.trim()).toBe('Dashboard')
+    expect(nav.findAll('a').map((link) => [link.text(), link.attributes('href')])).toEqual([
+      ['Dashboard', '/admin'],
+      ['Complaints', '/admin/complaints'],
+      ['Hotspots', '/admin/hotspots'],
+      ['Workers', '/admin/workers'],
+    ])
+    wrapper.unmount()
+  })
+
+  it('shows the admin identity and department in the user card', () => {
+    const auth = useAuthStore(pinia)
+    auth.user = { name: '  Demo Admin  ', department: { id: '1', name: 'Sanitation' } }
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const card = wrapper.get('.ns-admin-sidebar__user')
+    expect(card.get('.ns-admin-sidebar__avatar').text()).toBe('DA')
+    expect(card.get('.fw-semibold').text()).toBe('Demo Admin')
+    expect(card.get('.ns-admin-sidebar__caption').text()).toBe('Sanitation')
+    wrapper.unmount()
+  })
+
+  it('shows honest fallbacks for missing identity fields', () => {
+    useAuthStore(pinia).user = { name: ' ', department: { name: ' ' } }
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const card = wrapper.get('.ns-admin-sidebar__user')
+    expect(card.get('.ns-admin-sidebar__avatar').text()).toBe('A')
+    expect(card.get('.fw-semibold').text()).toBe('Admin')
+    expect(card.get('.ns-admin-sidebar__caption').text()).toBe('Department unavailable')
+    wrapper.unmount()
+  })
+
   it('renders a Complaints link pointing to /admin/complaints', () => {
     const wrapper = mount(AdminSidebar, {
       global: {
-        plugins: [router],
+        plugins: [pinia, router],
       },
     })
 
@@ -52,7 +101,7 @@ describe('AdminSidebar', () => {
 
     const wrapper = mount(AdminSidebar, {
       global: {
-        plugins: [router],
+        plugins: [pinia, router],
       },
     })
 
@@ -72,7 +121,7 @@ describe('AdminSidebar', () => {
   it('renders a Hotspots link pointing to /admin/hotspots', () => {
     const wrapper = mount(AdminSidebar, {
       global: {
-        plugins: [router],
+        plugins: [pinia, router],
       },
     })
 
@@ -89,7 +138,7 @@ describe('AdminSidebar', () => {
 
     const wrapper = mount(AdminSidebar, {
       global: {
-        plugins: [router],
+        plugins: [pinia, router],
       },
     })
 

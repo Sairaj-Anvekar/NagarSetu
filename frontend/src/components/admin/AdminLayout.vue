@@ -52,30 +52,41 @@ watch(
 
 <style scoped>
 .ns-admin-layout {
+  --ns-admin-sidebar-width: 264px;
   display: flex;
   min-height: 100vh;
-  background-color: var(--ns-mist);
+  background-color: var(--ns-app-bg);
 }
 .ns-admin-layout__sidebar {
-  --bs-offcanvas-width: 256px;
-  width: 256px;
+  --bs-offcanvas-width: var(--ns-admin-sidebar-width);
+  width: var(--ns-admin-sidebar-width);
   flex-shrink: 0;
   background-color: var(--ns-navy) !important;
   overflow-y: auto;
 }
 .ns-admin-layout__close {
   position: absolute;
-  top: 1rem;
-  right: 0.75rem;
+  top: var(--ns-space-8);
+  right: var(--ns-space-4);
+  width: 44px;
+  height: 44px;
+  padding: 0;
 }
 .ns-admin-layout__column {
   flex: 1;
   min-width: 0;
 }
+.ns-admin-layout__column > main {
+  min-height: calc(100vh - 64px);
+  background-color: var(--ns-app-bg);
+  background-image: linear-gradient(to bottom, var(--ns-teal-50), var(--ns-app-bg));
+  background-size: 100% 200px;
+  background-repeat: no-repeat;
+}
 .ns-admin-layout__content {
-  max-width: 1200px;
+  max-width: var(--ns-admin-content-max-width);
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: var(--ns-space-24) var(--ns-space-16);
 }
 .ns-admin-layout__skip:focus {
   position: fixed;
@@ -90,14 +101,19 @@ watch(
 }
 @media (min-width: 768px) {
   .ns-admin-layout__content {
-    padding-inline: 32px;
+    padding-inline: var(--ns-space-32);
   }
 }
 @media (min-width: 992px) {
   .ns-admin-layout__sidebar {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
     height: 100vh;
+    z-index: var(--ns-z-sticky);
+  }
+  .ns-admin-layout__column {
+    margin-left: var(--ns-admin-sidebar-width);
   }
 }
 </style>
