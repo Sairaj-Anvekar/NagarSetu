@@ -23,6 +23,28 @@ import CategoryChart from '../CategoryChart.vue'
 import { getChartTheme } from '../../../utils/chartTheme'
 
 describe('CategoryChart', () => {
+  it('keeps a chart box with a row-based height, bounded between 260px and 420px', async () => {
+    const wrapper = mount(CategoryChart)
+    const box = wrapper.get('.category-chart')
+    expect(box.element.style.height).toBe('320px')
+
+    for (const [rows, height] of [[1, 260], [6, 264], [8, 352], [10, 420], [20, 420]]) {
+      await wrapper.setProps({
+        categories: Array.from({ length: rows }, (_, index) => ({
+          category: `Category ${index + 1}`,
+          count: index + 1,
+        })),
+      })
+      expect(box.element.style.height).toBe(`${height}px`)
+      expect(box.findComponent({ name: 'Bar' }).exists()).toBe(true)
+    }
+
+    await wrapper.setProps({ categories: [] })
+    expect(box.element.style.height).toBe('320px')
+    expect(box.findComponent({ name: 'Bar' }).exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('applies six palette colors and rounds both ends of the bars', () => {
     const categories = ['A', 'B', 'C', 'D', 'E', 'F'].map((category, index) => ({
       category, count: 6 - index,

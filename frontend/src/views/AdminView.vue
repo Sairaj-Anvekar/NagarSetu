@@ -157,22 +157,22 @@ onMounted(() => {
       </div>
 
       <template v-else>
-        <div class="row g-4 mb-4">
+        <div class="row g-4 mb-4 align-items-start">
           <div class="col-12 col-lg-7">
-            <AppCard title="Complaints by Category" class="admin-dashboard__chart-card h-100">
+            <AppCard title="Complaints by Category" class="admin-dashboard__chart-card">
               <p class="text-secondary small mb-4">Complaint volume across service categories</p>
               <CategoryChart :categories="stats.by_category" />
             </AppCard>
           </div>
           <div class="col-12 col-lg-5">
-            <AppCard title="Complaints by Zone" class="admin-dashboard__chart-card h-100">
+            <AppCard title="Complaints by Zone" class="admin-dashboard__chart-card">
               <p class="text-secondary small mb-4">Distribution across department zones</p>
               <ZoneBreakdown :zones="stats.by_zone" />
             </AppCard>
           </div>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 align-items-start">
           <div class="col-12">
             <AppCard title="Complaint Trends" class="admin-dashboard__chart-card">
               <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
@@ -231,6 +231,14 @@ onMounted(() => {
   width: 100%;
   min-width: 0;
 }
+.admin-dashboard .row > *,
+.admin-dashboard__chart-card {
+  min-width: 0;
+  min-height: 0;
+}
+.admin-dashboard__chart-card {
+  height: auto;
+}
 .admin-dashboard__chart-card :deep(.card-header) {
   padding: var(--ns-space-24) var(--ns-space-24) 0;
   border-bottom: 0;
@@ -239,6 +247,7 @@ onMounted(() => {
 .admin-dashboard__chart-card :deep(.card-body) {
   padding: var(--ns-space-12) var(--ns-space-24) var(--ns-space-24);
   min-width: 0;
+  min-height: 0;
 }
 .admin-dashboard__state {
   padding: var(--ns-space-24);

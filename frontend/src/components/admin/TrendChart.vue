@@ -186,9 +186,11 @@ const chartOptions = {
 
 <style scoped>
 .trend-chart {
+  position: relative;
   width: 100%;
-  height: 100%;
-  min-height: 280px;
+  height: 320px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .trend-chart__empty {
@@ -201,7 +203,8 @@ const chartOptions = {
 .trend-chart__container {
   width: 100%;
   height: 100%;
-  min-height: 280px;
+  min-width: 0;
+  min-height: 0;
   position: relative;
 }
 </style>
