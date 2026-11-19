@@ -174,3 +174,11 @@ def test_session_key_format():
     assert session_key(12345) == "tg:session:12345"
     assert session_key("user_abc") == "tg:session:user_abc"
 
+
+def test_state_enum_has_only_valid_live_states():
+    assert [s.value for s in State] == [
+        "AWAITING_INPUT",
+        "AWAITING_LOCATION",
+        "SUMMARY",
+    ]
+

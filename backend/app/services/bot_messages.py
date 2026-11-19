@@ -10,7 +10,6 @@ __all__ = [
     "IST",
     "HELP_TEXT",
     "MSG_CANCELLED",
-    "MSG_CHOOSE_CATEGORY",
     "MSG_EXPIRED",
     "MSG_GENERIC_ERROR",
     "MSG_IMAGE_REJECTED",
@@ -28,7 +27,6 @@ __all__ = [
     "MSG_TRACK_PROMPT",
     "MSG_USE_BUTTONS",
     "WELCOME_TEXT",
-    "category_keyboard",
     "format_completion",
     "format_detected",
     "format_eta",
@@ -66,8 +64,6 @@ MSG_NEW_REPORT = (
 MSG_TRACK_PROMPT = "🔎 Send me your grievance code, for example GRV-2026-AB12."
 
 MSG_LOCATION_RECEIVED = "📍 Got it! Location saved."
-
-MSG_CHOOSE_CATEGORY = "🗂 No problem. Which category fits best?"
 
 MSG_EXPIRED = (
     "⌛ This request timed out after 20 minutes of inactivity. "
@@ -173,7 +169,7 @@ def format_summary(
     msg += f"\n⏳ Estimated time: {format_eta(sla_hours)}"
     msg += (
         "\n\nAll correct? Tap Confirm & Submit.\n"
-        "Wrong category? Tap Change category.\n"
+        "Something wrong? Tap Cancel and start again.\n"
         "Want to add details? Just type a short note."
     )
     return msg
@@ -239,13 +235,6 @@ def format_my_complaints(complaints: list[SimpleNamespace | Any]) -> str:
 def summary_keyboard() -> dict:
     return inline_keyboard(
         [
-            [("Confirm & Submit", "sub:yes")],
-            [("Change category", "sub:cat"), ("Cancel", "sub:no")],
+            [("Confirm & Submit", "sub:yes"), ("Cancel", "sub:no")],
         ]
     )
-
-
-def category_keyboard(names: list[str]) -> dict:
-    rows = [[(name, f"cat:{i}")] for i, name in enumerate(names)]
-    rows.append([("Back", "cat:back")])
-    return inline_keyboard(rows)
