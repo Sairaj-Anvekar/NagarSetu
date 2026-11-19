@@ -27,6 +27,11 @@ const sortedCategories = computed(() => {
   return [...props.categories].sort((a, b) => (b.count || 0) - (a.count || 0))
 })
 
+const chartHeight = computed(() => {
+  const rows = sortedCategories.value.length
+  return rows === 0 ? 320 : Math.min(420, Math.max(260, rows * 44))
+})
+
 const ariaLabel = computed(() => {
   if (sortedCategories.value.length === 0) return 'Complaints by category: No data'
   const summary = sortedCategories.value.map((item) => `${item.category} ${item.count}`).join(', ')
@@ -80,7 +85,7 @@ const chartOptions = {
 </script>
 
 <template>
-  <div class="category-chart">
+  <div class="category-chart" :style="{ height: `${chartHeight}px` }">
     <div v-if="sortedCategories.length === 0" class="category-chart__empty text-muted">No data</div>
     <div v-else class="category-chart__container" role="img" :aria-label="ariaLabel">
       <Bar :data="chartData" :options="chartOptions" />
@@ -90,9 +95,10 @@ const chartOptions = {
 
 <style scoped>
 .category-chart {
+  position: relative;
   width: 100%;
-  height: 100%;
-  min-height: 240px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .category-chart__empty {
@@ -105,7 +111,8 @@ const chartOptions = {
 .category-chart__container {
   width: 100%;
   height: 100%;
-  min-height: 240px;
+  min-width: 0;
+  min-height: 0;
   position: relative;
 }
 </style>

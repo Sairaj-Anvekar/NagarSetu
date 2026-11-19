@@ -25,6 +25,22 @@ import TrendChart from '../TrendChart.vue'
 import { getChartTheme } from '../../../utils/chartTheme'
 
 describe('TrendChart', () => {
+  it('keeps the chart inside its own box when trend data changes', async () => {
+    const wrapper = mount(TrendChart, {
+      props: { trends: [{ date: '2026-11-14', created: 2, completed: 1 }] },
+    })
+    const box = wrapper.get('.trend-chart')
+    expect(box.get('.trend-chart__container').findComponent({ name: 'Line' }).exists()).toBe(true)
+    expect(box.getComponent({ name: 'Line' }).props('options')).toMatchObject({
+      responsive: true,
+      maintainAspectRatio: false,
+    })
+    await wrapper.setProps({ trends: [] })
+    expect(wrapper.get('.trend-chart').element).toBe(box.element)
+    expect(box.get('.trend-chart__empty').text()).toBe('No data')
+    wrapper.unmount()
+  })
+
   it('uses line legend swatches, hover-only markers and a guarded gradient fill', () => {
     const wrapper = mount(TrendChart, {
       props: { trends: [{ date: '2026-11-14', created: 2, completed: 1 }] },
