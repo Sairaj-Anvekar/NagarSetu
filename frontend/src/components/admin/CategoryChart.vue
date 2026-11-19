@@ -10,8 +10,10 @@ import {
   LinearScale,
 } from 'chart.js'
 import { Bar } from 'vue-chartjs'
+import { getChartTheme } from '../../utils/chartTheme'
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
+const theme = getChartTheme()
 
 const props = defineProps({
   categories: {
@@ -37,8 +39,10 @@ const chartData = computed(() => ({
     {
       label: 'Complaints',
       data: sortedCategories.value.map((item) => item.count),
-      backgroundColor: '#0B6E99',
-      borderRadius: 4,
+      backgroundColor: sortedCategories.value.map((_, index) => theme.palette[index % 6]),
+      borderRadius: 8,
+      borderSkipped: false,
+      maxBarThickness: 24,
     },
   ],
 }))
@@ -59,9 +63,17 @@ const chartOptions = {
   scales: {
     x: {
       beginAtZero: true,
+      border: { display: false, dash: [2, 4] },
+      grid: { color: theme.grid, drawTicks: false },
       ticks: {
         precision: 0,
+        color: theme.slate,
       },
+    },
+    y: {
+      border: { display: false },
+      grid: { display: false },
+      ticks: { color: theme.slate, autoSkip: false },
     },
   },
 }
