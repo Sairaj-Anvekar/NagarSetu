@@ -595,12 +595,10 @@ def test_location_intake_ordering_and_summary(
     msg2 = fake_client.sent_messages[1]
     assert "Please review your complaint" in msg2["text"]
     assert "Test Locality, Solapur" in msg2["text"]
-    cb_datas = [
-        btn["callback_data"]
-        for row in msg2["reply_markup"]["inline_keyboard"]
-        for btn in row
-    ]
-    assert cb_datas == ["sub:yes", "sub:cat", "sub:no"]
+    rows = msg2["reply_markup"]["inline_keyboard"]
+    assert len(rows) == 1
+    cb_datas = [btn["callback_data"] for row in rows for btn in row]
+    assert cb_datas == ["sub:yes", "sub:no"]
     _assert_message_invariants(fake_client)
 
 
@@ -687,60 +685,6 @@ def test_summary_state_text_and_location_updates(
     _assert_message_invariants(fake_client)
 
 
-def test_category_change_callbacks(
-    fake_db: FakeDB,
-    fake_client: FakeClient,
-    fake_redis: FakeRedis,
-) -> None:
-    bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=1, text="qqzz xx")
-    )
-    bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=2, latitude=17.684, longitude=75.880)
-    )
-
-    # Tap "Change category"
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=3, callback_data="sub:cat")
-    )
-    sess = session_service.load_session(123456)
-    assert sess["state"] == session_service.State.AWAITING_CATEGORY
-    cat_msg = fake_client.sent_messages[-1]
-    assert bot_messages.MSG_CHOOSE_CATEGORY in cat_msg["text"]
-    rows = cat_msg["reply_markup"]["inline_keyboard"]
-    assert len(rows) == 7
-    assert rows[6][0]["callback_data"] == "cat:back"
-
-    # Tap "cat:9" (bad index) -> MSG_USE_BUTTONS
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=4, callback_data="cat:9")
-    )
-    assert bot_messages.MSG_USE_BUTTONS in fake_client.sent_messages[-1]["text"]
-
-    # Tap "cat:back" -> category unchanged, returns to summary
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=5, callback_data="cat:back")
-    )
-    sess = session_service.load_session(123456)
-    assert sess["state"] == session_service.State.SUMMARY
-    assert "Please review your complaint" in fake_client.sent_messages[-1]["text"]
-
-    # Tap "sub:cat" then "cat:4" -> sets "Illegal Encroachment" with source "manual"
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=6, callback_data="sub:cat")
-    )
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=7, callback_data="cat:4")
-    )
-    sess = session_service.load_session(123456)
-    assert sess["category"] == "Illegal Encroachment"
-    assert sess["source"] == "manual"
-    assert sess["confidence"] == 0.30
-    assert sess["state"] == session_service.State.SUMMARY
-    assert "Illegal Encroachment" in fake_client.sent_messages[-1]["text"]
-    _assert_message_invariants(fake_client)
-
-
 def test_button_stripping_and_failed_save_retention(
     fake_db: FakeDB,
     fake_client: FakeClient,
@@ -754,22 +698,8 @@ def test_button_stripping_and_failed_save_retention(
         fake_db, fake_client, _msg_update(update_id=2, latitude=17.684, longitude=75.880)
     )
 
-    # sub:cat triggers edit_message_reply_markup
-    fake_client.edited_markups.clear()
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=3, callback_data="sub:cat")
-    )
-    assert len(fake_client.edited_markups) == 1
-    assert fake_client.edited_markups[0]["message_id"] == 100
-
-    # cat:back triggers edit_message_reply_markup
-    fake_client.edited_markups.clear()
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=4, callback_data="cat:back")
-    )
-    assert len(fake_client.edited_markups) == 1
-
     # Simulate save failure on submit
+    orig_create = complaint_service.create_complaint
     monkeypatch.setattr(
         complaint_service,
         "create_complaint",
@@ -777,7 +707,7 @@ def test_button_stripping_and_failed_save_retention(
     )
     fake_client.edited_markups.clear()
     bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=5, callback_data="sub:yes")
+        fake_db, fake_client, _cb_update(update_id=3, callback_data="sub:yes")
     )
     # Buttons NOT stripped on failed save
     assert len(fake_client.edited_markups) == 0
@@ -785,35 +715,114 @@ def test_button_stripping_and_failed_save_retention(
     assert session_service.load_session(123456) is not None
     assert fake_db.rollback_count >= 1
     assert bot_messages.MSG_SAVE_FAILED in fake_client.sent_messages[-1]["text"]
+
+    # Retry submit after save recovers -> buttons stripped and session cleared
+    monkeypatch.setattr(complaint_service, "create_complaint", orig_create)
+    fake_client.edited_markups.clear()
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
+    )
+    assert len(fake_client.edited_markups) == 1
+    assert fake_client.edited_markups[0]["message_id"] == 100
+    assert session_service.load_session(123456) is None
     _assert_message_invariants(fake_client)
 
 
-def test_wrong_state_callbacks_and_legacy_session(
+def test_wrong_state_callbacks(
     fake_db: FakeDB,
     fake_client: FakeClient,
     fake_redis: FakeRedis,
     mock_domain_services: dict[str, list[Any]],
 ) -> None:
-    # 1. sub:yes in AWAITING_LOCATION
     sess = session_service.new_session()
     sess["state"] = session_service.State.AWAITING_LOCATION.value
     sess["category"] = "Roads"
     session_service.save_session(123456, sess)
 
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=1, callback_data="sub:yes")
-    )
-    assert bot_messages.MSG_USE_BUTTONS in fake_client.sent_messages[-1]["text"]
-    assert len(mock_domain_services["created_complaints"]) == 0
+    for idx, cb_data in enumerate(["sub:yes", "sub:no"], start=1):
+        bot_handler.handle_update(
+            fake_db, fake_client, _cb_update(update_id=idx, callback_data=cb_data)
+        )
+        assert bot_messages.MSG_USE_BUTTONS in fake_client.sent_messages[-1]["text"]
+        assert len(mock_domain_services["created_complaints"]) == 0
+        assert session_service.load_session(123456) == sess
 
-    # 2. Legacy session in AWAITING_CONFIRMATION deleted on next message
-    sess["state"] = session_service.State.AWAITING_CONFIRMATION.value
+    _assert_message_invariants(fake_client)
+
+
+@pytest.mark.parametrize(
+    "bad_state",
+    ["AWAITING_CATEGORY", "AWAITING_CONFIRMATION", "BOGUS"],
+)
+def test_invalid_or_legacy_session_state_discarded_with_photo(
+    bad_state: str,
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+) -> None:
+    key = f"complaints/legacy-{bad_state}/photo.jpg"
+    fake_storage.put_object(key, b"fake-jpeg", "image/jpeg")
+
+    sess = session_service.new_session()
+    sess["state"] = bad_state
+    sess["image_key"] = key
     session_service.save_session(123456, sess)
+
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=2, text="hello")
+        fake_db, fake_client, _msg_update(update_id=1, text="hello")
     )
     assert bot_messages.MSG_EXPIRED in fake_client.sent_messages[-1]["text"]
     assert session_service.load_session(123456) is None
+    assert not fake_storage.object_exists(key)
+    assert key in fake_storage.delete_calls
+
+    # Also verify a callback on a leftover invalid session discards photo and expires
+    key_cb = f"complaints/legacy-cb-{bad_state}/photo.jpg"
+    fake_storage.put_object(key_cb, b"fake-jpeg", "image/jpeg")
+    sess_cb = session_service.new_session()
+    sess_cb["state"] = bad_state
+    sess_cb["image_key"] = key_cb
+    session_service.save_session(123456, sess_cb)
+
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="sub:yes")
+    )
+    assert bot_messages.MSG_EXPIRED in fake_client.sent_messages[-1]["text"]
+    assert session_service.load_session(123456) is None
+    assert not fake_storage.object_exists(key_cb)
+    assert key_cb in fake_storage.delete_calls
+    _assert_message_invariants(fake_client)
+
+
+def test_removed_and_unknown_callbacks_reply_use_buttons(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    mock_domain_services: dict[str, list[Any]],
+) -> None:
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=1, text="Broken streetlight")
+    )
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+    )
+    before = session_service.load_session(123456)
+    assert before is not None
+    assert before["state"] == session_service.State.SUMMARY
+
+    fake_client.edited_markups.clear()
+    for idx, cb_data in enumerate(["sub:cat", "cat:0", "cat:back", "cat:xyz"], start=3):
+        bot_handler.handle_update(
+            fake_db, fake_client, _cb_update(update_id=idx, callback_data=cb_data)
+        )
+        assert bot_messages.MSG_USE_BUTTONS in fake_client.sent_messages[-1]["text"]
+        assert len(mock_domain_services["created_complaints"]) == 0
+        assert session_service.load_session(123456) == before
+
+    assert len(fake_client.edited_markups) == 0
     _assert_message_invariants(fake_client)
 
 
@@ -901,36 +910,6 @@ def test_full_happy_path_captioned_photo(
 
     assert len(mock_domain_services["assigned_complaints"]) == 1
     assert fake_db.commit_count == 1
-    _assert_message_invariants(fake_client)
-
-
-def test_full_happy_path_manual_category_change(
-    fake_db: FakeDB,
-    fake_client: FakeClient,
-    fake_redis: FakeRedis,
-    mock_domain_services: dict[str, list[Any]],
-) -> None:
-    bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=1, text="qqzz xx")
-    )
-    bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=2, latitude=17.684, longitude=75.880)
-    )
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=3, callback_data="sub:cat")
-    )
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=4, callback_data="cat:4")
-    )
-    bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=5, callback_data="sub:yes")
-    )
-
-    assert len(mock_domain_services["triage_entries"]) == 0
-    created = mock_domain_services["created_complaints"]
-    assert len(created) == 1
-    assert created[0]["category"] == "Illegal Encroachment"
-    assert created[0]["ai_classification_source"] == "manual"
     _assert_message_invariants(fake_client)
 
 
@@ -1400,63 +1379,5 @@ def test_photo_clear_prediction_confidence_095_creates_no_triage(
     )
 
     assert len(mock_domain_services["triage_entries"]) == 0
-    _assert_message_invariants(fake_client)
-
-
-def test_manual_category_choice_after_needs_review_creates_no_triage(
-    fake_db: FakeDB,
-    fake_client: FakeClient,
-    fake_redis: FakeRedis,
-    fake_storage: FakeStorage,
-    mock_domain_services: dict[str, list[Any]],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    pred = classification_service.Prediction(
-        category="Solid Waste & Garbage",
-        confidence=0.55,
-        source="image",
-        model="mobilenetv2-v2",
-        needs_review=True,
-    )
-    monkeypatch.setattr(classification_service, "classify_image", lambda *a, **kw: pred)
-
-    jpeg = _make_jpeg_bytes()
-    fake_client.files["f_manual"] = jpeg
-
-    bot_handler.handle_update(
-        fake_db,
-        fake_client,
-        _msg_update(
-            update_id=1,
-            photo_file_id="f_manual",
-            photo_file_size=len(jpeg),
-        ),
-    )
-    bot_handler.handle_update(
-        fake_db,
-        fake_client,
-        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
-    )
-    bot_handler.handle_update(
-        fake_db,
-        fake_client,
-        _cb_update(update_id=3, callback_data="sub:cat"),
-    )
-    bot_handler.handle_update(
-        fake_db,
-        fake_client,
-        _cb_update(update_id=4, callback_data="cat:1"),
-    )
-    bot_handler.handle_update(
-        fake_db,
-        fake_client,
-        _cb_update(update_id=5, callback_data="sub:yes"),
-    )
-
-    assert len(mock_domain_services["triage_entries"]) == 0
-    created = mock_domain_services["created_complaints"]
-    assert len(created) == 1
-    assert created[0]["category"] == "Potholes & Road Damage"
-    assert created[0]["ai_classification_source"] == "manual"
     _assert_message_invariants(fake_client)
 

@@ -6,7 +6,6 @@ from types import SimpleNamespace
 
 import httpx
 
-from app.core.categories import category_names
 from app.services import bot_messages
 from app.services.telegram_api import TelegramClient
 
@@ -18,7 +17,6 @@ def test_message_constants_non_empty_and_no_brackets() -> None:
         bot_messages.MSG_NEW_REPORT,
         bot_messages.MSG_TRACK_PROMPT,
         bot_messages.MSG_LOCATION_RECEIVED,
-        bot_messages.MSG_CHOOSE_CATEGORY,
         bot_messages.MSG_EXPIRED,
         bot_messages.MSG_USE_BUTTONS,
         bot_messages.MSG_CANCELLED,
@@ -104,6 +102,8 @@ def test_format_summary() -> None:
     assert "Photo" not in s1
     assert "Target" not in s1
     assert "All correct? Tap Confirm & Submit." in s1
+    assert "Something wrong? Tap Cancel" in s1
+    assert "Change category" not in s1
 
     # With description and with photo
     s2 = bot_messages.format_summary(
@@ -206,31 +206,18 @@ def test_format_my_complaints() -> None:
 
 def test_keyboards_callback_data_and_structure() -> None:
     sum_kb = bot_messages.summary_keyboard()
-    cat_kb = bot_messages.category_keyboard(category_names())
 
-    for kb in [sum_kb, cat_kb]:
-        for row in kb["inline_keyboard"]:
-            for button in row:
-                cb_data = button["callback_data"]
-                assert len(cb_data.encode("utf-8")) <= 64
+    for row in sum_kb["inline_keyboard"]:
+        for button in row:
+            cb_data = button["callback_data"]
+            assert len(cb_data.encode("utf-8")) <= 64
 
-    # summary_keyboard data is exactly sub:yes, sub:cat, sub:no
     sum_rows = sum_kb["inline_keyboard"]
-    assert len(sum_rows) == 2
-    assert [b["callback_data"] for b in sum_rows[0]] == ["sub:yes"]
-    assert [b["callback_data"] for b in sum_rows[1]] == ["sub:cat", "sub:no"]
+    assert len(sum_rows) == 1
+    assert len(sum_rows[0]) == 2
+    assert [b["callback_data"] for b in sum_rows[0]] == ["sub:yes", "sub:no"]
     assert sum_rows[0][0]["text"] == "Confirm & Submit"
-    assert sum_rows[1][0]["text"] == "Change category"
-    assert sum_rows[1][1]["text"] == "Cancel"
-
-    # category_keyboard(category_names()) has 6 category buttons cat:0 to cat:5 plus cat:back
-    cat_rows = cat_kb["inline_keyboard"]
-    assert len(cat_rows) == 7
-    for i in range(6):
-        assert cat_rows[i][0]["callback_data"] == f"cat:{i}"
-        assert cat_rows[i][0]["text"] == category_names()[i]
-    assert cat_rows[6][0]["callback_data"] == "cat:back"
-    assert cat_rows[6][0]["text"] == "Back"
+    assert sum_rows[0][1]["text"] == "Cancel"
 
 
 def test_telegram_client_get_me() -> None:

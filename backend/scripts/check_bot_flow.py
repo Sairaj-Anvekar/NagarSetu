@@ -22,6 +22,7 @@ from app.models import (
 from app.services import (
     bot_handler,
     bot_messages,
+    classification_service,
     geocode_service,
     image_service,
     notification_service,
@@ -220,6 +221,29 @@ def main() -> None:
         lambda lat, lon, client=None: "Test Locality, Solapur"
     )
 
+    orig_classify_image = classification_service.classify_image
+
+    def stub_classify_image(
+        data: bytes, hint: str | None = None
+    ) -> classification_service.Prediction:
+        if hint and "pothole" in hint.lower():
+            return classification_service.Prediction(
+                category="Potholes & Road Damage",
+                confidence=0.85,
+                source="image",
+                model="stub",
+                needs_review=False,
+            )
+        return classification_service.Prediction(
+            category="Solid Waste & Garbage",
+            confidence=0.30,
+            source="image",
+            model="stub",
+            needs_review=True,
+        )
+
+    classification_service.classify_image = stub_classify_image
+
     orig_make_client = notification_service._make_client
 
     used_chat_ids: set[int] = set()
@@ -242,6 +266,11 @@ def main() -> None:
         print(f"Check {num} ({name}): {status_text}")
         if not passed:
             sys.exit(1)
+
+    def has_two_summary_buttons(msg: dict[str, Any]) -> bool:
+        rows = (msg.get("reply_markup") or {}).get("inline_keyboard") or []
+        cb_datas = [btn["callback_data"] for row in rows for btn in row]
+        return len(rows) == 1 and cb_datas == ["sub:yes", "sub:no"]
 
     start_counts: dict[str, int] = {}
 
@@ -316,12 +345,14 @@ def main() -> None:
             commit=db.flush,
         )
         summary_msg_3 = client_3.messages[-1]["text"]
+        summary_buttons_ok_3 = has_two_summary_buttons(client_3.messages[-1])
         sess_3_mid = session_service.load_session(cid_3)
         ttl_3_mid = real_redis.ttl(session_service.session_key(cid_3))
         mid_flow_ok_3 = (
             sess_3_mid is not None
             and real_redis.exists(session_service.session_key(cid_3)) == 1
             and 1 <= ttl_3_mid <= 1200
+            and summary_buttons_ok_3
         )
         bot_handler.handle_update(
             db,
@@ -393,6 +424,7 @@ def main() -> None:
             make_msg(next_uid(), cid_4, latitude=17.68, longitude=75.875),
             commit=db.flush,
         )
+        summary_buttons_ok_4 = has_two_summary_buttons(client_4.messages[-1])
         bot_handler.handle_update(
             db,
             client_4,
@@ -414,7 +446,8 @@ def main() -> None:
         ).scalar_one_or_none()
 
         ok_4 = (
-            complaint_4.category == "Potholes & Road Damage"
+            summary_buttons_ok_4
+            and complaint_4.category == "Potholes & Road Damage"
             and assign_4 is not None
             and assign_4.worker is not None
             and assign_4.worker.phone == "+919000000002"
@@ -447,6 +480,7 @@ def main() -> None:
             make_msg(next_uid(), cid_5, latitude=17.675, longitude=75.865),
             commit=db.flush,
         )
+        summary_buttons_ok_5 = has_two_summary_buttons(client_5.messages[-1])
         bot_handler.handle_update(
             db,
             client_5,
@@ -467,15 +501,16 @@ def main() -> None:
         ).scalar_one_or_none()
 
         ok_5 = (
-            not_sure_present
+            summary_buttons_ok_5
+            and not_sure_present
             and triage_5 is not None
             and triage_5.status.lower() == "pending"
             and round(triage_5.ai_confidence, 2) == 0.30
         )
         run_check(5, "photo without caption queues triage with confidence 0.30", ok_5)
 
-        # Check 6: text "qqzz xx" -> sub:cat -> cat:4 -> sub:yes
-        # -> Illegal Encroachment, manual, NO triage
+        # Check 6: removed category callbacks in SUMMARY reply use-the-buttons
+        # and leave the Redis session unchanged
         cid_6 = next_chat_id()
         client_6 = FakeBotClient()
         bot_handler.handle_update(
@@ -490,43 +525,42 @@ def main() -> None:
             make_msg(next_uid(), cid_6, latitude=17.684, longitude=75.880),
             commit=db.flush,
         )
+        summary_buttons_ok_6 = has_two_summary_buttons(client_6.messages[-1])
+        sess_6_before = session_service.load_session(cid_6)
+
         bot_handler.handle_update(
             db,
             client_6,
             make_cb(next_uid(), cid_6, "sub:cat"),
             commit=db.flush,
         )
+        reply_sub_cat = client_6.messages[-1]["text"]
+        sess_6_after_sub_cat = session_service.load_session(cid_6)
+
         bot_handler.handle_update(
             db,
             client_6,
-            make_cb(next_uid(), cid_6, "cat:4"),
+            make_cb(next_uid(), cid_6, "cat:0"),
             commit=db.flush,
         )
-        bot_handler.handle_update(
-            db,
-            client_6,
-            make_cb(next_uid(), cid_6, "sub:yes"),
-            commit=db.flush,
-        )
+        reply_cat_0 = client_6.messages[-1]["text"]
+        sess_6_after_cat_0 = session_service.load_session(cid_6)
 
         citizen_6 = db.execute(
             select(Citizen).where(Citizen.telegram_chat_id == cid_6)
-        ).scalar_one()
-        complaint_6 = db.execute(
-            select(Complaint).where(Complaint.citizen_id == citizen_6.id)
-        ).scalar_one()
-        triage_6 = db.execute(
-            select(TriageQueue).where(
-                TriageQueue.complaint_id == complaint_6.id
-            )
-        ).scalars().all()
+        ).scalar_one_or_none()
 
         ok_6 = (
-            complaint_6.category == "Illegal Encroachment"
-            and complaint_6.ai_classification_source == "manual"
-            and len(triage_6) == 0
+            summary_buttons_ok_6
+            and sess_6_before is not None
+            and sess_6_before["state"] == session_service.State.SUMMARY
+            and bot_messages.MSG_USE_BUTTONS in reply_sub_cat
+            and sess_6_after_sub_cat == sess_6_before
+            and bot_messages.MSG_USE_BUTTONS in reply_cat_0
+            and sess_6_after_cat_0 == sess_6_before
+            and citizen_6 is None
         )
-        run_check(6, "manual category override", ok_6)
+        run_check(6, "removed category callbacks leave SUMMARY session unchanged", ok_6)
 
         # Check 7: location 17.00, 75.50 (outside every zone) -> zone None,
         # no assignment, gets tracking code
@@ -546,6 +580,7 @@ def main() -> None:
             make_msg(next_uid(), cid_7, latitude=17.00, longitude=75.50),
             commit=db.flush,
         )
+        summary_buttons_ok_7 = has_two_summary_buttons(client_7.messages[-1])
         bot_handler.handle_update(
             db,
             client_7,
@@ -567,7 +602,8 @@ def main() -> None:
         ).scalars().all()
 
         ok_7 = (
-            complaint_7.zone_id is None
+            summary_buttons_ok_7
+            and complaint_7.zone_id is None
             and len(assign_7) == 0
             and complaint_7.tracking_code in client_7.messages[-1]["text"]
         )
@@ -646,12 +682,14 @@ def main() -> None:
             make_msg(next_uid(), cid_8c, latitude=17.684, longitude=75.880),
             commit=db.flush,
         )
+        summary_buttons_ok_8c = has_two_summary_buttons(client_8c.messages[-1])
         sess_8c_mid = session_service.load_session(cid_8c)
         ttl_8c_mid = real_redis.ttl(session_service.session_key(cid_8c))
         mid_ok_8c = (
             sess_8c_mid is not None
             and real_redis.exists(session_service.session_key(cid_8c)) == 1
             and 1 <= ttl_8c_mid <= 1200
+            and summary_buttons_ok_8c
         )
         bot_handler.handle_update(
             db,
@@ -858,6 +896,7 @@ def main() -> None:
         db.rollback()
         real_storage.put_object = orig_put
         geocode_service.reverse_geocode = orig_reverse_geocode
+        classification_service.classify_image = orig_classify_image
         notification_service._make_client = orig_make_client
         nsfw_check_service.set_classifier(None)
 

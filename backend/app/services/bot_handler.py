@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.categories import CATEGORIES, category_names
+from app.core.categories import CATEGORIES
 from app.core.config import get_settings
 from app.models import Zone
 from app.services import (
@@ -35,6 +35,7 @@ from app.services.telegram_api import (
 logger = logging.getLogger(__name__)
 
 TRACKING_CODE = re.compile(r"^GRV-\d{4}-[A-Za-z0-9]{4}$", re.I)
+_VALID_STATES = frozenset(state.value for state in session_service.State)
 
 
 def _best_effort(fn: Any, *args: Any) -> None:
@@ -281,7 +282,9 @@ def _handle_callback(
     commit: Any,
 ) -> None:
     session = session_service.load_session(inc.chat_id)
-    if session is None:
+    if session is None or session.get("state") not in _VALID_STATES:
+        if session is not None:
+            _discard(inc.chat_id, session)
         _strip_buttons(client, inc)
         _say(client, inc.chat_id, bot_messages.MSG_EXPIRED)
         return
@@ -296,21 +299,6 @@ def _handle_callback(
         _submit(db, client, inc, session, now, commit)
         return
 
-    if data == "sub:cat":
-        if state != session_service.State.SUMMARY:
-            _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
-            return
-        session["state"] = session_service.State.AWAITING_CATEGORY.value
-        session_service.save_session(inc.chat_id, session)
-        _strip_buttons(client, inc)
-        _say(
-            client,
-            inc.chat_id,
-            bot_messages.MSG_CHOOSE_CATEGORY,
-            markup=bot_messages.category_keyboard(category_names()),
-        )
-        return
-
     if data == "sub:no":
         if state != session_service.State.SUMMARY:
             _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
@@ -323,38 +311,6 @@ def _handle_callback(
             bot_messages.MSG_CANCELLED,
             markup=main_menu_keyboard(),
         )
-        return
-
-    if data == "cat:back":
-        if state != session_service.State.AWAITING_CATEGORY:
-            _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
-            return
-        session["state"] = session_service.State.SUMMARY.value
-        session_service.save_session(inc.chat_id, session)
-        _strip_buttons(client, inc)
-        _show_summary(client, inc.chat_id, session, now)
-        return
-
-    if data.startswith("cat:"):
-        if state != session_service.State.AWAITING_CATEGORY:
-            _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
-            return
-        idx_str = data[4:]
-        names = category_names()
-        try:
-            idx = int(idx_str)
-            if not (0 <= idx < 6 and idx < len(names)):
-                raise ValueError
-        except ValueError:
-            _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
-            return
-
-        session["category"] = names[idx]
-        session["source"] = "manual"
-        session["state"] = session_service.State.SUMMARY.value
-        session_service.save_session(inc.chat_id, session)
-        _strip_buttons(client, inc)
-        _show_summary(client, inc.chat_id, session, now)
         return
 
     _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
@@ -401,10 +357,6 @@ def _handle_message_in_state(
             _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
             return
 
-        _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
-        return
-
-    if state == session_service.State.AWAITING_CATEGORY:
         _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
         return
 
@@ -623,11 +575,8 @@ def handle_update(
 
     session = session_service.load_session(inc.chat_id)
 
-    # Legacy/expired states
-    if session is not None and session.get("state") in (
-        session_service.State.AWAITING_CONFIRMATION,
-        session_service.State.AWAITING_DESCRIPTION,
-    ):
+    # Discard sessions with legacy or unknown states
+    if session is not None and session.get("state") not in _VALID_STATES:
         _discard(inc.chat_id, session)
         _say(client, inc.chat_id, bot_messages.MSG_EXPIRED)
         return
@@ -661,7 +610,6 @@ def handle_update(
     if state in (
         session_service.State.AWAITING_LOCATION,
         session_service.State.SUMMARY,
-        session_service.State.AWAITING_CATEGORY,
     ):
         _handle_message_in_state(db, client, inc, session, now, commit)
         return
