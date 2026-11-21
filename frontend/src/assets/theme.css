@@ -42,6 +42,19 @@
   --ns-login-button-shadow: 0 10px 22px rgba(11, 114, 133, 0.35);
   --ns-login-switch-shadow: 0 2px 8px rgba(11, 114, 133, 0.16);
 
+  /* Worker shell: reuse matching login and shared tokens. */
+  --ns-worker-page-bg: #F3F6FA;
+  --ns-worker-tab-border: #E3EAF0;
+  --ns-worker-tab-active: #0B6A7C;
+  --ns-worker-tab-pill-bg: #D8F1F3;
+  --ns-worker-tab-shadow: 0 -8px 24px rgba(14, 34, 51, 0.06);
+  --ns-worker-tab-height: 76px;
+  --ns-worker-header-glow: rgba(45, 212, 191, 0.34);
+  --ns-worker-header-muted: #B7C7D4;
+  --ns-worker-header-radius: 26px;
+  --ns-worker-chip-bg: rgba(255, 255, 255, 0.12);
+  --ns-worker-chip-text: #E8F2F8;
+
   --ns-space-4: 4px;
   --ns-space-8: 8px;
   --ns-space-12: 12px;

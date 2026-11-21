@@ -32,7 +32,9 @@ const { isOnline } = useOnlineStatus()
 <style scoped>
 .ns-worker-layout {
   min-height: 100vh;
-  background-color: var(--ns-mist);
+  min-height: 100dvh;
+  background-color: var(--ns-worker-page-bg);
+  font-family: var(--ns-font-body);
   display: flex;
   flex-direction: column;
 }
@@ -61,13 +63,14 @@ const { isOnline } = useOnlineStatus()
 
 #worker-main {
   flex: 1;
+  min-width: 0;
   outline: none;
 }
 
 .ns-worker-layout__content {
   max-width: 640px;
   margin: 0 auto;
-  padding: 16px;
-  padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px);
+  padding: var(--ns-space-16);
+  padding-bottom: calc(var(--ns-worker-tab-height) + env(safe-area-inset-bottom, 0px) + var(--ns-space-16));
 }
 </style>
