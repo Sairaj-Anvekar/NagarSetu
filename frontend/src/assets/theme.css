@@ -17,6 +17,31 @@
   --ns-radius-control: 10px;
   --ns-radius-pill: 999px;
 
+  /* Login design: shared tokens above remain unchanged. */
+  --ns-login-navy: #0E2233;
+  --ns-login-teal: #0B7285;
+  --ns-login-teal-dark: #0E4F6B;
+  --ns-login-accent: #2DD4BF;
+  --ns-login-pill-text: #7EE8D9;
+  --ns-login-text-muted: #4B5B6B;
+  --ns-login-text-secondary: #5F6F7E;
+  --ns-login-control-text: #0B5C70;
+  --ns-login-placeholder: #7A8896;
+  --ns-login-field-border: #D5DEE7;
+  --ns-login-field-bg: #F6F9FB;
+  --ns-login-switch-bg: #EEF3F7;
+  --ns-login-glow: rgba(45, 212, 191, 0.38);
+  --ns-login-pill-bg: rgba(45, 212, 191, 0.16);
+  --ns-login-grid: rgba(255, 255, 255, 0.05);
+  --ns-login-radius-field: 14px;
+  --ns-login-radius-sheet: 28px;
+  --ns-login-gradient: linear-gradient(135deg, var(--ns-login-teal), var(--ns-login-teal-dark));
+  --ns-login-brand-gradient: linear-gradient(135deg, var(--ns-login-accent), var(--ns-login-teal));
+  --ns-login-focus-shadow: 0 0 0 4px rgba(11, 114, 133, 0.16);
+  --ns-login-sheet-shadow: 0 -14px 40px rgba(0, 0, 0, 0.28);
+  --ns-login-button-shadow: 0 10px 22px rgba(11, 114, 133, 0.35);
+  --ns-login-switch-shadow: 0 2px 8px rgba(11, 114, 133, 0.16);
+
   --ns-space-4: 4px;
   --ns-space-8: 8px;
   --ns-space-12: 12px;

@@ -31,6 +31,7 @@ describe('router — worker task detail route', () => {
     await router.push('/worker/tasks/abc')
 
     expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/worker/tasks/abc')
+    expect(router.resolve('/login').meta.noNavbar).toBe(true)
   })
 
   it('redirects an admin user from /worker/tasks/abc to /admin', async () => {
