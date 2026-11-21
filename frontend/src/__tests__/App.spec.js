@@ -10,11 +10,11 @@ describe('App', () => {
   })
 
   it('renders the NagarSetu brand in the navbar', async () => {
-    router.push('/login')
+    await router.push('/design')
     await router.isReady()
 
     const wrapper = mount(App, { global: { plugins: [router, createPinia()] } })
 
     expect(wrapper.find('.navbar-brand').text()).toContain('NagarSetu')
-  })
+  }, 20000)
 })

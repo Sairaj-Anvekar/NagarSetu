@@ -36,6 +36,33 @@ describe('WorkerLoginForm — input sanitization and validation', () => {
     expect(pinInput.element.value).toBe('1234')
   })
 
+  it('shows and hides the PIN without changing its value or submitting', async () => {
+    const wrapper = mount(WorkerLoginForm)
+    const pinInput = wrapper.get('#worker-pin')
+    await pinInput.setValue('1234')
+    const toggle = wrapper.get('button[aria-label="Show PIN"]')
+    expect(toggle.attributes('type')).toBe('button')
+    expect(toggle.text()).toBe('Show')
+    expect(pinInput.attributes('type')).toBe('password')
+
+    await toggle.trigger('click')
+    expect(toggle.attributes('aria-label')).toBe('Hide PIN')
+    expect(toggle.text()).toBe('Hide')
+    expect(pinInput.attributes('type')).toBe('text')
+    expect(pinInput.element.value).toBe('1234')
+
+    await pinInput.setValue('a1b2c3d4')
+    expect(pinInput.element.value).toBe('1234')
+    await toggle.trigger('click')
+    expect(toggle.attributes('aria-label')).toBe('Show PIN')
+    expect(toggle.text()).toBe('Show')
+    expect(pinInput.attributes('type')).toBe('password')
+    expect(pinInput.element.value).toBe('1234')
+    expect(mockLoginWorker).not.toHaveBeenCalled()
+    expect(wrapper.emitted('success')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   it('shows validation error for invalid phone and does not call loginWorker', async () => {
     const wrapper = mount(WorkerLoginForm)
     await wrapper.find('input#worker-phone').setValue('123')
@@ -185,5 +212,31 @@ describe('WorkerLoginForm — submission, loading and error handling', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(wrapper.text()).not.toContain('Incorrect phone number or PIN.')
+  })
+
+  it('shows loading inside Sign in and restores the button after a failed request', async () => {
+    let rejectLogin
+    mockLoginWorker.mockReturnValueOnce(new Promise((resolve, reject) => {
+      rejectLogin = reject
+    }))
+    const wrapper = mount(WorkerLoginForm)
+    const submitButton = wrapper.get('button[type="submit"]')
+    expect(submitButton.element.disabled).toBe(false)
+    expect(submitButton.find('[role="status"]').exists()).toBe(false)
+
+    await wrapper.get('#worker-phone').setValue('9876543210')
+    await wrapper.get('#worker-pin').setValue('1234')
+    await wrapper.get('form').trigger('submit')
+    expect(submitButton.element.disabled).toBe(true)
+    expect(submitButton.get('[role="status"]').text()).toContain('Signing in...')
+    expect(submitButton.text()).toContain('Sign in')
+
+    rejectLogin({ response: { status: 401, data: {} } })
+    await flushPromises()
+    expect(submitButton.element.disabled).toBe(false)
+    expect(submitButton.find('[role="status"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Incorrect phone number or PIN.')
+    expect(mockLoginWorker).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
   })
 })

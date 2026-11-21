@@ -6,6 +6,7 @@ vi.mock('chart.js', () => ({
   Title: {},
   Tooltip: {},
   Legend: {},
+  Filler: {},
   LineElement: {},
   PointElement: {},
   CategoryScale: {},
@@ -21,8 +22,64 @@ vi.mock('vue-chartjs', () => ({
 }))
 
 import TrendChart from '../TrendChart.vue'
+import { getChartTheme } from '../../../utils/chartTheme'
 
 describe('TrendChart', () => {
+  it('keeps the chart inside its own box when trend data changes', async () => {
+    const wrapper = mount(TrendChart, {
+      props: { trends: [{ date: '2026-11-14', created: 2, completed: 1 }] },
+    })
+    const box = wrapper.get('.trend-chart')
+    expect(box.get('.trend-chart__container').findComponent({ name: 'Line' }).exists()).toBe(true)
+    expect(box.getComponent({ name: 'Line' }).props('options')).toMatchObject({
+      responsive: true,
+      maintainAspectRatio: false,
+    })
+    await wrapper.setProps({ trends: [] })
+    expect(wrapper.get('.trend-chart').element).toBe(box.element)
+    expect(box.get('.trend-chart__empty').text()).toBe('No data')
+    wrapper.unmount()
+  })
+
+  it('uses line legend swatches, hover-only markers and a guarded gradient fill', () => {
+    const wrapper = mount(TrendChart, {
+      props: { trends: [{ date: '2026-11-14', created: 2, completed: 1 }] },
+    })
+    const line = wrapper.findComponent({ name: 'Line' })
+    const [created, completed] = line.props('data').datasets
+    const theme = getChartTheme()
+    expect(line.props('options').plugins.legend.labels).toMatchObject({
+      usePointStyle: true,
+      pointStyle: 'line',
+      pointStyleWidth: 32,
+    })
+    expect(created).toMatchObject({ borderColor: theme.primary, fill: 'origin', borderDash: [] })
+    expect(completed).toMatchObject({
+      borderColor: theme.completed, fill: false, borderDash: [5, 5],
+    })
+    const swatches = line.props('options').plugins.legend.labels.generateLabels({
+      data: line.props('data'),
+      isDatasetVisible: (index) => index === 0,
+    })
+    expect(swatches).toMatchObject([
+      { text: 'Created', pointStyle: 'line', lineDash: [], hidden: false, datasetIndex: 0 },
+      { text: 'Completed', pointStyle: 'line', lineDash: [5, 5], hidden: true, datasetIndex: 1 },
+    ])
+    for (const dataset of [created, completed]) {
+      expect(dataset.pointRadius).toBe(0)
+      expect(dataset.pointHoverRadius).toBeGreaterThan(0)
+    }
+    expect(created.backgroundColor()).toBe(theme.area)
+    expect(created.backgroundColor({ chart: { ctx: null } })).toBe(theme.area)
+    const gradient = { addColorStop: vi.fn() }
+    const ctx = { createLinearGradient: vi.fn(() => gradient) }
+    expect(created.backgroundColor({ chart: { ctx } })).toBe(theme.area)
+    expect(created.backgroundColor({ chart: { ctx, chartArea: { top: 10, bottom: 100 } } }))
+      .toBe(gradient)
+    expect(ctx.createLinearGradient).toHaveBeenCalledWith(0, 10, 0, 100)
+    expect(gradient.addColorStop.mock.calls).toEqual([[0, theme.area], [1, theme.surface]])
+  })
+
   it('renders two datasets named "Created" (solid) and "Completed" (dashed)', () => {
     const trends = [
       { date: '2026-11-01', created: 3, completed: 2 },

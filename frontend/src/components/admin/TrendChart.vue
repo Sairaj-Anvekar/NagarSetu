@@ -5,22 +5,38 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
   LineElement,
   PointElement,
   CategoryScale,
   LinearScale,
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
+import { getChartTheme } from '../../utils/chartTheme'
 
 ChartJS.register(
   Title,
   Tooltip,
   Legend,
+  Filler,
   LineElement,
   PointElement,
   CategoryScale,
   LinearScale,
 )
+
+const theme = getChartTheme()
+
+function createdArea({ chart } = {}) {
+  const ctx = chart?.ctx
+  const area = chart?.chartArea
+  if (!area || typeof ctx?.createLinearGradient !== 'function') return theme.area
+  const gradient = ctx.createLinearGradient(0, area.top, 0, area.bottom)
+  if (!gradient || typeof gradient.addColorStop !== 'function') return theme.area
+  gradient.addColorStop(0, theme.area)
+  gradient.addColorStop(1, theme.surface)
+  return gradient
+}
 
 const MONTH_NAMES = [
   'Jan',
@@ -81,8 +97,12 @@ const chartData = computed(() => ({
     {
       label: 'Created',
       data: (props.trends || []).map((item) => item.created || 0),
-      borderColor: '#0B6E99',
-      backgroundColor: '#0B6E99',
+      borderColor: theme.primary,
+      backgroundColor: createdArea,
+      fill: 'origin',
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      pointHitRadius: 8,
       borderWidth: 2,
       borderDash: [],
       tension: 0.1,
@@ -90,8 +110,12 @@ const chartData = computed(() => ({
     {
       label: 'Completed',
       data: (props.trends || []).map((item) => item.completed || 0),
-      borderColor: '#0F7A4A',
-      backgroundColor: '#0F7A4A',
+      borderColor: theme.completed,
+      backgroundColor: theme.completed,
+      fill: false,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      pointHitRadius: 8,
       borderWidth: 2,
       borderDash: [5, 5],
       tension: 0.1,
@@ -107,6 +131,22 @@ const chartOptions = {
     legend: {
       display: true,
       position: 'top',
+      labels: {
+        color: theme.slate,
+        usePointStyle: true,
+        pointStyle: 'line',
+        pointStyleWidth: 32,
+        generateLabels: (chart) => chart.data.datasets.map((dataset, datasetIndex) => ({
+          text: dataset.label,
+          strokeStyle: dataset.borderColor,
+          fontColor: theme.slate,
+          lineWidth: dataset.borderWidth,
+          lineDash: dataset.borderDash,
+          pointStyle: 'line',
+          hidden: !chart.isDatasetVisible(datasetIndex),
+          datasetIndex,
+        })),
+      },
     },
     tooltip: {
       enabled: true,
@@ -116,12 +156,17 @@ const chartOptions = {
     y: {
       beginAtZero: true,
       min: 0,
+      border: { display: false, dash: [2, 4] },
+      grid: { color: theme.grid, drawTicks: false },
       ticks: {
+        color: theme.slate,
         precision: 0,
         stepSize: 1,
       },
     },
     x: {
+      border: { display: false },
+      ticks: { color: theme.slate },
       grid: {
         display: false,
       },
@@ -141,9 +186,11 @@ const chartOptions = {
 
 <style scoped>
 .trend-chart {
+  position: relative;
   width: 100%;
-  height: 100%;
-  min-height: 280px;
+  height: 320px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .trend-chart__empty {
@@ -156,7 +203,8 @@ const chartOptions = {
 .trend-chart__container {
   width: 100%;
   height: 100%;
-  min-height: 280px;
+  min-width: 0;
+  min-height: 0;
   position: relative;
 }
 </style>

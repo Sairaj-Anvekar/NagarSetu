@@ -10,6 +10,7 @@ const auth = useAuthStore()
 
 const phone = ref('')
 const pin = ref('')
+const showPin = ref(false)
 const errors = reactive({
   phone: '',
   pin: '',
@@ -64,11 +65,13 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div>
-    <ErrorAlert v-if="errorMessage" title="Login failed" :message="errorMessage" class="mb-3" />
+  <div class="worker-login">
+    <ErrorAlert v-if="errorMessage" title="Login failed" :message="errorMessage" class="worker-login-alert" />
     <form novalidate @submit.prevent="handleSubmit">
-      <div class="mb-3">
+      <div class="worker-login-field">
         <label for="worker-phone" class="form-label">Phone number</label>
+        <div class="worker-login-input" :class="{ 'worker-login-input--invalid': errors.phone }">
+          <span class="worker-login-prefix" aria-hidden="true">+91</span>
         <input
           id="worker-phone"
           v-model="phone"
@@ -77,30 +80,127 @@ async function handleSubmit() {
           class="form-control"
           :class="{ 'is-invalid': errors.phone }"
           autocomplete="tel"
+          placeholder="10-digit number"
         />
+        </div>
         <div v-if="errors.phone" class="invalid-feedback">{{ errors.phone }}</div>
       </div>
 
-      <div class="mb-3">
+      <div class="worker-login-field">
         <label for="worker-pin" class="form-label">PIN</label>
+        <div class="worker-login-input" :class="{ 'worker-login-input--invalid': errors.pin }">
         <input
           id="worker-pin"
           :value="pin"
-          type="password"
+          :type="showPin ? 'text' : 'password'"
           inputmode="numeric"
           maxlength="4"
           class="form-control"
           :class="{ 'is-invalid': errors.pin }"
           autocomplete="current-password"
+          placeholder="Enter your PIN"
           @input="onPinInput"
         />
+          <button
+            type="button"
+            class="worker-login-pin-toggle"
+            :aria-label="showPin ? 'Hide PIN' : 'Show PIN'"
+            @click="showPin = !showPin"
+          >
+            {{ showPin ? 'Hide' : 'Show' }}
+          </button>
+        </div>
         <div v-if="errors.pin" class="invalid-feedback">{{ errors.pin }}</div>
       </div>
 
-      <button type="submit" class="btn btn-primary w-100" :disabled="isLoading">
+      <button type="submit" class="btn btn-primary w-100 worker-login-submit" :disabled="isLoading">
         <LoadingSpinner v-if="isLoading" size="sm" label="Signing in..." class="me-2" />
         Sign in
       </button>
     </form>
   </div>
 </template>
+
+<style scoped>
+.worker-login form { display: flex; flex-direction: column; gap: 16px; }
+.worker-login .form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ns-login-navy);
+  font-size: 13px;
+  font-weight: 600;
+}
+.worker-login-input {
+  display: flex;
+  align-items: stretch;
+  height: 52px;
+  border: 1.5px solid var(--ns-login-field-border);
+  border-radius: var(--ns-login-radius-field);
+  overflow: hidden;
+  background: var(--ns-paper);
+}
+.worker-login-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-right: 1px solid var(--ns-login-field-border);
+  background: var(--ns-login-field-bg);
+  color: var(--ns-login-navy);
+  font-size: 15px;
+  font-weight: 600;
+}
+.worker-login .form-control {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--ns-login-navy);
+  font-size: 16px;
+  font-weight: 500;
+}
+.worker-login .form-control::placeholder { color: var(--ns-login-text-secondary); opacity: 1; }
+.worker-login-input:focus-within {
+  border-color: var(--ns-login-teal);
+  box-shadow: var(--ns-login-focus-shadow);
+}
+.worker-login-input--invalid { border-color: var(--ns-danger-fg); }
+.worker-login-pin-toggle {
+  flex: 0 0 60px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--ns-login-control-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.worker-login-pin-toggle:focus-visible {
+  outline: 2px solid var(--ns-login-teal);
+  outline-offset: -4px;
+}
+.worker-login .invalid-feedback { display: block; font-size: 12px; }
+.worker-login-submit {
+  min-height: 54px;
+  border: 0;
+  border-radius: var(--ns-login-radius-field);
+  background: var(--ns-login-gradient);
+  color: var(--ns-paper);
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: var(--ns-login-button-shadow);
+}
+.worker-login-submit:disabled { color: var(--ns-paper); opacity: 0.7; }
+.worker-login-submit:focus-visible { outline: 2px solid var(--ns-login-teal); outline-offset: 2px; }
+.worker-login-alert { margin-bottom: 8px; padding: 8px 12px; font-size: 13px; }
+.worker-login-alert :deep(.alert-heading) { font-size: 14px; margin-bottom: 4px; }
+@media (max-height: 700px) {
+  .worker-login form { gap: 10px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .worker-login-input, .worker-login-submit {
+    transition: border-color var(--ns-duration-base) var(--ns-easing), box-shadow var(--ns-duration-base) var(--ns-easing);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .worker-login-input, .worker-login-submit, .worker-login .form-control { transition: none; }
+}
+</style>

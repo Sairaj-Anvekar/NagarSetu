@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { fetchStats, fetchTrends } from '../api/adminApi'
 import PageHeader from '../components/PageHeader.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
@@ -7,6 +7,7 @@ import ErrorAlert from '../components/ErrorAlert.vue'
 import EmptyState from '../components/EmptyState.vue'
 import AppCard from '../components/AppCard.vue'
 import StatTile from '../components/admin/StatTile.vue'
+import AttentionStrip from '../components/admin/AttentionStrip.vue'
 import CategoryChart from '../components/admin/CategoryChart.vue'
 import ZoneBreakdown from '../components/admin/ZoneBreakdown.vue'
 import TrendChart from '../components/admin/TrendChart.vue'
@@ -15,6 +16,27 @@ import TrendChart from '../components/admin/TrendChart.vue'
 const statsLoading = ref(true)
 const statsError = ref(null)
 const stats = ref(null)
+const tiles = computed(() => {
+  const totals = stats.value?.totals
+  if (!totals) return []
+  const percentage = (count) => totals.total > 0
+    ? `${Math.round((count / totals.total) * 100)}% of total` : ''
+  return [
+    { label: 'Total', key: 'total', icon: 'dashboard', tone: 'total', query: {}, hint: '' },
+    { label: 'Submitted', key: 'submitted', icon: 'tasks', tone: 'submitted',
+      query: { status: 'Submitted' }, hint: percentage(totals.submitted) },
+    { label: 'In-Progress', key: 'in_progress', icon: 'clock', tone: 'in-progress',
+      query: { status: 'In-Progress' }, hint: percentage(totals.in_progress) },
+    { label: 'Completed', key: 'completed', icon: 'history', tone: 'completed',
+      query: { status: 'Completed' }, hint: percentage(totals.completed) },
+    { label: 'Overdue', key: 'overdue', icon: 'clock', tone: 'overdue',
+      query: { overdue: 'true' }, attention: totals.overdue > 0,
+      hint: totals.overdue > 0 ? 'Needs attention' : 'All clear' },
+    { label: 'Unassigned', key: 'unassigned', icon: 'users', tone: 'unassigned',
+      query: { unassigned: 'true' }, attention: totals.unassigned > 0,
+      hint: totals.unassigned > 0 ? 'Needs attention' : 'All clear' },
+  ]
+})
 
 // Trends state
 const trendsLoading = ref(true)
@@ -101,35 +123,29 @@ onMounted(() => {
       </template>
     </PageHeader>
 
-    <LoadingSpinner v-if="statsLoading" centered label="Loading dashboard metrics..." />
+    <div v-if="statsLoading" class="admin-dashboard__state">
+      <LoadingSpinner centered label="Loading dashboard metrics..." />
+    </div>
 
-    <ErrorAlert
-      v-else-if="statsError"
+    <div v-else-if="statsError" class="admin-dashboard__state">
+      <ErrorAlert
       title="Unable to load statistics"
       :message="statsError"
       show-retry
       @retry="loadStats"
-    />
+      />
+    </div>
 
     <div v-else-if="stats" class="admin-dashboard__content">
+      <AttentionStrip :overdue="stats.totals.overdue" :unassigned="stats.totals.unassigned" />
       <div class="row g-3 admin-dashboard__tiles mb-4">
-        <div class="col-6 col-md-4 col-lg-2">
-          <StatTile label="Total" :value="stats.totals.total" />
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <StatTile label="Submitted" :value="stats.totals.submitted" />
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <StatTile label="In-Progress" :value="stats.totals.in_progress" />
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <StatTile label="Completed" :value="stats.totals.completed" />
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <StatTile label="Overdue" :value="stats.totals.overdue" />
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <StatTile label="Unassigned" :value="stats.totals.unassigned" />
+        <div v-for="tile in tiles" :key="tile.key" class="col-6 col-md-4 col-xl-2">
+          <StatTile
+            :label="tile.label" :value="stats.totals[tile.key]"
+            :icon="tile.icon" :tone="tile.tone" :hint="tile.hint"
+            :attention="tile.attention"
+            :to="{ path: '/admin/complaints', query: tile.query }"
+          />
         </div>
       </div>
 
@@ -141,29 +157,30 @@ onMounted(() => {
       </div>
 
       <template v-else>
-        <div class="row g-4 mb-4">
+        <div class="row g-4 mb-4 align-items-start">
           <div class="col-12 col-lg-7">
-            <AppCard title="Complaints by Category">
+            <AppCard title="Complaints by Category" class="admin-dashboard__chart-card">
+              <p class="text-secondary small mb-4">Complaint volume across service categories</p>
               <CategoryChart :categories="stats.by_category" />
             </AppCard>
           </div>
           <div class="col-12 col-lg-5">
-            <AppCard title="Complaints by Zone">
+            <AppCard title="Complaints by Zone" class="admin-dashboard__chart-card">
+              <p class="text-secondary small mb-4">Distribution across department zones</p>
               <ZoneBreakdown :zones="stats.by_zone" />
             </AppCard>
           </div>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 align-items-start">
           <div class="col-12">
-            <AppCard title="Complaint Trends">
+            <AppCard title="Complaint Trends" class="admin-dashboard__chart-card">
               <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
                 <span class="text-muted small">Daily volume of created and completed complaints</span>
-                <div class="btn-group" role="group" aria-label="Trend duration range">
+                <div class="trend-range" role="group" aria-label="Trend duration range">
                   <button
                     type="button"
-                    class="btn btn-sm range-btn"
-                    :class="trendDays === 7 ? 'btn-primary' : 'btn-outline-secondary'"
+                    class="range-btn"
                     :aria-pressed="trendDays === 7 ? 'true' : 'false'"
                     @click="setTrendRange(7)"
                   >
@@ -171,8 +188,7 @@ onMounted(() => {
                   </button>
                   <button
                     type="button"
-                    class="btn btn-sm range-btn"
-                    :class="trendDays === 14 ? 'btn-primary' : 'btn-outline-secondary'"
+                    class="range-btn"
                     :aria-pressed="trendDays === 14 ? 'true' : 'false'"
                     @click="setTrendRange(14)"
                   >
@@ -180,8 +196,7 @@ onMounted(() => {
                   </button>
                   <button
                     type="button"
-                    class="btn btn-sm range-btn"
-                    :class="trendDays === 30 ? 'btn-primary' : 'btn-outline-secondary'"
+                    class="range-btn"
                     :aria-pressed="trendDays === 30 ? 'true' : 'false'"
                     @click="setTrendRange(30)"
                   >
@@ -214,6 +229,44 @@ onMounted(() => {
 <style scoped>
 .admin-dashboard {
   width: 100%;
+  min-width: 0;
+}
+.admin-dashboard .row > *,
+.admin-dashboard__chart-card {
+  min-width: 0;
+  min-height: 0;
+}
+.admin-dashboard__chart-card {
+  height: auto;
+}
+.admin-dashboard__chart-card :deep(.card-header) {
+  padding: var(--ns-space-24) var(--ns-space-24) 0;
+  border-bottom: 0;
+  font-size: var(--ns-type-card-title-size);
+}
+.admin-dashboard__chart-card :deep(.card-body) {
+  padding: var(--ns-space-12) var(--ns-space-24) var(--ns-space-24);
+  min-width: 0;
+  min-height: 0;
+}
+.admin-dashboard__state {
+  padding: var(--ns-space-24);
+  margin-bottom: var(--ns-space-24);
+  background-color: var(--ns-surface);
+  border: 1px solid var(--ns-border-default);
+  border-radius: var(--ns-radius-card);
+  box-shadow: var(--ns-shadow-card);
+}
+.admin-dashboard__state :deep(.alert) {
+  margin-bottom: 0;
+}
+@media (max-width: 575.98px) {
+  .admin-dashboard__chart-card :deep(.card-header) {
+    padding-inline: var(--ns-space-16);
+  }
+  .admin-dashboard__chart-card :deep(.card-body) {
+    padding-inline: var(--ns-space-16);
+  }
 }
 
 .refresh-btn {
@@ -221,15 +274,51 @@ onMounted(() => {
   min-width: 44px;
 }
 
+.trend-range {
+  display: inline-flex;
+  gap: var(--ns-space-4);
+  padding: var(--ns-space-4);
+  background: var(--ns-surface-2);
+  border: 1px solid var(--ns-line);
+  border-radius: var(--ns-radius-md);
+}
+
 .range-btn {
   min-height: 44px;
   min-width: 64px;
+  padding: 0 var(--ns-space-8);
+  border: 1px solid transparent;
+  border-radius: var(--ns-radius-sm);
+  background: transparent;
+  color: var(--ns-slate);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.range-btn:hover {
+  background: var(--ns-info-bg);
+  color: var(--ns-harbour);
+}
+
+.range-btn[aria-pressed='true'] {
+  background: var(--ns-paper);
+  color: var(--ns-harbour);
+  border-color: var(--ns-line);
+  box-shadow: var(--ns-shadow-xs);
+  font-weight: 600;
+}
+
+.range-btn:focus-visible {
+  outline: var(--ns-focus-ring);
+  outline-offset: var(--ns-focus-ring-offset);
 }
 
 .admin-dashboard__empty {
   background-color: var(--ns-paper);
   border: 1px solid var(--ns-line);
   border-radius: var(--ns-radius-card);
-  padding: 1.5rem;
+  padding: var(--ns-space-24);
+  box-shadow: var(--ns-shadow-card);
 }
 </style>
