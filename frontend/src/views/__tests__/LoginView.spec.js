@@ -103,6 +103,31 @@ describe('LoginView — tabs and notices', () => {
     expect(buttons[1].attributes('aria-selected')).toBe('false')
   })
 
+  it('keeps the role heading, pill, form and panel label in sync when switching both ways', async () => {
+    await router.push('/login')
+    await router.isReady()
+    const wrapper = mount(LoginView, { global: { plugins: [pinia, router] } })
+
+    for (const role of ['admin', 'worker', 'admin']) {
+      await wrapper.get(`#${role}-login-tab`).trigger('click')
+      const worker = role === 'worker'
+      expect(wrapper.get('.ns-login-eyebrow').text()).toBe(worker ? 'FIELD WORKER' : 'ADMIN')
+      expect(wrapper.get('#login-heading').text()).toBe(
+        worker ? "Sign in to see today's tasks" : 'Sign in to your console',
+      )
+      expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(worker)
+      expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(!worker)
+      expect(wrapper.get('#login-panel').attributes('aria-labelledby')).toBe(`${role}-login-tab`)
+      expect(wrapper.findAll('[role="tab"][aria-selected="true"]')).toHaveLength(1)
+      expect(wrapper.get('[role="tab"][aria-selected="true"]').attributes('id')).toBe(
+        `${role}-login-tab`,
+      )
+    }
+    expect(mockLoginAdmin).not.toHaveBeenCalled()
+    expect(mockLoginWorker).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('shows expired notice when route query reason is "expired"', async () => {
     router.push('/login?reason=expired')
     await router.isReady()

@@ -58,10 +58,10 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div>
-    <ErrorAlert v-if="errorMessage" title="Login failed" :message="errorMessage" class="mb-3" />
+  <div class="admin-login">
+    <ErrorAlert v-if="errorMessage" title="Login failed" :message="errorMessage" class="admin-login-alert" />
     <form novalidate @submit.prevent="handleSubmit">
-      <div class="mb-3">
+      <div class="admin-login-field">
         <label for="admin-username" class="form-label">Username</label>
         <input
           id="admin-username"
@@ -74,7 +74,7 @@ async function handleSubmit() {
         <div v-if="errors.username" class="invalid-feedback">{{ errors.username }}</div>
       </div>
 
-      <div class="mb-3">
+      <div class="admin-login-field">
         <label for="admin-password" class="form-label">Password</label>
         <input
           id="admin-password"
@@ -87,10 +87,62 @@ async function handleSubmit() {
         <div v-if="errors.password" class="invalid-feedback">{{ errors.password }}</div>
       </div>
 
-      <button type="submit" class="btn btn-primary w-100" :disabled="isLoading">
+      <button type="submit" class="btn btn-primary w-100 admin-login-submit" :disabled="isLoading">
         <LoadingSpinner v-if="isLoading" size="sm" label="Signing in..." class="me-2" />
         Sign in
       </button>
     </form>
   </div>
 </template>
+
+<style scoped>
+.admin-login form { display: flex; flex-direction: column; gap: 16px; }
+.admin-login .form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ns-login-navy);
+  font-size: 13px;
+  font-weight: 600;
+}
+.admin-login .form-control {
+  height: 52px;
+  min-width: 0;
+  border: 1.5px solid var(--ns-login-field-border);
+  border-radius: var(--ns-login-radius-field);
+  background-color: var(--ns-paper);
+  color: var(--ns-login-navy);
+  font-size: 16px;
+  font-weight: 500;
+}
+.admin-login .form-control:focus {
+  border-color: var(--ns-login-teal);
+  box-shadow: var(--ns-login-focus-shadow);
+}
+.admin-login .form-control.is-invalid { border-color: var(--ns-danger-fg); }
+.admin-login .invalid-feedback { font-size: 12px; }
+.admin-login-submit {
+  min-height: 54px;
+  border: 0;
+  border-radius: var(--ns-login-radius-field);
+  background: var(--ns-login-gradient);
+  color: var(--ns-paper);
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: var(--ns-login-button-shadow);
+}
+.admin-login-submit:disabled { color: var(--ns-paper); opacity: 0.7; }
+.admin-login-submit:focus-visible { outline: 2px solid var(--ns-login-teal); outline-offset: 2px; }
+.admin-login-alert { margin-bottom: 8px; padding: 8px 12px; font-size: 13px; }
+.admin-login-alert :deep(.alert-heading) { font-size: 14px; margin-bottom: 4px; }
+@media (max-height: 700px) {
+  .admin-login form { gap: 10px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .admin-login .form-control, .admin-login-submit {
+    transition: border-color var(--ns-duration-base) var(--ns-easing), box-shadow var(--ns-duration-base) var(--ns-easing);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-login .form-control, .admin-login-submit { transition: none; }
+}
+</style>

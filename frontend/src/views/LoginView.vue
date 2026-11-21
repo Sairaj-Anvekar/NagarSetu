@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getSafeRedirect } from '../utils/redirect'
-import AppCard from '../components/AppCard.vue'
 import AdminLoginForm from '../components/AdminLoginForm.vue'
 import WorkerLoginForm from '../components/WorkerLoginForm.vue'
 
@@ -32,50 +31,31 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container ns-login">
-    <div class="row align-items-center g-4 g-lg-5">
-      <section class="col-lg-6 ns-login-intro" aria-labelledby="login-heading">
-        <p class="ns-login-eyebrow">Civic grievance management</p>
-        <h1 id="login-heading">Better service.<br />Every day.</h1>
-        <p class="ns-login-summary">
-          A focused workspace for the people who keep our city moving. Sign in to get started with
-          your day.
-        </p>
-        <div class="ns-login-roles">
-          <div>
-            <span class="ns-login-role-number" aria-hidden="true">01</span>
-            <div>
-              <h2>For administrators</h2>
-              <p>Coordinate civic grievance resolution.</p>
-            </div>
-          </div>
-          <div>
-            <span class="ns-login-role-number" aria-hidden="true">02</span>
-            <div>
-              <h2>For workers</h2>
-              <p>Stay focused on your assigned tasks.</p>
-            </div>
-          </div>
+  <main class="ns-login">
+    <div class="ns-login-frame">
+      <section class="ns-login-intro" aria-labelledby="login-heading">
+        <div class="ns-login-brand">
+          <span class="ns-login-brand-mark" aria-hidden="true">N</span>
+          <span>NagarSetu</span>
         </div>
+        <p class="ns-login-eyebrow">{{ activeTab === 'worker' ? 'FIELD WORKER' : 'ADMIN' }}</p>
+        <h1 id="login-heading">
+          {{ activeTab === 'worker' ? "Sign in to see today's tasks" : 'Sign in to your console' }}
+        </h1>
       </section>
 
-      <section class="col-lg-6" aria-labelledby="signin-heading">
-        <div class="ns-login-form-wrap">
+      <section class="ns-login-sheet" aria-labelledby="signin-heading">
+        <h2 id="signin-heading" class="visually-hidden">Sign in</h2>
           <div
             v-if="route.query.reason === 'expired'"
-            class="alert alert-warning mb-4"
+            class="alert alert-warning ns-login-notice"
             role="alert"
           >
             Your session has expired. Please log in again.
           </div>
 
-          <AppCard class="ns-login-card">
-            <p class="ns-login-eyebrow">Your workspace</p>
-            <h2 id="signin-heading" class="h3 mb-2">Welcome back</h2>
-            <p class="text-secondary mb-4">Choose your role to sign in.</p>
-
             <div
-              class="nav nav-pills nav-fill ns-login-tabs mb-4"
+              class="nav nav-pills nav-fill ns-login-tabs"
               role="tablist"
               aria-label="Sign-in role"
             >
@@ -109,147 +89,119 @@ onMounted(() => {
               <AdminLoginForm v-if="activeTab === 'admin'" @success="goHome" />
               <WorkerLoginForm v-else-if="activeTab === 'worker'" @success="goHome" />
             </div>
-            <p class="ns-login-help">Need access? Contact your administrator.</p>
-          </AppCard>
+        <footer class="ns-login-footer">
+          <p class="ns-login-help">Need access? Contact your administrator.</p>
           <p class="ns-login-connection">An internet connection is required to use NagarSetu.</p>
-        </div>
+        </footer>
       </section>
     </div>
-  </div>
+  </main>
 </template>
 
 <style scoped>
 .ns-login {
-  padding-block: clamp(2rem, 7vw, 6rem);
+  min-height: 100dvh;
+  background: var(--ns-login-switch-bg);
+  font-family: var(--ns-font-body);
 }
-
-.ns-login-eyebrow {
-  margin-bottom: 1rem;
-  color: var(--ns-harbour);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.ns-login-intro h1 {
-  margin-bottom: 1.5rem;
-  font-size: clamp(2.25rem, 4.5vw, 3.75rem);
-  line-height: 1.15;
-  letter-spacing: -0.045em;
-}
-
-.ns-login-summary {
-  max-width: 28rem;
-  color: var(--ns-slate);
-  font-size: 1.0625rem;
-  line-height: 1.75;
-}
-
-.ns-login-roles {
-  display: grid;
-  gap: 1.5rem;
-  margin-top: 2.5rem;
-}
-
-.ns-login-roles > div {
+.ns-login-frame {
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
+  flex-direction: column;
+  min-height: 100dvh;
+  width: 100%;
+  background: var(--ns-login-navy);
 }
-
-.ns-login-role-number {
+.ns-login-intro {
+  flex: 0 0 300px;
+  padding: 64px 28px 28px;
+  color: var(--ns-paper);
+  background-image: radial-gradient(circle at 88% 6%, var(--ns-login-glow), transparent 52%),
+    linear-gradient(var(--ns-login-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ns-login-grid) 1px, transparent 1px);
+  background-size: auto, 28px 28px, 28px 28px;
+}
+.ns-login-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 700 22px var(--ns-font-display);
+}
+.ns-login-brand-mark {
   display: grid;
   place-items: center;
-  flex: 0 0 2.5rem;
-  height: 2.5rem;
-  border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-control);
-  background: var(--ns-paper);
-  color: var(--ns-harbour);
-  font-size: 0.75rem;
-  font-weight: 700;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--ns-login-radius-field);
+  background: var(--ns-login-brand-gradient);
 }
-
-.ns-login-roles h2 {
-  margin-bottom: 0.25rem;
-  font-size: 0.9375rem;
+.ns-login-eyebrow {
+  display: inline-block;
+  margin: 20px 0 12px;
+  padding: 5px 10px;
+  border-radius: var(--ns-radius-pill);
+  background: var(--ns-login-pill-bg);
+  color: var(--ns-login-pill-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
 }
-
-.ns-login-roles p {
+.ns-login-intro h1 {
   margin: 0;
-  color: var(--ns-slate);
-  font-size: 0.875rem;
+  max-width: 334px;
+  color: var(--ns-paper);
+  font: 700 28px/1.2 var(--ns-font-display);
 }
-
-.ns-login-form-wrap {
-  max-width: 30rem;
-  margin-inline: auto;
+.ns-login-sheet {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 24px 24px 28px;
+  border-radius: var(--ns-login-radius-sheet) var(--ns-login-radius-sheet) 0 0;
+  background: var(--ns-paper);
+  box-shadow: var(--ns-login-sheet-shadow);
 }
-
-.ns-login-card {
-  border-top: 3px solid var(--ns-span);
-}
-
-.ns-login-card :deep(.card-body) {
-  padding: clamp(1.25rem, 3vw, 2.5rem);
-}
-
 .ns-login-tabs {
-  padding: 0.375rem;
-  gap: 0.375rem;
-  border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-card);
-  background: var(--ns-mist);
+  flex-wrap: nowrap;
+  padding: 4px;
+  border-radius: var(--ns-radius-lg);
+  background: var(--ns-login-switch-bg);
 }
-
 .ns-login-tabs .nav-link {
-  min-height: 2.75rem;
-}
-
-.ns-login-tabs .nav-link:focus-visible {
-  outline: 2px solid var(--ns-harbour);
-  outline-offset: 2px;
-}
-
-.ns-login-card :deep(.form-label) {
-  font-size: 0.875rem;
+  min-height: 44px;
+  border-radius: var(--ns-radius-md);
+  color: var(--ns-login-control-text);
   font-weight: 600;
 }
-
-.ns-login-card :deep(.form-control) {
-  min-height: 3rem;
+.ns-login-tabs .nav-link.active {
+  background: var(--ns-login-gradient);
+  color: var(--ns-paper);
+  box-shadow: var(--ns-login-switch-shadow);
 }
-
-.ns-login-card :deep(button[type='submit']) {
-  min-height: 3rem;
-  margin-top: 0.5rem;
+.ns-login-tabs .nav-link:focus-visible {
+  outline: 2px solid var(--ns-login-teal);
+  outline-offset: var(--ns-focus-ring-offset);
 }
-
-.ns-login-help {
-  margin: 1.5rem 0 0;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--ns-line);
-  color: var(--ns-slate);
-  font-size: 0.8125rem;
-  text-align: center;
+.ns-login-footer { margin-top: auto; text-align: center; }
+.ns-login-help { margin: 0; color: var(--ns-login-text-muted); font-size: 13px; font-weight: 500; }
+.ns-login-connection { margin: 6px 0 0; color: var(--ns-login-text-secondary); font-size: 12px; }
+.ns-login-notice { margin: 0; padding: 8px 12px; font-size: 13px; }
+@media (max-height: 700px) {
+  .ns-login-intro { flex-basis: 180px; padding: 16px 28px; }
+  .ns-login-eyebrow { margin: 8px 0; padding-block: 3px; }
+  .ns-login-sheet { gap: 8px; padding: 16px 24px; }
 }
-
-.ns-login-connection {
-  margin: 1.25rem 0 0;
-  color: var(--ns-slate);
-  font-size: 0.75rem;
-  text-align: center;
+@media (min-width: 768px) {
+  .ns-login { display: grid; place-items: center; padding: 24px; }
+  .ns-login-frame { max-width: 440px; min-height: min(796px, calc(100dvh - 48px)); border-radius: var(--ns-login-radius-sheet); }
+  .ns-login-intro { border-radius: var(--ns-login-radius-sheet) var(--ns-login-radius-sheet) 0 0; }
+  .ns-login-sheet { border-radius: var(--ns-login-radius-sheet); }
 }
-
-@media (max-width: 991.98px) {
-  .ns-login-intro {
-    max-width: 30rem;
-    margin-inline: auto;
-  }
-
-  .ns-login-roles {
-    display: none;
-  }
+@media (prefers-reduced-motion: no-preference) {
+  .ns-login-tabs .nav-link { transition: color var(--ns-duration-base) var(--ns-easing), box-shadow var(--ns-duration-base) var(--ns-easing); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ns-login-tabs .nav-link { transition: none; }
 }
 </style>
