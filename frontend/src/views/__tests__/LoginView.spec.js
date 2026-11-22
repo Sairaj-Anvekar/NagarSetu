@@ -35,6 +35,28 @@ describe('LoginView — tabs and notices', () => {
     router = createTestRouter()
   })
 
+  it('offers officer sign-in content and switches to the existing Worker form', async () => {
+    await router.push('/login')
+    await router.isReady()
+    const wrapper = mount(LoginView, { global: { plugins: [pinia, router] } })
+    expect(wrapper.get('.ns-admin-signin-heading h2').text()).toBe('Officer login')
+    expect(wrapper.get('.ns-admin-signin-tag').text()).toBe('Official sign in')
+    expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(true)
+    const switchButton = wrapper.get('.ns-admin-worker-switch button')
+    expect(switchButton.attributes('type')).toBe('button')
+    expect(switchButton.text()).toBe('Field worker? Sign in on your phone')
+    await switchButton.trigger('click')
+    expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(true)
+    expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(false)
+    expect(wrapper.find('.ns-admin-portal').exists()).toBe(false)
+    expect(wrapper.find('.ns-admin-signin-heading').exists()).toBe(false)
+    expect(wrapper.get('#login-heading').text()).toBe("Sign in to see today's tasks")
+    expect(wrapper.get('#worker-login-tab').attributes('aria-selected')).toBe('true')
+    expect(mockLoginAdmin).not.toHaveBeenCalled()
+    expect(mockLoginWorker).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('renders the Admin form by default with the Admin button active', async () => {
     router.push('/login')
     await router.isReady()
