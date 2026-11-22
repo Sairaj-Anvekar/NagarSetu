@@ -1,11 +1,7 @@
 <script setup>
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject } from 'vue'
 import { RouterLink, routerKey } from 'vue-router'
 import AppIcon from '../AppIcon.vue'
-import PriorityBadge from '../PriorityBadge.vue'
-import StatusBadge from '../StatusBadge.vue'
-import { formatDateTime, getDueInfo } from '../../utils/formatDate'
-import { buildDirectionsUrl } from '../../utils/googleMaps'
 
 const props = defineProps({
   task: {
@@ -15,47 +11,27 @@ const props = defineProps({
 })
 
 const hasRouter = Boolean(inject(routerKey, null))
-const imageError = ref(false)
 
-watch(
-  () => props.task?.image_url,
-  () => {
-    imageError.value = false
-  },
-)
-
-const taskDetailPath = computed(() => `/worker/tasks/${encodeURIComponent(props.task?.id ?? '')}`)
-const showThumbnail = computed(() => Boolean(props.task?.image_url) && !imageError.value)
-const dueInfo = computed(() => getDueInfo(props.task?.sla_deadline))
-const formattedDeadline = computed(() => formatDateTime(props.task?.sla_deadline))
-const directionsUrl = computed(() =>
-  buildDirectionsUrl(props.task?.latitude, props.task?.longitude),
+const taskDetailPath = computed(() =>
+  `/worker/tasks/${encodeURIComponent(props.task?.id ?? '')}`,
 )
 </script>
 
 <template>
   <article class="worker-task-card position-relative">
-    <div class="worker-task-card__header d-flex align-items-center justify-content-between gap-2">
-      <span class="worker-task-card__tracking">{{ task.tracking_code }}</span>
-      <div class="d-flex align-items-center flex-wrap gap-2">
-        <PriorityBadge :priority="task.priority" />
-        <StatusBadge :status="task.status" />
-      </div>
-    </div>
+    <div class="worker-task-card__inner">
+      <!-- 44px priority-tinted category icon -->
+      <span
+        class="worker-task-card__icon"
+        :class="`worker-task-card__icon--${task.priority}`"
+        aria-hidden="true"
+      >
+        <AppIcon name="tasks" :size="22" />
+      </span>
 
-    <div class="worker-task-card__main d-flex align-items-start gap-3">
-      <div class="worker-task-card__thumb">
-        <img
-          v-if="showThumbnail"
-          :src="task.image_url"
-          :alt="`${task.category} complaint photo`"
-          class="worker-task-card__thumb-img"
-          @error="imageError = true"
-        />
-        <div v-else class="worker-task-card__thumb-placeholder" aria-hidden="true">No photo</div>
-      </div>
-
-      <div class="worker-task-card__body flex-grow-1">
+      <!-- Tracking code + category name -->
+      <div class="worker-task-card__body">
+        <span class="worker-task-card__tracking">{{ task.tracking_code }}</span>
         <h2 class="worker-task-card__category">
           <RouterLink
             v-if="hasRouter"
@@ -74,107 +50,110 @@ const directionsUrl = computed(() =>
             {{ task.category }}
           </a>
         </h2>
-        <p class="worker-task-card__description">{{ task.description }}</p>
       </div>
-
-      <span class="worker-task-card__chevron align-self-center" aria-hidden="true">
-        <AppIcon name="chevron-right" :size="20" />
-      </span>
-    </div>
-
-    <div class="worker-task-card__deadline d-flex align-items-center flex-wrap gap-2">
-      <AppIcon name="clock" :size="18" />
-      <span
-        class="worker-task-card__relative"
-        :class="{ 'worker-task-card__relative--overdue': task.is_overdue }"
-      >
-        {{ dueInfo.text }}
-      </span>
-      <span v-if="task.is_overdue" class="worker-task-card__overdue-pill"> Overdue </span>
-      <span class="worker-task-card__deadline-time">
-        {{ formattedDeadline }}
-      </span>
-    </div>
-
-    <div v-if="directionsUrl" class="worker-task-card__actions pt-1">
-      <a
-        class="btn btn-outline-primary worker-task-card__directions-btn d-inline-flex align-items-center justify-content-center gap-2"
-        :href="directionsUrl"
-        target="_blank"
-        rel="noopener noreferrer"
-        @click.stop
-      >
-        <AppIcon name="map-pin" :size="18" />
-        <span>Get directions</span>
-      </a>
     </div>
   </article>
 </template>
 
 <style scoped>
+/* ── Card shell ─────────────────────────────────────────────────────────── */
 .worker-task-card {
-  background-color: var(--ns-paper);
-  border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-card);
-  box-shadow: var(--ns-shadow-card);
+  background: var(--ns-paper);
+  border: 1px solid var(--ns-worker-tab-border);
+  border-radius: 18px;
   padding: 16px;
+  box-shadow:
+    0 1px 2px rgba(14, 34, 51, 0.05),
+    0 10px 24px rgba(14, 34, 51, 0.06);
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
+@media (hover: hover) {
+  .worker-task-card:hover {
+    box-shadow:
+      0 1px 2px rgba(14, 34, 51, 0.08),
+      0 12px 28px rgba(14, 34, 51, 0.10);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .worker-task-card {
+    transition: box-shadow var(--ns-duration-fast) var(--ns-easing);
+  }
+}
+
+/* ── Inner row (icon + body) ─────────────────────────────────────────────── */
+.worker-task-card__inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* ── Priority-tinted icon ────────────────────────────────────────────────── */
+/*
+ * Default tint colours (Low). Priority-specific modifier classes override
+ * the custom properties on the same element so the icon picks them up.
+ * Critical shares High's palette per the design spec.
+ */
+.worker-task-card__icon {
+  --icon-tint-bg: #E0EEFF;
+  --icon-tint-fg: #1D4ED8;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background-color: var(--icon-tint-bg);
+  color: var(--icon-tint-fg);
+  display: grid;
+  place-items: center;
+}
+
+.worker-task-card__icon--critical,
+.worker-task-card__icon--high {
+  --icon-tint-bg: #FFEDD5;
+  --icon-tint-fg: #9A3412;
+}
+
+.worker-task-card__icon--medium {
+  --icon-tint-bg: #FEF3C7;
+  --icon-tint-fg: #92400E;
+}
+
+.worker-task-card__icon--low {
+  --icon-tint-bg: #E0EEFF;
+  --icon-tint-fg: #1D4ED8;
+}
+
+/* ── Body (tracking code + category) ────────────────────────────────────── */
+.worker-task-card__body {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
 .worker-task-card__tracking {
   font-family: var(--ns-font-display);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.3;
   font-variant-numeric: tabular-nums;
   color: var(--ns-ink);
 }
 
-.worker-task-card__main {
-  min-width: 0;
-}
-
-.worker-task-card__thumb {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
-  border-radius: var(--ns-radius-control);
-  overflow: hidden;
-  border: 1px solid var(--ns-line);
-  background-color: var(--ns-neutral-bg);
-}
-
-.worker-task-card__thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.worker-task-card__thumb-placeholder {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 4px;
-  text-align: center;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--ns-neutral-fg);
-  background-color: var(--ns-neutral-bg);
-}
-
-.worker-task-card__body {
-  min-width: 0;
-}
-
 .worker-task-card__category {
-  font-family: var(--ns-font-display);
-  font-weight: 600;
-  font-size: 1.0625rem;
+  margin: 0;
+  font-family: var(--ns-font-body);
+  font-weight: 500;
+  font-size: 0.9375rem;
   line-height: 1.4;
-  margin: 0 0 4px;
-  color: var(--ns-ink);
+  color: var(--ns-slate);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .worker-task-card__link {
@@ -183,66 +162,8 @@ const directionsUrl = computed(() =>
 }
 
 .worker-task-card__link:focus-visible {
-  outline: 2px solid var(--ns-span);
+  outline: 2px solid var(--ns-teal-600);
   outline-offset: 2px;
   border-radius: 4px;
-}
-
-.worker-task-card__chevron {
-  color: var(--ns-slate);
-  flex-shrink: 0;
-}
-
-.worker-task-card__description {
-  color: var(--ns-slate);
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.worker-task-card__deadline {
-  font-size: 0.875rem;
-  color: var(--ns-ink);
-}
-
-.worker-task-card__relative {
-  font-weight: 500;
-}
-
-.worker-task-card__relative--overdue {
-  color: var(--ns-danger-fg);
-  font-weight: 600;
-}
-
-.worker-task-card__overdue-pill {
-  background-color: var(--ns-danger-bg);
-  color: var(--ns-danger-fg);
-  border-radius: var(--ns-radius-pill);
-  font-weight: 600;
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.worker-task-card__deadline-time {
-  font-size: 0.8125rem;
-  color: var(--ns-slate);
-}
-
-.worker-task-card__directions-btn {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  min-height: 44px;
-  font-weight: 500;
-}
-
-@media (min-width: 576px) {
-  .worker-task-card__directions-btn {
-    width: auto;
-  }
 }
 </style>
