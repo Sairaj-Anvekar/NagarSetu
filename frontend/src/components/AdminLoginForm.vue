@@ -10,6 +10,7 @@ const auth = useAuthStore()
 
 const username = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const errors = reactive({
   username: '',
   password: '',
@@ -76,20 +77,34 @@ async function handleSubmit() {
 
       <div class="admin-login-field">
         <label for="admin-password" class="form-label">Password</label>
+        <div class="admin-login-password">
         <input
           id="admin-password"
           v-model="password"
-          type="password"
+          :type="showPassword ? 'text' : 'password'"
           class="form-control"
           :class="{ 'is-invalid': errors.password }"
           autocomplete="current-password"
         />
+          <button
+            type="button"
+            class="admin-login-password-toggle"
+            :aria-label="showPassword ? 'Hide password' : 'Show password'"
+            @click="showPassword = !showPassword"
+          >
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
         <div v-if="errors.password" class="invalid-feedback">{{ errors.password }}</div>
       </div>
 
       <button type="submit" class="btn btn-primary w-100 admin-login-submit" :disabled="isLoading">
         <LoadingSpinner v-if="isLoading" size="sm" label="Signing in..." class="me-2" />
         Sign in
+        <svg class="admin-login-submit-arrow" width="18" height="18" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false">
+          <path d="M4 12h16m-6-6 6 6-6 6" />
+        </svg>
       </button>
     </form>
   </div>
@@ -119,7 +134,8 @@ async function handleSubmit() {
   box-shadow: var(--ns-login-focus-shadow);
 }
 .admin-login .form-control.is-invalid { border-color: var(--ns-danger-fg); }
-.admin-login .invalid-feedback { font-size: 12px; }
+.admin-login .invalid-feedback { display: block; font-size: 12px; }
+.admin-login-password-toggle, .admin-login-submit-arrow { display: none; }
 .admin-login-submit {
   min-height: 54px;
   border: 0;
@@ -136,6 +152,32 @@ async function handleSubmit() {
 .admin-login-alert :deep(.alert-heading) { font-size: 14px; margin-bottom: 4px; }
 @media (max-height: 700px) {
   .admin-login form { gap: 10px; }
+}
+@media (min-width: 992px) {
+  .admin-login .form-control, .admin-login-submit { border-radius: var(--ns-radius-md); }
+  .admin-login-password { position: relative; }
+  .admin-login-password .form-control { padding-right: 76px; }
+  .admin-login-password .form-control.is-invalid { background-image: none; }
+  .admin-login-password-toggle {
+    display: block;
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    min-width: 60px;
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--ns-radius-sm);
+    background: transparent;
+    color: var(--ns-login-control-text);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .admin-login-password-toggle:focus-visible {
+    outline: 2px solid var(--ns-login-teal);
+    outline-offset: -2px;
+  }
+  .admin-login-submit { box-shadow: 0 10px 22px rgba(11, 114, 133, 0.3); }
+  .admin-login-submit-arrow { display: inline-block; margin-left: 8px; vertical-align: middle; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .admin-login .form-control, .admin-login-submit {
