@@ -57,7 +57,13 @@ describe('authHandlers - worker login', () => {
       expect(res.status).toBe(200)
       expect(res.data.token_type).toBe('bearer')
       expect(res.data.access_token).toBe('mock-token-worker-101')
-      expect(res.data.user).toEqual({ id: '101', name: 'Ravi Patil', role: 'worker' })
+      expect(res.data.user).toEqual({
+        id: '101',
+        name: 'Ravi Patil',
+        role: 'worker',
+        department: 'Solid Waste Management',
+        zone: 'Zone A'
+      })
       expect(JSON.stringify(res.data)).not.toContain('1234')
     }
   })

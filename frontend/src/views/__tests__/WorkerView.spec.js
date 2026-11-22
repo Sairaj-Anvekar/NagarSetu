@@ -1,10 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import WorkerView from '../WorkerView.vue'
 import WorkerTaskCard from '../../components/worker/WorkerTaskCard.vue'
+import WorkerHeader from '../../components/worker/WorkerHeader.vue'
+import TaskSummaryStrip from '../../components/worker/TaskSummaryStrip.vue'
+import TaskFilterChips from '../../components/worker/TaskFilterChips.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { fetchMyTasks } from '../../api/workerApi'
+import { saveAuth } from '../../utils/authStorage'
+
+// Fixed anchor: 2026-11-01T10:00:00.000Z
+// mockTasks has October deadlines for t-1/t-2 (overdue) and November 5-7 for t-3/t-4/t-5 (not overdue)
+const NOW = new Date('2026-11-01T10:00:00.000Z').getTime()
 
 vi.mock('../../api/workerApi', () => ({
   fetchMyTasks: vi.fn(),
@@ -74,14 +83,21 @@ const mockTasks = [
 ]
 
 describe('WorkerView - Loading, Ordering, Subtitles and Empty State', () => {
+  let pinia
+
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+    pinia = createPinia()
+    setActivePinia(pinia)
   })
 
   it('shows centered role="status" spinner and no cards while the first call is pending', async () => {
     fetchMyTasks.mockReturnValue(new Promise(() => {}))
-    const wrapper = mount(WorkerView)
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
     await nextTick()
 
     const spinner = wrapper.find('[role="status"]')
@@ -90,7 +106,7 @@ describe('WorkerView - Loading, Ordering, Subtitles and Empty State', () => {
     expect(wrapper.findAllComponents(WorkerTaskCard).length).toBe(0)
   })
 
-  it('renders cards in EXACTLY the order received and displays "5 tasks · 2 overdue"', async () => {
+  it('renders cards in EXACTLY the order received and displays counts in summary strip', async () => {
     fetchMyTasks.mockResolvedValueOnce({
       items: mockTasks,
       total: 5,
@@ -98,7 +114,10 @@ describe('WorkerView - Loading, Ordering, Subtitles and Empty State', () => {
       page_size: 5,
     })
 
-    const wrapper = mount(WorkerView)
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
     await flushPromises()
 
     const cards = wrapper.findAllComponents(WorkerTaskCard)
@@ -113,24 +132,33 @@ describe('WorkerView - Loading, Ordering, Subtitles and Empty State', () => {
       'GRV-2026-D8P4',
     ])
 
-    expect(wrapper.get('.ns-page-header__subtitle').text()).toBe('5 tasks · 2 overdue')
+    const strip = wrapper.getComponent(TaskSummaryStrip)
+    expect(strip.find('[data-testid="strip-submitted"]').text()).toContain('4')
+    expect(strip.find('[data-testid="strip-in-progress"]').text()).toContain('1')
+    expect(strip.find('[data-testid="strip-overdue"]').text()).toContain('2')
   })
 
-  it('displays singular "1 task" without overdue part when only one non-overdue task is present', async () => {
+  it('displays singular 1 task in summary strip when only one non-overdue task is present', async () => {
     fetchMyTasks.mockResolvedValueOnce({
-      items: [mockTasks[2]],
+      items: [mockTasks[2]], // In-Progress, not overdue
       total: 1,
       page: 1,
       page_size: 1,
     })
 
-    const wrapper = mount(WorkerView)
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
     await flushPromises()
 
-    expect(wrapper.get('.ns-page-header__subtitle').text()).toBe('1 task')
+    const strip = wrapper.getComponent(TaskSummaryStrip)
+    expect(strip.find('[data-testid="strip-submitted"]').text()).toContain('0')
+    expect(strip.find('[data-testid="strip-in-progress"]').text()).toContain('1')
+    expect(strip.find('[data-testid="strip-overdue"]').text()).toContain('0')
   })
 
-  it('shows "No tasks assigned" empty state and "No tasks right now." when list is empty', async () => {
+  it('shows "No tasks right now" empty state when list is empty', async () => {
     fetchMyTasks.mockResolvedValueOnce({
       items: [],
       total: 0,
@@ -138,25 +166,34 @@ describe('WorkerView - Loading, Ordering, Subtitles and Empty State', () => {
       page_size: 0,
     })
 
-    const wrapper = mount(WorkerView)
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
     await flushPromises()
 
     const empty = wrapper.getComponent(EmptyState)
-    expect(empty.get('h3').text()).toBe('No tasks assigned')
+    expect(empty.get('h3').text()).toBe('No tasks right now')
     expect(empty.get('p').text()).toBe('New complaints assigned to you will appear here.')
-    expect(wrapper.get('.ns-page-header__subtitle').text()).toBe('No tasks right now.')
   })
 })
 
 describe('WorkerView - Error Handling, Refresh, Race Conditions, and Cleanup', () => {
+  let pinia
+
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+    pinia = createPinia()
+    setActivePinia(pinia)
   })
 
   it('shows error alert on 500 error, hides cards, and retries when "Try again" is clicked', async () => {
     fetchMyTasks.mockRejectedValueOnce({ response: { status: 500 } })
-    const wrapper = mount(WorkerView)
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
     await flushPromises()
 
     const alert = wrapper.find('.alert-danger')
@@ -190,7 +227,10 @@ describe('WorkerView - Error Handling, Refresh, Race Conditions, and Cleanup', (
       }),
     )
 
-    const wrapper = mount(WorkerView)
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
     await nextTick()
 
     const refreshBtn = wrapper.find('.worker-refresh-btn')
@@ -228,7 +268,10 @@ describe('WorkerView - Error Handling, Refresh, Race Conditions, and Cleanup', (
       page_size: 5,
     })
 
-    const wrapper = mount(WorkerView)
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
     await flushPromises()
 
     expect(wrapper.findAllComponents(WorkerTaskCard).length).toBe(5)
@@ -260,7 +303,10 @@ describe('WorkerView - Error Handling, Refresh, Race Conditions, and Cleanup', (
 
     fetchMyTasks.mockReturnValueOnce(promise1)
 
-    const wrapper = mount(WorkerView)
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
     await nextTick()
 
     fetchMyTasks.mockReturnValueOnce(promise2)
@@ -300,7 +346,10 @@ describe('WorkerView - Error Handling, Refresh, Race Conditions, and Cleanup', (
       }),
     )
 
-    const wrapper = mount(WorkerView)
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
     await nextTick()
 
     wrapper.unmount()
@@ -314,5 +363,191 @@ describe('WorkerView - Error Handling, Refresh, Race Conditions, and Cleanup', (
       })
     }).not.toThrow()
     await flushPromises()
+  })
+})
+
+describe('WorkerView - Redesign Extensions (W3)', () => {
+  let pinia
+
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+    pinia = createPinia()
+    setActivePinia(pinia)
+  })
+
+  it('renders greeting header with worker name and department/zone chip when available', async () => {
+    saveAuth({
+      token: 'test-token',
+      role: 'worker',
+      user: {
+        id: '101',
+        name: 'Ravi Patil',
+        department: 'Solid Waste Management',
+        zone: 'Zone A',
+      },
+    })
+
+    fetchMyTasks.mockResolvedValueOnce({
+      items: mockTasks,
+      total: 5,
+      page: 1,
+      page_size: 5,
+    })
+
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
+    await flushPromises()
+
+    const header = wrapper.getComponent(WorkerHeader)
+    expect(header.props('variant')).toBe('greeting')
+    expect(header.props('name')).toBe('Ravi Patil')
+    expect(header.props('chip')).toBe('Solid Waste Management · Zone A')
+    expect(header.text()).toContain('Ravi Patil')
+    expect(header.text()).toContain('Solid Waste Management · Zone A')
+  })
+
+  it('omits department/zone chip when user lacks department or zone', async () => {
+    saveAuth({
+      token: 'test-token',
+      role: 'worker',
+      user: {
+        id: '101',
+        name: 'Ravi Patil',
+      },
+    })
+
+    fetchMyTasks.mockResolvedValueOnce({
+      items: mockTasks,
+      total: 5,
+      page: 1,
+      page_size: 5,
+    })
+
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
+    await flushPromises()
+
+    const header = wrapper.getComponent(WorkerHeader)
+    expect(header.props('chip')).toBe('')
+    expect(header.find('.ns-worker-header__chip').exists()).toBe(false)
+  })
+
+  it('filters cards by chip selection: Submitted, In-Progress, and Overdue', async () => {
+    fetchMyTasks.mockResolvedValueOnce({
+      items: mockTasks,
+      total: 5,
+      page: 1,
+      page_size: 5,
+    })
+
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
+    await flushPromises()
+
+    // Default 'all' shows all 5
+    expect(wrapper.findAllComponents(WorkerTaskCard).length).toBe(5)
+
+    const filterChips = wrapper.getComponent(TaskFilterChips)
+    const chips = filterChips.findAll('button')
+
+    // Click 'Submitted'
+    await chips[1].trigger('click')
+    await flushPromises()
+    expect(wrapper.vm.selectedFilter).toBe('Submitted')
+    expect(wrapper.findAllComponents(WorkerTaskCard).length).toBe(4)
+
+    // Click 'In-Progress'
+    await chips[2].trigger('click')
+    await flushPromises()
+    expect(wrapper.vm.selectedFilter).toBe('In-Progress')
+    expect(wrapper.findAllComponents(WorkerTaskCard).length).toBe(1)
+    expect(wrapper.findComponent(WorkerTaskCard).props('task').tracking_code).toBe('GRV-2026-B2K9')
+
+    // Click 'Overdue'
+    await chips[3].trigger('click')
+    await flushPromises()
+    expect(wrapper.vm.selectedFilter).toBe('overdue')
+    expect(wrapper.findAllComponents(WorkerTaskCard).length).toBe(2)
+  })
+
+  it('shows "No tasks in this filter" empty state and "Show all" resets filter', async () => {
+    // Only 1 In-Progress task
+    fetchMyTasks.mockResolvedValueOnce({
+      items: [mockTasks[2]], // In-Progress, not overdue
+      total: 1,
+      page: 1,
+      page_size: 1,
+    })
+
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
+    await flushPromises()
+
+    expect(wrapper.findAllComponents(WorkerTaskCard).length).toBe(1)
+
+    // Select 'Submitted' chip which has 0 matches
+    const filterChips = wrapper.getComponent(TaskFilterChips)
+    const chips = filterChips.findAll('button')
+    await chips[1].trigger('click') // Submitted
+    await flushPromises()
+
+    expect(wrapper.findAllComponents(WorkerTaskCard).length).toBe(0)
+    const empty = wrapper.getComponent(EmptyState)
+    expect(empty.get('h3').text()).toBe('No tasks in this filter')
+    expect(empty.get('p').text()).toContain('Try selecting another filter')
+
+    // Click 'Show all' button inside EmptyState
+    const showAllBtn = empty.get('.worker-show-all-btn')
+    await showAllBtn.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.vm.selectedFilter).toBe('all')
+    expect(wrapper.findAllComponents(WorkerTaskCard).length).toBe(1)
+  })
+
+  it('defensively omits Completed tasks from active list and summary counts', async () => {
+    const tasksWithCompleted = [
+      ...mockTasks,
+      {
+        id: 't-completed',
+        tracking_code: 'GRV-2026-CMPL',
+        category: 'Sanitation',
+        status: 'Completed',
+        priority: 'high',
+        sla_deadline: '2026-10-15T10:00:00.000Z',
+        is_overdue: true,
+      },
+    ]
+
+    fetchMyTasks.mockResolvedValueOnce({
+      items: tasksWithCompleted,
+      total: 6,
+      page: 1,
+      page_size: 6,
+    })
+
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
+    await flushPromises()
+
+    // Completed task should not appear in cards
+    const cards = wrapper.findAllComponents(WorkerTaskCard)
+    expect(cards.length).toBe(5)
+    expect(cards.some((c) => c.props('task').status === 'Completed')).toBe(false)
+
+    // Summary strip counts should ignore the completed task
+    const strip = wrapper.getComponent(TaskSummaryStrip)
+    expect(strip.find('[data-testid="strip-overdue"]').text()).toContain('2')
   })
 })

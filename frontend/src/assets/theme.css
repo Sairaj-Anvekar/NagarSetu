@@ -55,6 +55,12 @@
   --ns-worker-chip-bg: rgba(255, 255, 255, 0.12);
   --ns-worker-chip-text: #E8F2F8;
 
+  /* Worker task UI: shared by TaskSummaryStrip, TaskFilterChips and WorkerTaskCard. */
+  /* Overdue colour — used for the overdue count number and the overdue time-left pill text. */
+  --ns-overdue-fg: #B91C1C;
+  /* Muted label — used for unselected filter chip text and the "Due in …" pill text. */
+  --ns-task-label: #334155;
+
   --ns-space-4: 4px;
   --ns-space-8: 8px;
   --ns-space-12: 12px;
