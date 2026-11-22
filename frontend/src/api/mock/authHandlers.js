@@ -66,7 +66,9 @@ function handleWorkerLogin({ body }) {
       user: {
         id: String(worker.id),
         name: worker.name,
-        role: 'worker'
+        role: 'worker',
+        department: worker.department,
+        zone: worker.zone
       }
     }
   }
