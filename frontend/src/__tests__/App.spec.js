@@ -18,3 +18,4 @@ describe('App', () => {
     expect(wrapper.find('.navbar-brand').text()).toContain('NagarSetu')
   }, 20000)
 })
+

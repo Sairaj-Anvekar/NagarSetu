@@ -44,7 +44,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'worker', noNavbar: true },
       children: [
         { path: '', name: 'worker', component: WorkerView },
-        { path: 'tasks/:id', name: 'worker-task-detail', component: WorkerTaskDetailView },
+        {
+          path: 'tasks/:id',
+          name: 'worker-task-detail',
+          component: WorkerTaskDetailView,
+          meta: { hideTabBar: true, hideAppBar: true },
+        },
         { path: 'history', name: 'worker-history', component: WorkerHistoryView },
         { path: 'account', name: 'worker-account', component: WorkerAccountView },
       ],

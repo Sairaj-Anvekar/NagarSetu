@@ -34,6 +34,12 @@ describe('WorkerLayout', () => {
           component: WorkerLayout,
           children: [
             { path: '', name: 'worker', component: TasksStub },
+            {
+              path: 'tasks/:id',
+              name: 'worker-task-detail',
+              component: TasksStub,
+              meta: { hideTabBar: true, hideAppBar: true },
+            },
             { path: 'history', name: 'worker-history', component: HistoryStub },
             { path: 'account', name: 'worker-account', component: AccountStub },
           ],
@@ -123,5 +129,13 @@ describe('WorkerLayout', () => {
     await flushPromises()
 
     expect(wrapper.find('[role="status"]').exists()).toBe(false)
+  })
+
+  it('hides app bar and tab bar when route meta specifies hideTabBar and hideAppBar', async () => {
+    await mountLayout('/worker/tasks/task-123')
+
+    expect(wrapper.find('header.ns-worker-app-bar').exists()).toBe(false)
+    expect(wrapper.find('nav[aria-label="Worker navigation"]').exists()).toBe(false)
+    expect(wrapper.get('main#worker-main').text()).toContain('Tasks child content')
   })
 })

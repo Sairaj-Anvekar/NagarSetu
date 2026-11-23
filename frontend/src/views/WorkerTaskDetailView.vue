@@ -1,21 +1,31 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { getActivePinia } from 'pinia'
 import AppIcon from '../components/AppIcon.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import PriorityBadge from '../components/PriorityBadge.vue'
-import StatusBadge from '../components/StatusBadge.vue'
+import TaskDetailHeader from '../components/worker/TaskDetailHeader.vue'
+import TaskStatusStepper from '../components/worker/TaskStatusStepper.vue'
 import WorkerCompleteForm from '../components/worker/WorkerCompleteForm.vue'
 import { deferTask, fetchTask, startTask } from '../api/complaintsApi'
+import { useAuthStore } from '../stores/auth'
 import { getErrorMessage } from '../utils/apiError'
 import { getFieldErrors } from '../utils/fieldErrors'
-import { formatDateTime, getDueInfo } from '../utils/formatDate'
 import { buildDirectionsUrl } from '../utils/googleMaps'
 import { DEFER_REASON_MAX, DEFER_REASON_MIN } from '../utils/resolutionLimits'
 
+defineProps({
+  now: {
+    type: [Date, Number],
+    default: () => Date.now(),
+  },
+})
+
 const route = useRoute()
+const auth = getActivePinia() ? useAuthStore() : null
+const workerZone = computed(() => auth?.user?.zone ?? '')
 
 const task = ref(null)
 const isLoading = ref(false)
@@ -36,8 +46,6 @@ let isMounted = false
 
 const pageTitle = computed(() => task.value?.tracking_code || 'Task details')
 const showPhoto = computed(() => Boolean(task.value?.image_url) && !imageError.value)
-const dueInfo = computed(() => getDueInfo(task.value?.sla_deadline))
-const formattedDeadline = computed(() => formatDateTime(task.value?.sla_deadline))
 const directionsUrl = computed(() =>
   buildDirectionsUrl(task.value?.latitude, task.value?.longitude),
 )
@@ -229,7 +237,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="worker-detail-page">
-    <header class="worker-detail-header d-flex align-items-center gap-3 mb-3">
+    <header
+      v-if="!task && !isDeferred"
+      class="worker-detail-fallback-header d-flex align-items-center gap-3 p-3"
+    >
       <RouterLink
         to="/worker"
         class="btn btn-outline-secondary worker-detail-back d-inline-flex align-items-center justify-content-center"
@@ -240,7 +251,7 @@ onBeforeUnmount(() => {
       <h1 class="worker-detail-title mb-0">{{ pageTitle }}</h1>
     </header>
 
-    <div v-if="statusNotice" class="alert alert-warning mb-3" role="status">
+    <div v-if="statusNotice" class="alert alert-warning mb-0" role="status">
       {{ statusNotice }}
     </div>
 
@@ -266,7 +277,7 @@ onBeforeUnmount(() => {
 
     <section
       v-else-if="isDeferred"
-      class="worker-detail-card worker-detail-deferred d-flex flex-column gap-3"
+      class="worker-detail-card worker-detail-deferred d-flex flex-column gap-3 m-3"
       role="status"
     >
       <p class="mb-0 fw-semibold">Task deferred. It has been returned to the queue.</p>
@@ -275,218 +286,295 @@ onBeforeUnmount(() => {
       </RouterLink>
     </section>
 
-    <div v-else-if="task" class="worker-detail-content d-flex flex-column gap-3">
-      <div class="worker-detail-photo-wrap">
-        <img
-          v-if="showPhoto"
-          :src="task.image_url"
-          :alt="`${task.category} complaint photo`"
-          class="worker-detail-photo"
-          @error="imageError = true"
+    <div v-else-if="task" class="worker-detail-content">
+      <TaskDetailHeader
+        :tracking-code="pageTitle"
+        :category="task.category || ''"
+        :priority="task.priority || 'low'"
+        :zone="workerZone"
+      />
+
+      <div class="worker-detail-body">
+        <TaskStatusStepper
+          :status="task.status"
+          :sla-deadline="task.sla_deadline"
+          :now="now"
+          class="worker-detail-status-card"
         />
-        <div v-else class="worker-detail-photo-placeholder">
-          <span>Photo unavailable</span>
-        </div>
-      </div>
 
-      <section class="worker-detail-card d-flex flex-column gap-3">
-        <div class="d-flex align-items-center flex-wrap gap-2">
-          <PriorityBadge :priority="task.priority" />
-          <StatusBadge :status="task.status" />
-        </div>
-
-        <div>
-          <h2 class="worker-detail-category">{{ task.category }}</h2>
+        <section class="worker-detail-card" aria-labelledby="section-doing">
+          <h2 id="section-doing" class="worker-detail-card-title">What needs doing</h2>
           <p class="worker-detail-description mb-0">{{ task.description }}</p>
-        </div>
+        </section>
 
-        <div class="worker-detail-deadline d-flex align-items-center flex-wrap gap-2">
-          <AppIcon name="clock" :size="18" />
-          <span
-            class="worker-detail-relative"
-            :class="{ 'worker-detail-relative--overdue': task.is_overdue }"
-          >
-            {{ dueInfo.text }}
-          </span>
-          <span v-if="task.is_overdue" class="worker-detail-overdue-pill">Overdue</span>
-          <span class="worker-detail-deadline-time">{{ formattedDeadline }}</span>
-        </div>
-
-        <div class="worker-detail-directions">
-          <a
-            v-if="directionsUrl"
-            :href="directionsUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn btn-outline-primary worker-detail-action-btn d-inline-flex align-items-center justify-content-center gap-2 w-100"
-          >
-            <AppIcon name="map-pin" :size="18" />
-            <span>Get directions</span>
-          </a>
-          <div v-else class="d-flex flex-column gap-1">
-            <button
-              type="button"
-              class="btn btn-outline-secondary worker-detail-action-btn d-inline-flex align-items-center justify-content-center gap-2 w-100"
-              disabled
+        <section class="worker-detail-card" aria-labelledby="section-location">
+          <h2 id="section-location" class="worker-detail-card-title">Location</h2>
+          <div class="worker-detail-location-pin-block" aria-hidden="true">
+            <svg
+              class="worker-detail-location-pin-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+          </div>
+          <p v-if="workerZone" class="worker-detail-location-zone">{{ workerZone }}</p>
+          <div class="worker-detail-directions">
+            <a
+              v-if="directionsUrl"
+              :href="directionsUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn btn-outline-primary worker-detail-action-btn d-inline-flex align-items-center justify-content-center gap-2 w-100"
             >
               <AppIcon name="map-pin" :size="18" />
               <span>Get directions</span>
-            </button>
-            <p class="worker-detail-directions-note mb-0">
-              Location coordinates are unavailable for this task.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <ErrorAlert v-if="actionError" title="Could not update task" :message="actionError" />
-
-      <section
-        v-if="isCompleted"
-        class="worker-detail-card worker-detail-completed d-flex flex-column gap-3"
-        role="status"
-      >
-        <p class="mb-0 fw-semibold">Work completed. Thank you.</p>
-        <RouterLink to="/worker" class="btn btn-primary worker-detail-action-btn w-100">
-          Back to my tasks
-        </RouterLink>
-      </section>
-
-      <WorkerCompleteForm
-        v-if="canComplete"
-        :task-id="String(task.id)"
-        @completed="handleTaskCompleted"
-      />
-
-      <div v-if="canStart || canDefer" class="worker-detail-actions d-flex flex-column gap-2">
-        <button
-          v-if="canStart"
-          type="button"
-          class="btn btn-primary worker-detail-action-btn d-inline-flex align-items-center justify-content-center gap-2 w-100"
-          :disabled="isStarting || isDeferring"
-          @click="handleStartWork"
-        >
-          <LoadingSpinner v-if="isStarting" size="sm" label="Starting work" />
-          <span>{{ isStarting ? 'Starting work...' : 'Start work' }}</span>
-        </button>
-
-        <button
-          v-if="canDefer && !showDeferForm"
-          type="button"
-          class="btn btn-outline-secondary worker-detail-action-btn w-100"
-          :disabled="isStarting"
-          @click="openDeferForm"
-        >
-          Defer task
-        </button>
-
-        <form
-          v-if="canDefer && showDeferForm"
-          class="worker-detail-card worker-detail-defer-form d-flex flex-column gap-3"
-          novalidate
-          @submit.prevent="handleDeferSubmit"
-        >
-          <div>
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-              <label for="defer-reason" class="form-label mb-0">Reason</label>
-              <span
-                class="worker-detail-counter"
-                :class="{ 'worker-detail-counter--invalid': isReasonTooLong }"
+            </a>
+            <div v-else class="d-flex flex-column gap-1">
+              <button
+                type="button"
+                class="btn btn-outline-secondary worker-detail-action-btn d-inline-flex align-items-center justify-content-center gap-2 w-100"
+                disabled
               >
-                {{ trimmedReasonLength }} / {{ DEFER_REASON_MAX }}
-              </span>
-            </div>
-            <textarea
-              id="defer-reason"
-              v-model="deferReason"
-              rows="3"
-              class="form-control"
-              :class="{ 'is-invalid': Boolean(displayedReasonError) }"
-              placeholder="Explain why this task needs to be returned to the queue"
-              :disabled="isDeferring"
-              aria-describedby="defer-reason-help"
-            />
-            <div id="defer-reason-help" class="form-text">
-              {{ DEFER_REASON_MIN }} to {{ DEFER_REASON_MAX }} characters required.
-            </div>
-            <div v-if="displayedReasonError" class="invalid-feedback d-block">
-              {{ displayedReasonError }}
+                <AppIcon name="map-pin" :size="18" />
+                <span>Get directions</span>
+              </button>
+              <p class="worker-detail-directions-note mb-0">
+                Location coordinates are unavailable for this task.
+              </p>
             </div>
           </div>
+        </section>
 
-          <div class="d-flex align-items-center gap-2">
-            <button
-              type="submit"
-              class="btn btn-primary worker-detail-action-btn d-inline-flex align-items-center justify-content-center gap-2 flex-grow-1"
-              :disabled="!isReasonValid || isDeferring"
-            >
-              <LoadingSpinner v-if="isDeferring" size="sm" label="Deferring task" />
-              <span>{{ isDeferring ? 'Deferring...' : 'Submit defer' }}</span>
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-secondary worker-detail-action-btn"
-              :disabled="isDeferring"
-              @click="closeDeferForm"
-            >
-              Cancel
-            </button>
+        <section class="worker-detail-card" aria-labelledby="section-photo">
+          <h2 id="section-photo" class="worker-detail-card-title">Complaint photo</h2>
+          <div class="worker-detail-photo-wrap">
+            <img
+              v-if="showPhoto"
+              :src="task.image_url"
+              :alt="`${task.category} complaint photo`"
+              class="worker-detail-photo"
+              @error="imageError = true"
+            />
+            <div v-else class="worker-detail-photo-placeholder">
+              <span>{{ imageError ? 'Photo unavailable' : 'No photo attached' }}</span>
+            </div>
           </div>
-        </form>
+        </section>
+
+        <ErrorAlert v-if="actionError" title="Could not update task" :message="actionError" />
+
+        <section
+          v-if="isCompleted"
+          class="worker-detail-card worker-detail-completed d-flex flex-column gap-3"
+          role="status"
+        >
+          <p class="mb-0 fw-semibold">Work completed. Thank you.</p>
+          <RouterLink to="/worker" class="btn btn-primary worker-detail-action-btn w-100">
+            Back to my tasks
+          </RouterLink>
+        </section>
+
+        <WorkerCompleteForm
+          v-if="canComplete"
+          :task-id="String(task.id)"
+          @completed="handleTaskCompleted"
+        />
+      </div>
+
+      <!-- Sticky bottom action bar -->
+      <div v-if="!isCompleted && (canStart || canDefer)" class="worker-detail-sticky-bar">
+        <div class="worker-detail-sticky-bar__inner">
+          <button
+            v-if="canStart"
+            type="button"
+            class="btn worker-detail-primary-btn d-inline-flex align-items-center justify-content-center gap-2 w-100"
+            :disabled="isStarting || isDeferring"
+            @click="handleStartWork"
+          >
+            <LoadingSpinner v-if="isStarting" size="sm" label="Starting task" />
+            <span>{{ isStarting ? 'Starting task...' : 'Start task' }}</span>
+          </button>
+
+          <button
+            v-if="canDefer && !showDeferForm"
+            type="button"
+            class="btn worker-detail-secondary-btn w-100"
+            :disabled="isStarting"
+            @click="openDeferForm"
+          >
+            I can't do this today
+          </button>
+
+          <form
+            v-if="canDefer && showDeferForm"
+            class="worker-detail-card worker-detail-defer-form d-flex flex-column gap-3"
+            novalidate
+            @submit.prevent="handleDeferSubmit"
+          >
+            <div>
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                <label for="defer-reason" class="form-label mb-0">Reason</label>
+                <span
+                  class="worker-detail-counter"
+                  :class="{ 'worker-detail-counter--invalid': isReasonTooLong }"
+                >
+                  {{ trimmedReasonLength }} / {{ DEFER_REASON_MAX }}
+                </span>
+              </div>
+              <textarea
+                id="defer-reason"
+                v-model="deferReason"
+                rows="3"
+                class="form-control"
+                :class="{ 'is-invalid': Boolean(displayedReasonError) }"
+                placeholder="Explain why this task needs to be returned to the queue"
+                :disabled="isDeferring"
+                aria-describedby="defer-reason-help"
+              />
+              <div id="defer-reason-help" class="form-text">
+                {{ DEFER_REASON_MIN }} to {{ DEFER_REASON_MAX }} characters required.
+              </div>
+              <div v-if="displayedReasonError" class="invalid-feedback d-block">
+                {{ displayedReasonError }}
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+              <button
+                type="submit"
+                class="btn btn-primary worker-detail-action-btn d-inline-flex align-items-center justify-content-center gap-2 flex-grow-1"
+                :disabled="!isReasonValid || isDeferring"
+              >
+                <LoadingSpinner v-if="isDeferring" size="sm" label="Deferring task" />
+                <span>{{ isDeferring ? 'Deferring...' : 'Submit defer' }}</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary worker-detail-action-btn"
+                :disabled="isDeferring"
+                @click="closeDeferForm"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.worker-detail-back,
-.worker-detail-action-btn {
-  min-width: 44px;
-  min-height: 44px;
+.worker-detail-page {
+  background-color: var(--ns-worker-page-bg);
+  min-height: 100%;
 }
 
-.worker-detail-title {
+.worker-detail-body {
+  padding: 0 16px calc(140px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: -30px;
+  position: relative;
+  z-index: 2;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.worker-detail-card {
+  background-color: var(--ns-paper);
+  border: 1px solid var(--ns-worker-tab-border);
+  border-radius: 18px;
+  box-shadow: 0 2px 10px rgba(14, 34, 51, 0.04);
+  padding: 16px 18px;
+}
+
+.worker-detail-card-title {
   font-family: var(--ns-font-display);
-  font-size: 1.375rem;
+  font-size: 1.0625rem;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  color: var(--ns-login-navy);
+  margin: 0 0 12px;
+}
+
+.worker-detail-description {
+  font-family: var(--ns-font-body);
+  font-size: 0.9375rem;
+  line-height: 1.55;
   color: var(--ns-ink);
-  min-width: 0;
+  white-space: pre-line;
   overflow-wrap: anywhere;
+}
+
+.worker-detail-location-pin-block {
+  height: 96px;
+  background-color: #E8F0F5;
+  background-image: linear-gradient(rgba(14, 34, 51, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 34, 51, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+.worker-detail-location-pin-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--ns-login-teal);
+}
+
+.worker-detail-location-zone {
+  font-family: var(--ns-font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #475569;
+  margin: 0 0 12px;
 }
 
 .worker-detail-photo-wrap {
   width: 100%;
-  border-radius: var(--ns-radius-card);
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--ns-line);
-  background-color: var(--ns-neutral-bg);
+  border: 1px solid var(--ns-worker-tab-border);
+  background-color: var(--ns-worker-page-bg);
 }
 
 .worker-detail-photo {
   width: 100%;
-  max-height: 320px;
+  max-height: 280px;
   object-fit: cover;
   display: block;
 }
 
 .worker-detail-photo-placeholder {
   width: 100%;
-  min-height: 180px;
+  min-height: 140px;
   display: grid;
   place-items: center;
-  background-color: var(--ns-neutral-bg);
-  color: var(--ns-neutral-fg);
+  background-color: #F8FAFC;
+  color: #64748B;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 
-.worker-detail-card {
-  background-color: var(--ns-paper);
-  border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-card);
-  box-shadow: var(--ns-shadow-card);
-  padding: 16px;
+.worker-detail-back,
+.worker-detail-action-btn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.worker-detail-directions-note {
+  font-size: 0.8125rem;
+  color: #64748B;
 }
 
 .worker-detail-deferred,
@@ -496,61 +584,77 @@ onBeforeUnmount(() => {
   color: var(--ns-success-fg);
 }
 
-.worker-detail-category {
-  font-family: var(--ns-font-display);
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--ns-ink);
-  margin: 0 0 6px;
-}
-
-.worker-detail-description {
-  color: var(--ns-ink);
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-
-.worker-detail-deadline {
-  font-size: 0.875rem;
-  color: var(--ns-ink);
-}
-
-.worker-detail-relative {
-  font-weight: 500;
-}
-
-.worker-detail-relative--overdue {
-  color: var(--ns-danger-fg);
-  font-weight: 600;
-}
-
-.worker-detail-overdue-pill {
-  background-color: var(--ns-danger-bg);
-  color: var(--ns-danger-fg);
-  border-radius: var(--ns-radius-pill);
-  font-weight: 600;
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.worker-detail-deadline-time,
-.worker-detail-directions-note {
-  font-size: 0.8125rem;
-  color: var(--ns-slate);
-}
-
 .worker-detail-counter {
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
-  color: var(--ns-slate);
+  color: #64748B;
 }
 
 .worker-detail-counter--invalid {
-  color: var(--ns-danger-fg);
+  color: #B91C1C;
   font-weight: 600;
 }
+
+/* Sticky action bar styling */
+.worker-detail-sticky-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1020;
+  background-color: var(--ns-paper);
+  border-top: 1px solid #E3EAF0;
+  box-shadow: 0 -10px 28px rgba(14, 34, 51, 0.1);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.worker-detail-sticky-bar__inner {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.worker-detail-primary-btn {
+  height: 54px;
+  min-height: 54px;
+  border-radius: 14px;
+  background: var(--ns-login-gradient);
+  color: var(--ns-paper);
+  font-family: var(--ns-font-body);
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 4px 14px rgba(11, 114, 133, 0.28);
+}
+
+.worker-detail-primary-btn:hover:not(:disabled),
+.worker-detail-primary-btn:focus-visible:not(:disabled) {
+  opacity: 0.95;
+  color: var(--ns-paper);
+}
+
+.worker-detail-primary-btn:disabled {
+  opacity: 0.65;
+  color: var(--ns-paper);
+}
+
+.worker-detail-secondary-btn {
+  height: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: #5B6B7A;
+  font-family: var(--ns-font-body);
+  font-size: 14px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+
+.worker-detail-secondary-btn:hover:not(:disabled) {
+  color: var(--ns-ink);
+  background: rgba(14, 34, 51, 0.04);
+}
 </style>
-
-

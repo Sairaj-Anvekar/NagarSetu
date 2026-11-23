@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import WorkerTaskDetailView from '../WorkerTaskDetailView.vue'
 import WorkerCompleteForm from '../../components/worker/WorkerCompleteForm.vue'
@@ -28,6 +29,7 @@ const baseTask = {
 }
 
 async function mountDetailView(id = 'task-uuid-1') {
+  const pinia = createPinia()
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -38,7 +40,7 @@ async function mountDetailView(id = 'task-uuid-1') {
   await router.push(`/worker/tasks/${id}`)
   await router.isReady()
 
-  const wrapper = mount(WorkerTaskDetailView, { global: { plugins: [router] } })
+  const wrapper = mount(WorkerTaskDetailView, { global: { plugins: [router, pinia] } })
   return { wrapper, router }
 }
 
@@ -137,14 +139,14 @@ describe('WorkerTaskDetailView — Start work', () => {
     const { wrapper } = await mountDetailView()
     await flushPromises()
 
-    const startBtn = wrapper.findAll('button').find((b) => b.text().includes('Start work'))
+    const startBtn = wrapper.findAll('button').find((b) => b.text().includes('Start task'))
     expect(startBtn).toBeDefined()
-    expect(wrapper.text()).not.toContain('Complete')
+    expect(wrapper.findComponent(WorkerCompleteForm).exists()).toBe(false)
 
     await startBtn.trigger('click')
     await nextTick()
     expect(startBtn.attributes('disabled')).toBeDefined()
-    expect(startBtn.text()).toContain('Starting work...')
+    expect(startBtn.text()).toContain('Starting task...')
 
     resolveStart({ ...baseTask, status: 'In-Progress' })
     await flushPromises()
@@ -152,7 +154,7 @@ describe('WorkerTaskDetailView — Start work', () => {
     expect(startTask).toHaveBeenCalledWith('task-uuid-1')
     expect(fetchTask).toHaveBeenCalledTimes(1)
     expect(wrapper.find('.ns-badge--in-progress').text()).toBe('In-Progress')
-    expect(wrapper.findAll('button').find((b) => b.text().includes('Start work'))).toBeUndefined()
+    expect(wrapper.findAll('button').find((b) => b.text().includes('Start task'))).toBeUndefined()
   })
 
   it('shows conflict notice and refetches once when startTask returns 409', async () => {
@@ -164,7 +166,7 @@ describe('WorkerTaskDetailView — Start work', () => {
     const { wrapper } = await mountDetailView()
     await flushPromises()
 
-    const startBtn = wrapper.findAll('button').find((b) => b.text().includes('Start work'))
+    const startBtn = wrapper.findAll('button').find((b) => b.text().includes('Start task'))
     await startBtn.trigger('click')
     await flushPromises()
 
@@ -186,7 +188,7 @@ describe('WorkerTaskDetailView — Defer', () => {
     const { wrapper } = await mountDetailView()
     await flushPromises()
 
-    await wrapper.findAll('button').find((b) => b.text() === 'Defer task').trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === "I can't do this today").trigger('click')
     const deferForm = wrapper.get('form.worker-detail-defer-form')
     const textarea = deferForm.get('#defer-reason')
     const submitBtn = deferForm.get('button[type="submit"]')
@@ -214,7 +216,7 @@ describe('WorkerTaskDetailView — Defer', () => {
     const { wrapper } = await mountDetailView()
     await flushPromises()
 
-    await wrapper.findAll('button').find((b) => b.text() === 'Defer task').trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === "I can't do this today").trigger('click')
     await wrapper.get('#defer-reason').setValue('Need drainage pump truck')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -239,7 +241,7 @@ describe('WorkerTaskDetailView — Defer', () => {
     const { wrapper } = await mountDetailView()
     await flushPromises()
 
-    await wrapper.findAll('button').find((b) => b.text() === 'Defer task').trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === "I can't do this today").trigger('click')
     const deferForm = wrapper.get('form.worker-detail-defer-form')
     await deferForm.get('#defer-reason').setValue('Valid length reason')
     await deferForm.trigger('submit')
@@ -267,8 +269,8 @@ describe('WorkerTaskDetailView — Complete work', () => {
     const completed = await mountDetailView()
     await flushPromises()
     expect(completed.wrapper.findComponent(WorkerCompleteForm).exists()).toBe(false)
-    expect(completed.wrapper.findAll('button').find((b) => b.text().includes('Start work'))).toBeUndefined()
-    expect(completed.wrapper.findAll('button').find((b) => b.text() === 'Defer task')).toBeUndefined()
+    expect(completed.wrapper.findAll('button').find((b) => b.text().includes('Start task'))).toBeUndefined()
+    expect(completed.wrapper.findAll('button').find((b) => b.text() === "I can't do this today")).toBeUndefined()
 
     fetchTask.mockResolvedValueOnce({ ...baseTask, status: 'In-Progress' })
     const inProgress = await mountDetailView()
@@ -293,8 +295,8 @@ describe('WorkerTaskDetailView — Complete work', () => {
     expect(wrapper.find('.ns-badge--completed').text()).toBe('Completed')
     expect(wrapper.text()).toContain('Work completed. Thank you.')
     expect(wrapper.findComponent(WorkerCompleteForm).exists()).toBe(false)
-    expect(wrapper.findAll('button').find((b) => b.text().includes('Start work'))).toBeUndefined()
-    expect(wrapper.findAll('button').find((b) => b.text() === 'Defer task')).toBeUndefined()
+    expect(wrapper.findAll('button').find((b) => b.text().includes('Start task'))).toBeUndefined()
+    expect(wrapper.findAll('button').find((b) => b.text() === "I can't do this today")).toBeUndefined()
 
     const backLink = wrapper.get('.worker-detail-completed a[href="/worker"].btn')
     expect(backLink.text()).toBe('Back to my tasks')
