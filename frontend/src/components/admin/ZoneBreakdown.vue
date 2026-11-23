@@ -6,6 +6,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  showLegend: {
+    type: Boolean,
+    default: true,
+  },
 })
 
 const maxCount = computed(() => {
@@ -29,13 +33,46 @@ function getBarWidth(count) {
   const pct = (count / maxCount.value) * 100
   return `${pct}%`
 }
+
+function hasStatusBreakdown(item) {
+  return (
+    typeof item?.submitted === 'number' ||
+    typeof item?.in_progress === 'number' ||
+    typeof item?.completed === 'number'
+  )
+}
+
+function getSegmentWidth(segmentCount, rowTotal) {
+  if (!rowTotal || rowTotal <= 0 || !segmentCount) return '0%'
+  return `${Math.min(100, (segmentCount / rowTotal) * 100)}%`
+}
 </script>
 
 <template>
   <div class="zone-breakdown">
+    <div
+      v-if="showLegend && zones && zones.length > 0"
+      class="zone-breakdown__legend"
+      aria-hidden="true"
+    >
+      <div class="zone-breakdown__legend-item">
+        <span class="zone-breakdown__dot zone-breakdown__dot--submitted"></span>
+        <span>Submitted</span>
+      </div>
+      <div class="zone-breakdown__legend-item">
+        <span class="zone-breakdown__dot zone-breakdown__dot--in-progress"></span>
+        <span>In-Progress</span>
+      </div>
+      <div class="zone-breakdown__legend-item">
+        <span class="zone-breakdown__dot zone-breakdown__dot--completed"></span>
+        <span>Completed</span>
+      </div>
+    </div>
+
     <div v-if="!zones || zones.length === 0" class="zone-breakdown__empty text-muted">
       No data
     </div>
+
     <div v-else class="zone-breakdown__list" role="list">
       <div v-for="item in zones" :key="item.zone" class="zone-breakdown__item" role="listitem">
         <div class="zone-breakdown__header">
@@ -43,21 +80,41 @@ function getBarWidth(count) {
             {{ item.zone.replace(/^Zone\s+/i, '').charAt(0) }}
           </span>
           <span class="zone-breakdown__name">{{ item.zone }}</span>
-          <span class="zone-breakdown__count ns-num">{{ item.count }}</span>
           <span class="zone-breakdown__percentage ns-num">
             {{ getPercentage(item.count) }}%
           </span>
+          <span class="zone-breakdown__count ns-num">{{ item.count }}</span>
         </div>
+
         <div class="zone-breakdown__track">
           <div
             class="zone-breakdown__bar"
+            :class="{ 'zone-breakdown__bar--stacked': hasStatusBreakdown(item) }"
             :style="{ width: getBarWidth(item.count) }"
             :aria-valuenow="item.count"
             :aria-valuemax="maxCount"
             aria-valuemin="0"
             role="progressbar"
             :aria-label="`${item.zone}: ${item.count}`"
-          />
+          >
+            <template v-if="hasStatusBreakdown(item)">
+              <span
+                v-if="item.submitted"
+                class="zone-breakdown__segment zone-breakdown__segment--submitted"
+                :style="{ width: getSegmentWidth(item.submitted, item.count) }"
+              />
+              <span
+                v-if="item.in_progress"
+                class="zone-breakdown__segment zone-breakdown__segment--in-progress"
+                :style="{ width: getSegmentWidth(item.in_progress, item.count) }"
+              />
+              <span
+                v-if="item.completed"
+                class="zone-breakdown__segment zone-breakdown__segment--completed"
+                :style="{ width: getSegmentWidth(item.completed, item.count) }"
+              />
+            </template>
+          </div>
         </div>
       </div>
     </div>
@@ -69,75 +126,146 @@ function getBarWidth(count) {
   width: 100%;
 }
 
+.zone-breakdown__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-family: var(--ns-font-body, 'Public Sans', sans-serif);
+  font-size: 12px;
+  color: #4B5B6B;
+}
+
+.zone-breakdown__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zone-breakdown__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.zone-breakdown__dot--submitted {
+  background-color: #3B82F6;
+}
+
+.zone-breakdown__dot--in-progress {
+  background-color: #F59E0B;
+}
+
+.zone-breakdown__dot--completed {
+  background-color: #22C55E;
+}
+
 .zone-breakdown__empty {
   padding: 1.5rem 0;
   text-align: center;
   font-size: 0.875rem;
-  color: var(--ns-slate);
+  color: #5F6F7E;
 }
 
 .zone-breakdown__list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 14px;
 }
 
 .zone-breakdown__item {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 6px;
 }
 
 .zone-breakdown__header {
   display: flex;
-  gap: 0.5rem;
   align-items: center;
-  font-size: 0.875rem;
-}
-
-.zone-breakdown__name {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--ns-ink);
-  font-weight: 500;
+  gap: 10px;
+  font-size: 13px;
 }
 
 .zone-breakdown__chip {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--ns-radius-sm);
-  background: var(--ns-info-bg);
-  color: var(--ns-harbour);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background-color: #E6F4F6;
+  color: #0B6A7C;
+  font-family: var(--ns-font-display, 'Sora', sans-serif);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.zone-breakdown__name {
+  flex: 1;
+  min-width: 0;
+  color: #0E2233;
   font-weight: 600;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .zone-breakdown__percentage {
-  min-width: 4ch;
-  text-align: right;
-  color: var(--ns-slate);
+  color: #5F6F7E;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .zone-breakdown__count {
-  color: var(--ns-ink);
-  font-weight: 600;
+  min-width: 28px;
+  text-align: right;
+  color: #0E2233;
+  font-family: var(--ns-font-display, 'Sora', sans-serif);
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .zone-breakdown__track {
   width: 100%;
   height: 8px;
-  background-color: var(--ns-neutral-bg);
-  border-radius: var(--ns-radius-pill);
+  background-color: #EEF3F7;
+  border-radius: 999px;
   overflow: hidden;
 }
 
 .zone-breakdown__bar {
+  display: flex;
   height: 100%;
-  background: linear-gradient(90deg, var(--ns-harbour), var(--ns-span));
-  border-radius: var(--ns-radius-pill);
+  background-color: #0B7285;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.zone-breakdown__bar--stacked {
+  background-color: transparent;
+}
+
+.zone-breakdown__segment {
+  height: 100%;
+}
+
+.zone-breakdown__segment--submitted {
+  background-color: #3B82F6;
+}
+
+.zone-breakdown__segment--in-progress {
+  background-color: #F59E0B;
+}
+
+.zone-breakdown__segment--completed {
+  background-color: #22C55E;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .zone-breakdown__bar {
+    transition: width var(--ns-duration-fast, 120ms) ease;
+  }
 }
 </style>
-

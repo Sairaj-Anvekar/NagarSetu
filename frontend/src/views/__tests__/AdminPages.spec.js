@@ -35,6 +35,11 @@ describe('AdminView dashboard - state and errors', () => {
       routes: [
         { path: '/admin', component: { template: '<div />' } },
         { path: '/admin/complaints', component: { template: '<div />' } },
+        {
+          path: '/admin/complaints/:id',
+          name: 'admin-complaint-detail',
+          component: { template: '<div />' },
+        },
       ],
     })
     await router.push('/admin')
@@ -340,5 +345,70 @@ describe('AdminView dashboard - state and errors', () => {
     expect(wrapper.findAll('.stat-tile__value').map((value) => value.text())).toEqual([
       '0', '0', '0', '0', '0', '0',
     ])
+  })
+
+  it('fetches overdue complaints on mount and passes them to NeedsAttentionTable', async () => {
+    vi.spyOn(adminApi, 'fetchStats').mockResolvedValueOnce({
+      department: { id: 'd1', name: 'Sanitation' },
+      totals: { total: 10, submitted: 5, in_progress: 3, completed: 2, overdue: 1, unassigned: 0 },
+      by_category: [{ category: 'Garbage', count: 10 }],
+      by_zone: [{ zone: 'Zone A', count: 10 }],
+    })
+    vi.spyOn(adminApi, 'fetchTrends').mockResolvedValueOnce([])
+    const complaintsSpy = vi.spyOn(adminApi, 'fetchAdminComplaints').mockResolvedValueOnce({
+      items: [
+        {
+          id: 'ov1',
+          tracking_code: 'SAN-101',
+          category: 'Garbage Dump',
+          priority: 'critical',
+          zone: 'Zone A',
+          sla_deadline: '2026-11-23T06:00:00Z',
+          assigned_worker: { id: 'w1', name: 'Ravi Patil' },
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 4,
+    })
+
+    const wrapper = mountDashboard()
+    await flushPromises()
+
+    expect(complaintsSpy).toHaveBeenCalledWith({ overdue: true, pageSize: 4, page: 1 })
+    const table = wrapper.findComponent({ name: 'NeedsAttentionTable' })
+    expect(table.exists()).toBe(true)
+    expect(table.props('items')).toHaveLength(1)
+    expect(table.props('items')[0].tracking_code).toBe('SAN-101')
+    expect(table.props('loading')).toBe(false)
+    expect(table.props('error')).toBeNull()
+  })
+
+  it('isolates overdue complaints failure so dashboard tiles and charts still render', async () => {
+    vi.spyOn(adminApi, 'fetchStats').mockResolvedValueOnce({
+      department: { id: 'd1', name: 'Sanitation' },
+      totals: { total: 15, submitted: 5, in_progress: 5, completed: 5, overdue: 2, unassigned: 1 },
+      by_category: [{ category: 'Solid Waste', count: 15 }],
+      by_zone: [{ zone: 'Zone A', count: 15 }],
+    })
+    vi.spyOn(adminApi, 'fetchTrends').mockResolvedValueOnce([])
+    vi.spyOn(adminApi, 'fetchAdminComplaints').mockRejectedValueOnce(
+      new Error('Failed to load overdue complaints.'),
+    )
+
+    const wrapper = mountDashboard()
+    await flushPromises()
+
+    // Tiles and charts remain intact
+    expect(wrapper.findAllComponents({ name: 'StatTile' })).toHaveLength(6)
+    expect(wrapper.findComponent({ name: 'CategoryChart' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'ZoneBreakdown' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'TrendChart' }).exists()).toBe(true)
+
+    // Table receives the isolated error
+    const table = wrapper.findComponent({ name: 'NeedsAttentionTable' })
+    expect(table.exists()).toBe(true)
+    expect(table.props('error')).toBe('Failed to load overdue complaints.')
+    expect(table.props('loading')).toBe(false)
   })
 })
