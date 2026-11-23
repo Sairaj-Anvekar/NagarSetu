@@ -140,4 +140,45 @@ describe('DataTable', () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     expect(wrapper.find('table').exists()).toBe(false)
   })
+
+  it('applies admin variant styling and emits row-click on row click', async () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns: sampleColumns,
+        rows: sampleRows,
+        variant: 'admin',
+      },
+    })
+
+    const table = wrapper.find('table')
+    expect(table.classes()).toContain('ns-table--admin')
+
+    const firstRow = wrapper.find('tbody tr')
+    expect(firstRow.classes()).toContain('ns-table-row--clickable')
+
+    await firstRow.trigger('click')
+    expect(wrapper.emitted('row-click')).toHaveLength(1)
+    expect(wrapper.emitted('row-click')[0][0]).toEqual(sampleRows[0])
+  })
+
+  it('does not emit row-click when an internal link or button is clicked inside a row', async () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns: sampleColumns,
+        rows: sampleRows,
+        variant: 'admin',
+      },
+      slots: {
+        'cell-code': `
+          <template #cell-code="{ value }">
+            <a href="/somewhere" class="code-link">{{ value }}</a>
+          </template>
+        `,
+      },
+    })
+
+    const link = wrapper.find('.code-link')
+    await link.trigger('click')
+    expect(wrapper.emitted('row-click')).toBeUndefined()
+  })
 })

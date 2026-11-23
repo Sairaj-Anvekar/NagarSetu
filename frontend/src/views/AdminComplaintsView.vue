@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import PageHeader from '../components/PageHeader.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -9,8 +8,12 @@ import DataTable from '../components/DataTable.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import ComplaintFilters from '../components/admin/ComplaintFilters.vue'
+import DeadlineCell from '../components/admin/DeadlineCell.vue'
+import WorkerCell from '../components/admin/WorkerCell.vue'
 import { exportAdminComplaintsCsv, fetchAdminComplaints, fetchStats } from '../api/adminApi'
 import { fetchZones } from '../api/referenceApi'
+import { getActivePinia } from 'pinia'
+import { useAuthStore } from '../stores/auth'
 import { getErrorMessage } from '../utils/apiError'
 import { formatDateTime } from '../utils/formatDate'
 import { buildComplaintsCsvFilename, downloadBlob } from '../utils/downloadBlob'
@@ -18,12 +21,11 @@ import { buildComplaintsCsvFilename, downloadBlob } from '../utils/downloadBlob'
 const columns = [
   { key: 'tracking_code', label: 'Tracking code' },
   { key: 'category', label: 'Category' },
-  { key: 'status', label: 'Status' },
-  { key: 'priority', label: 'Priority' },
   { key: 'zone', label: 'Zone' },
-  { key: 'assigned_worker', label: 'Assigned worker' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'status', label: 'Status' },
   { key: 'sla_deadline', label: 'Deadline' },
-  { key: 'created_at', label: 'Created' },
+  { key: 'assigned_worker', label: 'Worker' },
 ]
 
 const complaints = ref([])
@@ -39,6 +41,7 @@ const exportError = ref('')
 
 const route = useRoute()
 const router = useRouter()
+const authStore = getActivePinia() ? useAuthStore() : null
 
 const filters = ref({
   q: '',
@@ -51,6 +54,14 @@ const filters = ref({
 
 const categories = ref([])
 const zones = ref([])
+const statsTotals = ref(null)
+
+const eyebrow = computed(() => {
+  const dept = authStore?.user?.department?.name || authStore?.user?.department || ''
+  if (!dept || typeof dept !== 'string') return ''
+  const upper = dept.trim().toUpperCase()
+  return upper.endsWith('DEPARTMENT') ? upper : `${upper} DEPARTMENT`
+})
 
 function parseQuery(query = {}) {
   const parsedPage = parseInt(query?.page, 10)
@@ -96,6 +107,31 @@ const subtitle = computed(() => {
 
 const totalPages = computed(() => {
   return Math.max(1, Math.ceil(total.value / pageSize.value))
+})
+
+const displayedPages = computed(() => {
+  const current = page.value
+  const count = totalPages.value
+  if (count <= 5) {
+    return Array.from({ length: count }, (_, i) => i + 1)
+  }
+  let start = Math.max(1, current - 2)
+  let end = Math.min(count, start + 4)
+  if (end - start < 4) {
+    start = Math.max(1, end - 4)
+  }
+  const pages = []
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  return pages
+})
+
+const showingSummary = computed(() => {
+  if (total.value === 0) return 'Showing 0 complaints'
+  const start = (page.value - 1) * pageSize.value + 1
+  const end = Math.min(page.value * pageSize.value, total.value)
+  return `Showing ${start} to ${end} of ${total.value} complaints`
 })
 
 const hasActiveFilters = computed(() => {
@@ -200,14 +236,26 @@ function goToPage(newPage) {
   }
 }
 
+function handleRowClick(row) {
+  if (!row?.id) return
+  if (router?.push) {
+    router.push('/admin/complaints/' + row.id)
+  }
+}
+
 async function loadAuxiliaryOptions() {
   try {
     const [statsResult, zonesResult] = await Promise.allSettled([fetchStats(), fetchZones()])
 
-    if (statsResult.status === 'fulfilled' && statsResult.value?.by_category) {
-      categories.value = statsResult.value.by_category
-        .map((c) => (typeof c === 'string' ? c : c?.category))
-        .filter(Boolean)
+    if (statsResult.status === 'fulfilled' && statsResult.value) {
+      if (statsResult.value.by_category) {
+        categories.value = statsResult.value.by_category
+          .map((c) => (typeof c === 'string' ? c : c?.category))
+          .filter(Boolean)
+      }
+      if (statsResult.value.totals) {
+        statsTotals.value = statsResult.value.totals
+      }
     }
 
     if (zonesResult.status === 'fulfilled' && Array.isArray(zonesResult.value)) {
@@ -241,19 +289,44 @@ onMounted(() => {
 
 <template>
   <div class="admin-complaints-view">
-    <PageHeader title="Complaints" :subtitle="subtitle">
-      <template #actions>
+    <!-- Header Row -->
+    <header class="ns-complaints-header">
+      <div class="ns-header-left">
+        <p v-if="eyebrow" class="ns-eyebrow">{{ eyebrow }}</p>
+        <h1 class="ns-page-title">Complaints</h1>
+        <p class="ns-page-subtitle">Search, filter and review every complaint in your department.</p>
+        <p class="ns-header-count visually-hidden">{{ subtitle }}</p>
+      </div>
+
+      <div class="ns-header-right">
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
+          class="btn ns-export-btn"
           :disabled="isExporting"
           @click="handleExportCsv"
         >
           <LoadingSpinner v-if="isExporting" size="sm" label="Preparing export..." />
-          <span>{{ isExporting ? 'Preparing...' : 'Download CSV' }}</span>
+          <svg
+            v-else
+            class="ns-export-icon"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>{{ isExporting ? 'Preparing...' : 'Export CSV' }}</span>
         </button>
-      </template>
-    </PageHeader>
+      </div>
+    </header>
 
     <ErrorAlert
       v-if="exportError"
@@ -262,109 +335,139 @@ onMounted(() => {
       :message="exportError"
     />
 
+    <!-- Filter Card -->
     <ComplaintFilters
       :filters="filters"
       :categories="categories"
       :zones="zones"
+      :counts="statsTotals"
       @update="handleFiltersUpdate"
     />
 
+    <!-- Loading State -->
     <LoadingSpinner v-if="isLoading && !hasLoaded" centered label="Loading complaints..." />
 
-    <ErrorAlert
-      v-else-if="error"
-      class="mb-4"
-      title="Could not load complaints"
-      :message="error"
-      show-retry
-      @retry="loadComplaints"
-    />
-
-    <template v-else-if="hasLoaded">
-      <EmptyState
-        v-if="complaints.length === 0 && hasActiveFilters"
-        title="No complaints match these filters"
-        message="Try adjusting your filters or search terms."
-      >
-        <button
-          type="button"
-          class="btn btn-outline-secondary btn-sm"
-          @click="handleClearFilters"
-        >
-          Clear filters
-        </button>
-      </EmptyState>
-
-      <EmptyState
-        v-else-if="complaints.length === 0"
-        title="No complaints yet"
-        message="Complaints for your department will appear here."
+    <!-- Error State -->
+    <div v-else-if="error" class="ns-state-card">
+      <ErrorAlert
+        title="Could not load complaints"
+        :message="error"
+        show-retry
+        @retry="loadComplaints"
       />
+    </div>
 
-      <div v-else class="ns-complaints-table-container">
-        <DataTable :columns="columns" :rows="complaints" row-key="id">
+    <!-- Loaded Content: Empty or Table -->
+    <template v-else-if="hasLoaded">
+      <div v-if="complaints.length === 0 && hasActiveFilters" class="ns-state-card">
+        <EmptyState
+          title="No complaints match these filters"
+          message="Try adjusting your filters or search terms."
+        >
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            @click="handleClearFilters"
+          >
+            Clear filters
+          </button>
+        </EmptyState>
+      </div>
+
+      <div v-else-if="complaints.length === 0" class="ns-state-card">
+        <EmptyState
+          title="No complaints yet"
+          message="Complaints for your department will appear here."
+        />
+      </div>
+
+      <!-- Table Card -->
+      <div v-else class="ns-table-card">
+        <DataTable
+          :columns="columns"
+          :rows="complaints"
+          row-key="id"
+          variant="admin"
+          @row-click="handleRowClick"
+        >
           <template #cell-tracking_code="{ row }">
-            <RouterLink :to="'/admin/complaints/' + row.id" class="ns-tracking-link">
-              {{ row.tracking_code }}
-            </RouterLink>
-          </template>
-
-          <template #cell-status="{ row }">
-            <StatusBadge :status="row.status" />
-          </template>
-
-          <template #cell-priority="{ row }">
-            <PriorityBadge :priority="row.priority" />
-          </template>
-
-          <template #cell-zone="{ row }">
-            <span>{{ row.zone?.name || '-' }}</span>
-          </template>
-
-          <template #cell-assigned_worker="{ row }">
-            <span v-if="row.assigned_worker?.name">{{ row.assigned_worker.name }}</span>
-            <span v-else class="text-secondary">Unassigned</span>
-          </template>
-
-          <template #cell-sla_deadline="{ row }">
-            <div class="d-inline-flex align-items-center flex-wrap gap-1">
-              <span>{{ formatDateTime(row.sla_deadline) }}</span>
-              <span
-                v-if="row.is_overdue && row.status !== 'Completed'"
-                class="ns-overdue-flag"
-              >
-                Overdue
-              </span>
+            <div class="ns-tracking-cell">
+              <RouterLink :to="'/admin/complaints/' + row.id" class="ns-tracking-link">
+                {{ row.tracking_code }}
+              </RouterLink>
+              <span class="ns-tracking-time">{{ formatDateTime(row.created_at) }}</span>
             </div>
           </template>
 
-          <template #cell-created_at="{ row }">
-            <span>{{ formatDateTime(row.created_at) }}</span>
+          <template #cell-category="{ row }">
+            <span class="ns-category-cell">{{ row.category || '—' }}</span>
+          </template>
+
+          <template #cell-zone="{ row }">
+            <span class="ns-zone-cell">{{ row.zone?.name || '-' }}</span>
+          </template>
+
+          <template #cell-priority="{ row }">
+            <PriorityBadge v-if="row.priority" :priority="row.priority" />
+            <span v-else>—</span>
+          </template>
+
+          <template #cell-status="{ row }">
+            <StatusBadge v-if="row.status" :status="row.status" />
+            <span v-else>—</span>
+          </template>
+
+          <template #cell-sla_deadline="{ row }">
+            <DeadlineCell :row="row" />
+          </template>
+
+          <template #cell-assigned_worker="{ row }">
+            <WorkerCell :worker="row.assigned_worker" />
           </template>
         </DataTable>
 
-        <div class="ns-pagination-bar d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <button
-            type="button"
-            class="btn btn-outline-secondary ns-page-btn"
-            :disabled="page <= 1 || isLoading"
-            @click="goToPage(page - 1)"
-          >
-            Previous
-          </button>
+        <!-- Table Card Footer with Pagination -->
+        <div class="ns-table-footer">
+          <div class="ns-footer-summary">
+            <span class="ns-showing-text">{{ showingSummary }}</span>
+            <span class="ns-page-info visually-hidden">Page {{ page }} of {{ totalPages }}</span>
+          </div>
 
-          <span class="ns-page-info text-secondary small fw-medium">
-            Page {{ page }} of {{ totalPages }}
-          </span>
+          <div class="ns-pagination-controls" role="navigation" aria-label="Complaints pagination">
+            <button
+              type="button"
+              class="btn ns-page-btn ns-page-nav-btn"
+              :disabled="page <= 1 || isLoading"
+              aria-label="Previous page"
+              @click="goToPage(page - 1)"
+            >
+              Previous
+            </button>
 
-          <button
-            type="button"
-            class="btn btn-outline-secondary ns-page-btn"
-            :disabled="page >= totalPages || isLoading"
-            @click="goToPage(page + 1)"
-          >
-            Next
-          </button>
+            <div class="ns-page-numbers">
+              <button
+                v-for="p in displayedPages"
+                :key="p"
+                type="button"
+                class="ns-page-num-btn"
+                :class="{ 'ns-page-num-btn--active': p === page }"
+                :aria-current="p === page ? 'page' : undefined"
+                @click="goToPage(p)"
+              >
+                {{ p }}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              class="btn ns-page-btn ns-page-nav-btn"
+              :disabled="page >= totalPages || isLoading"
+              aria-label="Next page"
+              @click="goToPage(page + 1)"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </template>
@@ -375,72 +478,304 @@ onMounted(() => {
 .admin-complaints-view {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 20px;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
-.ns-complaints-table-container {
-  background-color: var(--ns-paper);
-  border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-card);
+/* Header Row */
+.ns-complaints-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.ns-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ns-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #0B6A7C;
+  text-transform: uppercase;
+  margin-bottom: 0;
+  line-height: 1.2;
+}
+
+.ns-page-title {
+  font-family: var(--ns-font-display, 'Sora', sans-serif);
+  font-size: 30px;
+  font-weight: 700;
+  color: #0E2233;
+  margin-bottom: 0;
+  line-height: 1.2;
+}
+
+.ns-page-subtitle {
+  font-size: 15px;
+  color: #4B5B6B;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.ns-count-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0B6A7C;
+  background-color: #D8F1F3;
+  padding: 2px 8px;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+.ns-export-btn {
+  height: 46px;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1.5px solid #CBD5E1;
+  background-color: #FFFFFF;
+  color: #0B5C70;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 150ms ease;
+}
+
+.ns-export-btn:hover:not(:disabled) {
+  background-color: #F8FAFC;
+  border-color: #94A3B8;
+  color: #0E4F6B;
+}
+
+.ns-export-btn:focus-visible {
+  outline: 2px solid #0B7285;
+  outline-offset: 2px;
+}
+
+.ns-export-icon {
+  flex-shrink: 0;
+}
+
+/* State Card (Empty and Error) */
+.ns-state-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E3EAF0;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(14, 34, 51, 0.05), 0 10px 24px rgba(14, 34, 51, 0.06);
+  padding: 32px 24px;
+}
+
+/* Table Card */
+.ns-table-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E3EAF0;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(14, 34, 51, 0.05), 0 10px 24px rgba(14, 34, 51, 0.06);
   overflow: hidden;
 }
 
+.ns-tracking-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .ns-tracking-link {
-  font-weight: 600;
-  color: var(--ns-harbour);
+  font-family: var(--ns-font-display, 'Sora', sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: #0B6E99;
   text-decoration: none;
 }
 
 .ns-tracking-link:hover {
-  color: var(--ns-harbour-dark);
+  color: #095A7E;
   text-decoration: underline;
 }
 
 .ns-tracking-link:focus-visible {
-  outline: 2px solid var(--ns-harbour);
+  outline: 2px solid #0B7285;
   outline-offset: 2px;
   border-radius: 2px;
 }
 
-.ns-overdue-flag {
-  display: inline-block;
-  font-size: 0.75rem;
+.ns-tracking-time {
+  font-size: 12px;
+  color: #5F6F7E;
+}
+
+.ns-category-cell {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0E2233;
+}
+
+.ns-zone-cell {
+  font-size: 13px;
+  color: #334155;
+}
+
+/* Badges styling overrides in complaints view table */
+:deep(.ns-badge) {
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0.125rem 0.375rem;
-  border-radius: var(--ns-radius-control);
-  background-color: var(--ns-danger-bg);
-  color: var(--ns-danger-fg);
-  border: 1px solid rgba(180, 35, 24, 0.2);
+  border-radius: 999px;
+  padding: 4px 8px;
+  line-height: 1;
 }
 
-.ns-pagination-bar {
-  border-top: 1px solid var(--ns-line);
-  padding: 0.75rem 1rem;
-  background-color: var(--ns-paper);
+:deep(.ns-badge::before) {
+  display: none;
 }
 
-.ns-page-btn {
-  min-height: 44px;
-  min-width: 90px;
-  border-radius: var(--ns-radius-control);
+:deep(.ns-badge--critical) {
+  background-color: #FFE4E6 !important;
+  color: #9F1239 !important;
+}
+
+:deep(.ns-badge--high) {
+  background-color: #FFEDD5 !important;
+  color: #9A3412 !important;
+}
+
+:deep(.ns-badge--medium) {
+  background-color: #FEF3C7 !important;
+  color: #92400E !important;
+}
+
+:deep(.ns-badge--low) {
+  background-color: #E0EEFF !important;
+  color: #1D4ED8 !important;
+  border-color: transparent !important;
+}
+
+:deep(.ns-badge--submitted) {
+  background-color: #E0EEFF !important;
+  color: #1D4ED8 !important;
+}
+
+:deep(.ns-badge--in-progress) {
+  background-color: #FEF3C7 !important;
+  color: #92400E !important;
+}
+
+:deep(.ns-badge--completed) {
+  background-color: #DCFCE7 !important;
+  color: #166534 !important;
+}
+
+/* Table Footer & Pagination */
+.ns-table-footer {
+  border-top: 1px solid #EEF3F7;
+  padding: 14px 20px;
+  background-color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ns-showing-text {
+  font-size: 13px;
   font-weight: 500;
-  font-size: 0.875rem;
+  color: #4B5B6B;
+}
+
+.ns-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns-page-nav-btn {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1.5px solid #D5DEE7;
+  background-color: #FFFFFF;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: all 150ms ease;
 }
 
-.ns-page-btn:focus-visible {
-  outline: 2px solid var(--ns-harbour);
+.ns-page-nav-btn:hover:not(:disabled) {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+}
+
+.ns-page-nav-btn:focus-visible {
+  outline: 2px solid #0B7285;
   outline-offset: 2px;
 }
 
-.ns-page-info {
-  color: var(--ns-slate);
-  font-size: 0.875rem;
+.ns-page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
+.ns-page-num-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid #D5DEE7;
+  background-color: #FFFFFF;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 150ms ease;
+  user-select: none;
+}
 
+.ns-page-num-btn:hover:not(.ns-page-num-btn--active) {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+}
+
+.ns-page-num-btn:focus-visible {
+  outline: 2px solid #0B7285;
+  outline-offset: 2px;
+}
+
+.ns-page-num-btn--active {
+  background: linear-gradient(135deg, #0B7285, #0E4F6B);
+  color: #FFFFFF;
+  border-color: transparent;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(11, 114, 133, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ns-export-btn,
+  .ns-page-nav-btn,
+  .ns-page-num-btn {
+    transition: none;
+  }
+}
 </style>
