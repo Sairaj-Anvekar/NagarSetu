@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount as baseMount, RouterLinkStub } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
 import AdminComplaintsView from '../AdminComplaintsView.vue'
 import ComplaintFilters from '../../components/admin/ComplaintFilters.vue'
 import LoadingSpinner from '../../components/LoadingSpinner.vue'
@@ -8,6 +9,7 @@ import ErrorAlert from '../../components/ErrorAlert.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import * as adminApi from '../../api/adminApi'
 import * as referenceApi from '../../api/referenceApi'
+import { useAuthStore } from '../../stores/auth'
 import { downloadBlob, buildComplaintsCsvFilename } from '../../utils/downloadBlob'
 
 vi.mock('../../api/adminApi')
@@ -26,11 +28,24 @@ function createTestRouter() {
         name: 'admin-complaints',
         component: AdminComplaintsView,
       },
+      {
+        path: '/admin/complaints/:id',
+        name: 'admin-complaint-detail',
+        component: { template: '<div>Detail</div>' },
+      },
     ],
   })
 }
 
-async function mountView(initialQuery = {}) {
+async function mountView(initialQuery = {}, user = null) {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+
+  if (user) {
+    const authStore = useAuthStore()
+    authStore.user = user
+  }
+
   const router = createTestRouter()
   const queryString = new URLSearchParams(initialQuery).toString()
   const initialPath = queryString ? `/admin/complaints?${queryString}` : '/admin/complaints'
@@ -39,7 +54,7 @@ async function mountView(initialQuery = {}) {
 
   const wrapper = baseMount(AdminComplaintsView, {
     global: {
-      plugins: [router],
+      plugins: [router, pinia],
       stubs: {
         RouterLink: RouterLinkStub,
       },
@@ -73,7 +88,10 @@ describe('AdminComplaintsView — initial loading, errors, and empty states', ()
     const { wrapper } = await mountView()
 
     expect(wrapper.findComponent(LoadingSpinner).exists()).toBe(true)
-    expect(wrapper.find('header p').text()).toBe('Loading...')
+    expect(wrapper.find('.ns-header-count').text()).toBe('Loading...')
+    expect(wrapper.find('.ns-page-subtitle').text()).toContain(
+      'Search, filter and review every complaint in your department.',
+    )
 
     resolveComplaints({ items: [], total: 0, page: 1, pageSize: 20 })
     await flushPromises()
@@ -105,7 +123,7 @@ describe('AdminComplaintsView — initial loading, errors, and empty states', ()
     const { wrapper } = await mountView()
     await flushPromises()
 
-    expect(wrapper.find('header p').text()).toBe('1 complaint')
+    expect(wrapper.find('.ns-header-count').text()).toBe('1 complaint')
 
     vi.spyOn(adminApi, 'fetchAdminComplaints').mockResolvedValueOnce({
       items: [],
@@ -117,7 +135,7 @@ describe('AdminComplaintsView — initial loading, errors, and empty states', ()
     await wrapper.vm.loadComplaints()
     await flushPromises()
 
-    expect(wrapper.find('header p').text()).toBe('5 complaints')
+    expect(wrapper.find('.ns-header-count').text()).toBe('5 complaints')
   })
 
   it('renders ErrorAlert with retry button on failure, and refetches when retry is clicked', async () => {
@@ -310,7 +328,7 @@ describe('AdminComplaintsView — table columns, links, badges, and pagination',
 
     // Row 1: is_overdue = true, status = 'Submitted' -> Overdue flag MUST show
     expect(rows[0].find('.ns-overdue-flag').exists()).toBe(true)
-    expect(rows[0].find('.ns-overdue-flag').text()).toBe('Overdue')
+    expect(rows[0].find('.ns-overdue-flag').text()).toContain('Overdue')
 
     // Row 2: is_overdue = false, status = 'In-Progress' -> Overdue flag MUST NOT show
     expect(rows[1].find('.ns-overdue-flag').exists()).toBe(false)
@@ -515,9 +533,45 @@ describe('AdminComplaintsView — filters, debounced search, URL sync, and auxil
     await flushPromises()
 
     expect(wrapper.findComponent(ErrorAlert).exists()).toBe(false)
-    expect(wrapper.find('header p').text()).toBe('1 complaint')
+    expect(wrapper.find('.ns-header-count').text()).toBe('1 complaint')
     expect(wrapper.findAll('tbody tr')).toHaveLength(1)
     expect(wrapper.text()).toContain('SAN-001')
+  })
+
+  it('renders eyebrow when user has department, and omits when not present', async () => {
+    const { wrapper: withDept } = await mountView({}, { department: { name: 'Sanitation' } })
+    await flushPromises()
+    expect(withDept.find('.ns-eyebrow').exists()).toBe(true)
+    expect(withDept.find('.ns-eyebrow').text()).toBe('SANITATION DEPARTMENT')
+
+    const { wrapper: noDept } = await mountView({}, { department: null })
+    await flushPromises()
+    expect(noDept.find('.ns-eyebrow').exists()).toBe(false)
+  })
+
+  it('navigates to complaint detail when clicking a table row', async () => {
+    vi.spyOn(adminApi, 'fetchAdminComplaints').mockResolvedValueOnce({
+      items: [
+        {
+          id: '1',
+          tracking_code: 'SAN-001',
+          category: 'Garbage Dump',
+          priority: 'high',
+          status: 'Submitted',
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    })
+    const { wrapper, router } = await mountView()
+    await flushPromises()
+
+    const firstRow = wrapper.find('tbody tr')
+    await firstRow.trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/admin/complaints/1')
   })
 })
 
@@ -567,10 +621,9 @@ describe('AdminComplaintsView — CSV export trigger and active filters', () => 
     })
     await flushPromises()
 
-    const exportBtn = wrapper
-      .findAll('button')
-      .find((b) => b.text().includes('Download CSV'))
-    expect(exportBtn).toBeDefined()
+    const exportBtn = wrapper.find('button.ns-export-btn')
+    expect(exportBtn.exists()).toBe(true)
+    expect(exportBtn.text()).toContain('Export CSV')
 
     await exportBtn.trigger('click')
     await flushPromises()
@@ -591,9 +644,8 @@ describe('AdminComplaintsView — CSV export trigger and active filters', () => 
     const { wrapper } = await mountView()
     await flushPromises()
 
-    const exportBtn = wrapper
-      .findAll('button')
-      .find((b) => b.text().includes('Download CSV'))
+    const exportBtn = wrapper.find('button.ns-export-btn')
+    expect(exportBtn.exists()).toBe(true)
 
     await exportBtn.trigger('click')
     await flushPromises()
@@ -621,9 +673,8 @@ describe('AdminComplaintsView — CSV export trigger and active filters', () => 
     const { wrapper } = await mountView()
     await flushPromises()
 
-    const exportBtn = wrapper
-      .findAll('button')
-      .find((b) => b.text().includes('Download CSV'))
+    const exportBtn = wrapper.find('button.ns-export-btn')
+    expect(exportBtn.exists()).toBe(true)
 
     await exportBtn.trigger('click')
 
@@ -634,7 +685,7 @@ describe('AdminComplaintsView — CSV export trigger and active filters', () => 
     await flushPromises()
 
     expect(exportBtn.attributes('disabled')).toBeUndefined()
-    expect(exportBtn.text()).toContain('Download CSV')
+    expect(exportBtn.text()).toContain('Export CSV')
   })
 
   it('shows inline ErrorAlert and re-enables button upon export failure', async () => {
@@ -645,9 +696,8 @@ describe('AdminComplaintsView — CSV export trigger and active filters', () => 
     const { wrapper } = await mountView()
     await flushPromises()
 
-    const exportBtn = wrapper
-      .findAll('button')
-      .find((b) => b.text().includes('Download CSV'))
+    const exportBtn = wrapper.find('button.ns-export-btn')
+    expect(exportBtn.exists()).toBe(true)
 
     await exportBtn.trigger('click')
     await flushPromises()
@@ -655,7 +705,7 @@ describe('AdminComplaintsView — CSV export trigger and active filters', () => 
     expect(wrapper.text()).toContain('Export failed')
     expect(wrapper.text()).toContain('You do not have permission to do this.')
     expect(exportBtn.attributes('disabled')).toBeUndefined()
-    expect(exportBtn.text()).toContain('Download CSV')
+    expect(exportBtn.text()).toContain('Export CSV')
   })
 })
 

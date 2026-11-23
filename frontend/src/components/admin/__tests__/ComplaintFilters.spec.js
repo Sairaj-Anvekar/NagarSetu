@@ -190,4 +190,33 @@ describe('ComplaintFilters', () => {
 
     expect(searchInput.element.value).toBe('external-code')
   })
+
+  it('emits update when a StatusTab is clicked', async () => {
+    const wrapper = mount(ComplaintFilters, { props: sampleProps })
+    const submittedTab = wrapper.findAll('.status-tab')[1]
+    expect(submittedTab.text()).toContain('Submitted')
+
+    await submittedTab.trigger('click')
+    expect(wrapper.emitted('update')).toHaveLength(1)
+    expect(wrapper.emitted('update')[0][0]).toMatchObject({ status: 'Submitted' })
+  })
+
+  it('renders count badges on status tabs when counts prop is provided', () => {
+    const wrapper = mount(ComplaintFilters, {
+      props: {
+        ...sampleProps,
+        counts: {
+          all: 20,
+          submitted: 10,
+          inProgress: 5,
+          completed: 5,
+        },
+      },
+    })
+
+    const countPills = wrapper.findAll('.status-tab__count')
+    expect(countPills).toHaveLength(4)
+    expect(countPills[0].text()).toBe('20')
+    expect(countPills[1].text()).toBe('10')
+  })
 })
