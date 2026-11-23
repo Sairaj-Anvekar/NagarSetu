@@ -55,4 +55,10 @@ describe('Worker routes', () => {
     expect(router.resolve('/worker/history').meta.noNavbar).toBe(true)
     expect(router.resolve('/worker/account').meta.noNavbar).toBe(true)
   })
+
+  it('sets hideTabBar and hideAppBar on worker task detail route', () => {
+    const resolved = router.resolve('/worker/tasks/task-abc')
+    expect(resolved.meta.hideTabBar).toBe(true)
+    expect(resolved.meta.hideAppBar).toBe(true)
+  })
 })

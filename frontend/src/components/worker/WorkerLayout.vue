@@ -1,10 +1,15 @@
 <script setup>
-import { RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 import { useOnlineStatus } from '../../composables/useOnlineStatus'
 import WorkerAppBar from './WorkerAppBar.vue'
 import WorkerTabBar from './WorkerTabBar.vue'
 
+const route = useRoute()
 const { isOnline } = useOnlineStatus()
+
+const hideAppBar = computed(() => Boolean(route.meta?.hideAppBar))
+const hideTabBar = computed(() => Boolean(route.meta?.hideTabBar))
 </script>
 
 <template>
@@ -13,19 +18,25 @@ const { isOnline } = useOnlineStatus()
       Skip to content
     </a>
 
-    <WorkerAppBar />
+    <WorkerAppBar v-if="!hideAppBar" />
 
     <div v-if="!isOnline" class="ns-worker-layout__offline" role="status">
       You are offline. NagarSetu needs an internet connection to load and update tasks.
     </div>
 
     <main id="worker-main" tabindex="-1">
-      <div class="ns-worker-layout__content">
+      <div
+        class="ns-worker-layout__content"
+        :class="{
+          'ns-worker-layout__content--no-tab-bar': hideTabBar,
+          'ns-worker-layout__content--flush': hideAppBar,
+        }"
+      >
         <RouterView />
       </div>
     </main>
 
-    <WorkerTabBar />
+    <WorkerTabBar v-if="!hideTabBar" />
   </div>
 </template>
 
@@ -72,5 +83,15 @@ const { isOnline } = useOnlineStatus()
   margin: 0 auto;
   padding: var(--ns-space-16);
   padding-bottom: calc(var(--ns-worker-tab-height) + env(safe-area-inset-bottom, 0px) + var(--ns-space-16));
+}
+
+.ns-worker-layout__content--no-tab-bar {
+  padding-bottom: 0;
+}
+
+.ns-worker-layout__content--flush {
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 0;
 }
 </style>
