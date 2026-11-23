@@ -58,7 +58,7 @@ describe('Worker placeholder pages', () => {
     await flushPromises()
 
     expect(wrapper.get('h1').text()).toBe('History')
-    expect(wrapper.get('header p').text()).toBe('0 completed tasks')
+    expect(wrapper.get('header p').text()).toBe('Tasks you have completed')
 
     const emptyState = wrapper.getComponent(EmptyState)
     expect(emptyState.get('h3').text()).toBe('No completed tasks yet')
@@ -66,11 +66,18 @@ describe('Worker placeholder pages', () => {
   })
 
   describe('WorkerAccountView', () => {
-    it('shows worker initials, name, field worker role, no phone data, and logs out to /login', async () => {
+    it('shows worker initials, name, field worker role, masked phone, department, zone, and logs out to /login', async () => {
       saveAuth({
         token: 'test-token',
         role: 'worker',
-        user: { id: '101', name: 'Ravi Patil', phone: '+919876543210', role: 'worker' },
+        user: {
+          id: '101',
+          name: 'Ravi Patil',
+          phone: '+919876543210',
+          role: 'worker',
+          department: 'Solid Waste Management',
+          zone: 'Zone A',
+        },
       })
       setActivePinia(createPinia())
 
@@ -83,9 +90,16 @@ describe('Worker placeholder pages', () => {
       expect(wrapper.get('.ns-worker-account__name').text()).toBe('Ravi Patil')
       expect(wrapper.get('.ns-worker-account__role').text()).toBe('Field worker')
 
-      // Ensure no phone number or personal identity data is leaked in the DOM
+      // Ensure department and zone are displayed
+      expect(wrapper.text()).toContain('Solid Waste Management')
+      expect(wrapper.text()).toContain('Zone A')
+
+      // Ensure phone is only displayed masked (+91 ••••• XXXXX), never raw
+      expect(wrapper.text()).toContain('+91 ••••• 43210')
       expect(wrapper.text()).not.toContain('9876543210')
-      expect(wrapper.text()).not.toContain('+91')
+
+      // Ensure connection note is present
+      expect(wrapper.text()).toContain('An internet connection is required to use NagarSetu.')
 
       // Test logout action
       const logoutBtn = wrapper.get('button.btn-outline-secondary')

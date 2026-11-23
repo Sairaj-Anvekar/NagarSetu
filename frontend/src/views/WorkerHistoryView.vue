@@ -1,13 +1,14 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import PageHeader from '../components/PageHeader.vue'
+import WorkerHeader from '../components/worker/WorkerHeader.vue'
+import HistorySegmentedControl from '../components/worker/HistorySegmentedControl.vue'
+import HistoryTaskCard from '../components/worker/HistoryTaskCard.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import EmptyState from '../components/EmptyState.vue'
-import StatusBadge from '../components/StatusBadge.vue'
 import { fetchMyHistory } from '../api/workerApi'
 import { getErrorMessage } from '../utils/apiError'
-import { formatDateTime } from '../utils/formatDate'
+import { countThisWeek, filterByPeriod, groupCompletedByDay } from '../utils/historyGroups'
 
 const items = ref([])
 const total = ref(0)
@@ -17,17 +18,16 @@ const isLoadingMore = ref(false)
 const hasLoaded = ref(false)
 const error = ref('')
 const loadMoreError = ref('')
-const failedImageIds = ref({})
+const selectedPeriod = ref('week')
 
 let requestId = 0
 let isMounted = false
 
-const subtitle = computed(() => {
-  if (!hasLoaded.value) {
-    return 'Complaints you have completed.'
-  }
-  return total.value === 1 ? '1 completed task' : `${total.value} completed tasks`
-})
+const thisWeekCount = computed(() => countThisWeek(items.value))
+
+const periodFilteredTasks = computed(() => filterByPeriod(items.value, selectedPeriod.value))
+
+const taskGroups = computed(() => groupCompletedByDay(periodFilteredTasks.value))
 
 const hasMore = computed(() => total.value > items.value.length)
 
@@ -37,7 +37,6 @@ async function loadFirstPage() {
   isLoadingMore.value = false
   error.value = ''
   loadMoreError.value = ''
-  failedImageIds.value = {}
 
   try {
     const data = await fetchMyHistory({ page: 1 })
@@ -85,10 +84,6 @@ async function loadMore() {
   }
 }
 
-function markImageFailed(id) {
-  failedImageIds.value = { ...failedImageIds.value, [id]: true }
-}
-
 onMounted(() => {
   isMounted = true
   loadFirstPage()
@@ -101,196 +96,139 @@ onBeforeUnmount(() => {
 defineExpose({
   loadFirstPage,
   loadMore,
+  selectedPeriod,
 })
 </script>
 
 <template>
   <div class="worker-history-page">
-    <PageHeader title="History" :subtitle="subtitle" />
-
-    <LoadingSpinner
-      v-if="isLoading && !hasLoaded"
-      centered
-      label="Loading your completed tasks..."
+    <WorkerHeader
+      variant="title"
+      title="History"
+      subtitle="Tasks you have completed"
     />
 
-    <template v-else>
-      <ErrorAlert
-        v-if="error"
-        class="mb-3"
-        title="Could not load history"
-        :message="error"
-        show-retry
-        @retry="loadFirstPage"
+    <main class="worker-history-page__content">
+      <div class="worker-history-page__segmented-wrap">
+        <HistorySegmentedControl
+          v-model="selectedPeriod"
+          :week-count="thisWeekCount"
+        />
+      </div>
+
+      <LoadingSpinner
+        v-if="isLoading && !hasLoaded"
+        centered
+        label="Loading your completed tasks..."
       />
 
-      <EmptyState
-        v-if="hasLoaded && !error && items.length === 0"
-        title="No completed tasks yet"
-        message="Tasks you complete will be listed here."
-      />
+      <template v-else>
+        <ErrorAlert
+          v-if="error"
+          class="mb-3"
+          title="Could not load history"
+          :message="error"
+          show-retry
+          @retry="loadFirstPage"
+        />
 
-      <ul v-if="items.length > 0" class="list-unstyled d-grid gap-3 mb-0">
-        <li v-for="task in items" :key="task.id">
-          <article class="worker-history-card">
-            <div class="worker-history-card__header d-flex align-items-center justify-content-between gap-2">
-              <span class="worker-history-card__tracking">{{ task.tracking_code }}</span>
-              <StatusBadge :status="task.status || 'Completed'" />
+        <EmptyState
+          v-else-if="hasLoaded && items.length === 0"
+          title="No completed tasks yet"
+          message="Tasks you complete will be listed here."
+        />
+
+        <EmptyState
+          v-else-if="hasLoaded && periodFilteredTasks.length === 0"
+          :title="selectedPeriod === 'week' ? 'No completed tasks this week' : 'No completed tasks this month'"
+          :message="selectedPeriod === 'week' ? 'Tasks you complete this week will appear here.' : 'Tasks you complete this month will appear here.'"
+        />
+
+        <div v-else-if="taskGroups.length > 0" class="worker-history-groups d-flex flex-column gap-4">
+          <section
+            v-for="group in taskGroups"
+            :key="group.dateKey"
+            class="worker-history-group"
+          >
+            <h2 class="worker-history-group__label">{{ group.label }}</h2>
+            <div class="d-flex flex-column gap-3">
+              <HistoryTaskCard
+                v-for="task in group.items"
+                :key="task.id"
+                :task="task"
+              />
             </div>
+          </section>
+        </div>
 
-            <div class="worker-history-card__main d-flex align-items-start gap-3">
-              <div v-if="task.image_url" class="worker-history-card__thumb">
-                <img
-                  v-if="!failedImageIds[task.id]"
-                  :src="task.image_url"
-                  :alt="`${task.category} photo`"
-                  class="worker-history-card__thumb-img"
-                  @error="markImageFailed(task.id)"
-                />
-                <div
-                  v-else
-                  class="worker-history-card__thumb-placeholder"
-                  role="img"
-                  :aria-label="`${task.category} photo unavailable`"
-                >
-                  No photo
-                </div>
-              </div>
+        <div v-if="hasMore || loadMoreError" class="worker-history-more mt-4">
+          <div
+            v-if="loadMoreError"
+            class="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-2"
+            role="alert"
+          >
+            <span>{{ loadMoreError }}</span>
+            <button
+              type="button"
+              class="btn btn-outline-danger btn-sm worker-history-retry-btn"
+              :disabled="isLoadingMore"
+              @click="loadMore"
+            >
+              Retry
+            </button>
+          </div>
 
-              <div class="worker-history-card__body flex-grow-1">
-                <h2 class="worker-history-card__category">{{ task.category }}</h2>
-                <p v-if="task.description" class="worker-history-card__description">
-                  {{ task.description }}
-                </p>
-              </div>
-            </div>
-
-            <div class="worker-history-card__meta">
-              <span class="worker-history-card__meta-label">Completed</span>
-              <time v-if="task.resolved_at" :datetime="task.resolved_at">
-                {{ formatDateTime(task.resolved_at) }}
-              </time>
-              <span v-else>{{ formatDateTime(task.resolved_at) }}</span>
-            </div>
-          </article>
-        </li>
-      </ul>
-
-      <div v-if="hasMore || loadMoreError" class="worker-history-more mt-3">
-        <div
-          v-if="loadMoreError"
-          class="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-2"
-          role="alert"
-        >
-          <span>{{ loadMoreError }}</span>
           <button
+            v-if="hasMore"
             type="button"
-            class="btn btn-outline-danger btn-sm worker-history-retry-btn"
+            class="btn btn-outline-secondary w-100 worker-history-load-more-btn d-inline-flex align-items-center justify-content-center gap-2"
             :disabled="isLoadingMore"
             @click="loadMore"
           >
-            Retry
+            <LoadingSpinner v-if="isLoadingMore" size="sm" label="Loading more tasks" />
+            <span>{{ isLoadingMore ? 'Loading more...' : 'Load more' }}</span>
           </button>
         </div>
-
-        <button
-          v-if="hasMore"
-          type="button"
-          class="btn btn-outline-secondary w-100 worker-history-load-more-btn d-inline-flex align-items-center justify-content-center gap-2"
-          :disabled="isLoadingMore"
-          @click="loadMore"
-        >
-          <LoadingSpinner v-if="isLoadingMore" size="sm" label="Loading more tasks" />
-          <span>{{ isLoadingMore ? 'Loading more...' : 'Load more' }}</span>
-        </button>
-      </div>
-    </template>
+      </template>
+    </main>
   </div>
 </template>
 
 <style scoped>
-.worker-history-card {
-  background-color: var(--ns-paper);
-  border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-card);
-  box-shadow: var(--ns-shadow-card);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.worker-history-page {
+  min-height: 100%;
+  background-color: var(--ns-worker-page-bg, #f3f6fa);
+  padding-bottom: calc(var(--ns-worker-tab-height, 76px) + 24px);
+  box-sizing: border-box;
 }
-.worker-history-card__tracking {
-  font-family: var(--ns-font-display);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ns-ink);
+
+.worker-history-page__content {
+  padding: 0 16px 24px;
 }
-.worker-history-card__main,
-.worker-history-card__body {
-  min-width: 0;
+
+.worker-history-page__segmented-wrap {
+  margin-top: -26px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
 }
-.worker-history-card__thumb {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
-  border-radius: var(--ns-radius-control);
-  overflow: hidden;
-  border: 1px solid var(--ns-line);
-  background-color: var(--ns-neutral-bg);
+
+.worker-history-group__label {
+  font-family: var(--ns-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ns-login-text-muted, #4b5b6b);
+  margin: 0 0 10px 4px;
 }
-.worker-history-card__thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.worker-history-card__thumb-placeholder {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 4px;
-  text-align: center;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--ns-neutral-fg);
-  background-color: var(--ns-neutral-bg);
-}
-.worker-history-card__category {
-  font-family: var(--ns-font-display);
-  font-weight: 600;
-  font-size: 1.0625rem;
-  line-height: 1.4;
-  margin: 0 0 4px;
-  color: var(--ns-ink);
-  overflow-wrap: anywhere;
-}
-.worker-history-card__description {
-  color: var(--ns-slate);
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-}
-.worker-history-card__meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: 0.875rem;
-  color: var(--ns-slate);
-}
-.worker-history-card__meta-label {
-  font-weight: 600;
-  color: var(--ns-ink);
-}
+
 .worker-history-load-more-btn,
 .worker-history-retry-btn {
   min-height: 44px;
   min-width: 44px;
 }
+
 .worker-history-load-more-btn:focus-visible,
 .worker-history-retry-btn:focus-visible {
   outline: 2px solid var(--ns-span);
