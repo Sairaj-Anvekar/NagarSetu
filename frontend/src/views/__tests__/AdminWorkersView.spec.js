@@ -5,6 +5,7 @@ import AdminWorkersView from '../AdminWorkersView.vue'
 import DataTable from '../../components/DataTable.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { fetchWorkers } from '../../api/workersApi'
+import { fetchStats } from '../../api/adminApi'
 
 function mount(component, options = {}) {
   return baseMount(component, {
@@ -15,6 +16,10 @@ function mount(component, options = {}) {
     },
   })
 }
+
+vi.mock('../../api/adminApi', () => ({
+  fetchStats: vi.fn(),
+}))
 
 vi.mock('../../api/workersApi', async (importOriginal) => {
   const actual = await importOriginal()
@@ -100,6 +105,7 @@ describe('AdminWorkersView - Table, Formatting & Filters', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+    fetchStats.mockResolvedValue({ by_zone: [] })
   })
 
   it('renders an "Add worker" link pointing to the admin-worker-new route', async () => {
@@ -515,5 +521,165 @@ describe('AdminWorkersView - Actions, Errors & Lifecycle', () => {
       resolveCall({ items: mockWorkersList, total: 8 })
     }).not.toThrow()
     await flushPromises()
+  })
+
+  it('renders amber zone gap banner when a zone has complaints but 0 active workers', async () => {
+    const workers = getMockWorkers().map((w) =>
+      w.zone === 'Zone D' ? { ...w, is_active: false } : w,
+    )
+    fetchWorkers.mockResolvedValueOnce({
+      items: workers,
+      total: workers.length,
+    })
+    fetchStats.mockResolvedValueOnce({
+      by_zone: [
+        { zone: 'Zone A', count: 10 },
+        { zone: 'Zone B', count: 5 },
+        { zone: 'Zone C', count: 2 },
+        { zone: 'Zone D', count: 3 },
+      ],
+    })
+
+    const wrapper = mount(AdminWorkersView)
+    await flushPromises()
+
+    const banner = wrapper.find('.ns-zone-gap-banner')
+    expect(banner.exists()).toBe(true)
+    expect(banner.text()).toContain(
+      'Zone D has no active Sanitation worker. 3 complaints in this zone.',
+    )
+  })
+
+  it('silently hides amber banner when fetchStats rejects', async () => {
+    fetchWorkers.mockResolvedValueOnce({
+      items: getMockWorkers(),
+      total: 8,
+    })
+    fetchStats.mockRejectedValueOnce(new Error('Network error'))
+
+    const wrapper = mount(AdminWorkersView)
+    await flushPromises()
+
+    expect(wrapper.find('.ns-zone-gap-banner').exists()).toBe(false)
+    expect(wrapper.findAll('tbody tr')).toHaveLength(8)
+  })
+
+  it('renders status tabs with counts and filters rows when clicked', async () => {
+    fetchWorkers.mockResolvedValueOnce({
+      items: getMockWorkers(),
+      total: 8,
+    })
+
+    const wrapper = mount(AdminWorkersView)
+    await flushPromises()
+
+    const tabs = wrapper.findAll('.worker-status-tab')
+    expect(tabs).toHaveLength(3)
+    expect(tabs[0].text()).toContain('All')
+    expect(tabs[0].text()).toContain('8')
+    expect(tabs[1].text()).toContain('Active')
+    expect(tabs[1].text()).toContain('6')
+    expect(tabs[2].text()).toContain('Inactive')
+    expect(tabs[2].text()).toContain('2')
+
+    // Click Inactive tab
+    await tabs[2].trigger('click')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+
+    // Click Active tab
+    await tabs[1].trigger('click')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(6)
+
+    // Click All tab
+    await tabs[0].trigger('click')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(8)
+  })
+
+  it('renders table columns Worker, Zone, Active tasks, Status, Actions with fallback for active tasks', async () => {
+    const customWorkers = [
+      {
+        id: '101',
+        name: 'Ravi Patil',
+        phone: '+919876543210',
+        department: 'Solid Waste Management',
+        zone: 'Zone A',
+        is_active: true,
+      },
+      {
+        id: '102',
+        name: 'Anita Sharma',
+        phone: '+919123456780',
+        department: 'Water Supply Board',
+        zone: 'Zone B',
+        is_active: true,
+        active_tasks: 4,
+      },
+    ]
+
+    fetchWorkers.mockResolvedValueOnce({
+      items: customWorkers,
+      total: 2,
+    })
+
+    const wrapper = mount(AdminWorkersView)
+    await flushPromises()
+
+    const dataTable = wrapper.getComponent(DataTable)
+    expect(dataTable.props('variant')).toBe('admin')
+    expect(dataTable.props('columns')).toEqual([
+      { key: 'worker', label: 'Worker' },
+      { key: 'zone', label: 'Zone' },
+      { key: 'active_tasks', label: 'Active tasks' },
+      { key: 'is_active', label: 'Status' },
+      { key: 'actions', label: 'Actions' },
+    ])
+
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows).toHaveLength(2)
+
+    // Row 1: Active tasks fallback
+    expect(rows[0].text()).toContain('—')
+    expect(rows[0].text()).toContain('Ravi Patil')
+    expect(rows[0].text()).toContain('+91 98765 43210')
+
+    // Row 2: active tasks value 4
+    expect(rows[1].text()).toContain('4')
+    expect(rows[1].text()).toContain('Anita Sharma')
+  })
+
+  it('renders Zone coverage card with active worker counts and red "No worker" pill for 0 active workers', async () => {
+    const workers = getMockWorkers().map((w) =>
+      w.zone === 'Zone D' ? { ...w, is_active: false } : w,
+    )
+    fetchWorkers.mockResolvedValueOnce({
+      items: workers,
+      total: workers.length,
+    })
+
+    const wrapper = mount(AdminWorkersView)
+    await flushPromises()
+
+    const card = wrapper.find('.ns-coverage-card')
+    expect(card.exists()).toBe(true)
+    expect(card.text()).toContain('Zone coverage')
+
+    const items = card.findAll('.ns-coverage-item')
+    expect(items).toHaveLength(4)
+
+    // Zone A: 2 active workers (101, 106)
+    expect(items[0].text()).toContain('Zone A')
+    expect(items[0].text()).toContain('2 active')
+
+    // Zone B: 2 active workers (102, 104)
+    expect(items[1].text()).toContain('Zone B')
+    expect(items[1].text()).toContain('2 active')
+
+    // Zone C: 1 active worker (107)
+    expect(items[2].text()).toContain('Zone C')
+    expect(items[2].text()).toContain('1 active')
+
+    // Zone D: 0 active workers -> No worker red pill
+    expect(items[3].text()).toContain('Zone D')
+    expect(items[3].find('.zone-coverage-none-pill').text()).toBe('No worker')
   })
 })

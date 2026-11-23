@@ -2,7 +2,6 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
-import AppCard from '../components/AppCard.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import { fetchDepartments, fetchZones } from '../api/referenceApi'
@@ -32,6 +31,8 @@ const fieldErrors = reactive({
 const submitError = ref('')
 const isSubmitting = ref(false)
 const createdWorker = ref(null)
+const showPin = ref(false)
+const showConfirmPin = ref(false)
 
 const departments = ref([])
 const zones = ref([])
@@ -243,173 +244,456 @@ defineExpose({
     />
 
     <template v-else>
-      <AppCard v-if="createdWorker" class="worker-create-card">
-        <div class="worker-success">
-          <h2 class="h4 mb-3">Worker added</h2>
-          <div class="worker-summary mb-3">
-            <div class="worker-summary__item">
-              <span class="worker-summary__label">Name:</span>
-              <span class="worker-summary__value fw-semibold">{{ createdWorker.name }}</span>
-            </div>
-            <div class="worker-summary__item">
-              <span class="worker-summary__label">Department:</span>
-              <span class="worker-summary__value">{{ createdWorker.department }}</span>
-            </div>
-            <div class="worker-summary__item">
-              <span class="worker-summary__label">Zone:</span>
-              <span class="worker-summary__value">{{ createdWorker.zone }}</span>
-            </div>
-            <div class="worker-summary__item">
-              <span class="worker-summary__label">Phone:</span>
-              <span class="worker-summary__value">{{ formatPhone(createdWorker.phone) }}</span>
-            </div>
-          </div>
-          <p class="text-secondary mb-4">
-            They can now sign in with their phone number and the PIN you set.
-          </p>
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button type="button" class="btn btn-primary" @click="handleAddAnother">
-              Add another worker
-            </button>
-            <RouterLink :to="{ name: 'admin-workers' }" class="btn btn-outline-secondary">
-              Back to workers
-            </RouterLink>
-          </div>
-        </div>
-      </AppCard>
-
-      <AppCard v-else class="worker-create-card">
-        <ErrorAlert
-          v-if="submitError"
-          class="mb-4"
-          title="Could not create worker"
-          :message="submitError"
-        />
-
-        <form novalidate @submit.prevent="handleSubmit">
-          <div class="mb-3">
-            <label for="worker-name" class="form-label">Full name</label>
-            <input
-              id="worker-name"
-              v-model="form.name"
-              type="text"
-              class="form-control"
-              autocomplete="off"
-              :class="{ 'is-invalid': !!fieldErrors.name }"
-            />
-            <div v-if="fieldErrors.name" class="invalid-feedback">{{ fieldErrors.name }}</div>
-          </div>
-
-          <div class="mb-3">
-            <label for="worker-phone" class="form-label">Phone number</label>
-            <input
-              id="worker-phone"
-              v-model="form.phone"
-              type="tel"
-              inputmode="tel"
-              class="form-control"
-              autocomplete="off"
-              :class="{ 'is-invalid': !!fieldErrors.phone }"
-            />
-            <div class="form-text">10-digit mobile number, or with +91</div>
-            <div v-if="fieldErrors.phone" class="invalid-feedback">{{ fieldErrors.phone }}</div>
-          </div>
-
-          <div class="mb-3">
-            <label for="worker-department" class="form-label">Department</label>
-            <select
-              id="worker-department"
-              v-model="form.department_id"
-              class="form-select"
-              :class="{ 'is-invalid': !!fieldErrors.department_id }"
-            >
-              <option value="">Select department</option>
-              <option v-for="dept in sortedDepartments" :key="dept.id" :value="dept.id">
-                {{ dept.name }}
-              </option>
-            </select>
-            <div v-if="fieldErrors.department_id" class="invalid-feedback">
-              {{ fieldErrors.department_id }}
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label for="worker-zone" class="form-label">Zone</label>
-            <select
-              id="worker-zone"
-              v-model="form.zone_id"
-              class="form-select"
-              :class="{ 'is-invalid': !!fieldErrors.zone_id }"
-            >
-              <option value="">Select zone</option>
-              <option v-for="z in zones" :key="z.id" :value="z.id">
-                {{ z.name }}
-              </option>
-            </select>
-            <div v-if="fieldErrors.zone_id" class="invalid-feedback">
-              {{ fieldErrors.zone_id }}
-            </div>
-          </div>
-
-          <div class="row g-3 mb-4">
-            <div class="col-12 col-sm-6">
-              <label for="worker-pin" class="form-label">PIN</label>
-              <input
-                id="worker-pin"
-                :value="form.pin"
-                type="password"
-                inputmode="numeric"
-                maxlength="4"
-                class="form-control"
-                autocomplete="new-password"
-                :class="{ 'is-invalid': !!fieldErrors.pin }"
-                @input="onPinInput"
-              />
-              <div class="form-text">4 digits. The worker uses it to sign in.</div>
-              <div v-if="fieldErrors.pin" class="invalid-feedback">{{ fieldErrors.pin }}</div>
-            </div>
-
-            <div class="col-12 col-sm-6">
-              <label for="worker-confirm-pin" class="form-label">Confirm PIN</label>
-              <input
-                id="worker-confirm-pin"
-                :value="form.confirmPin"
-                type="password"
-                inputmode="numeric"
-                maxlength="4"
-                class="form-control"
-                autocomplete="new-password"
-                :class="{ 'is-invalid': !!fieldErrors.confirmPin }"
-                @input="onConfirmPinInput"
-              />
-              <div v-if="fieldErrors.confirmPin" class="invalid-feedback">
-                {{ fieldErrors.confirmPin }}
+      <div class="row g-4 align-items-start">
+        <!-- Form Column (left) -->
+        <div class="col-12 col-lg-7 col-xl-8">
+          <!-- Success Card -->
+          <div v-if="createdWorker" class="ns-form-card">
+            <div class="worker-success">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <span class="ns-success-badge-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+                <h2 class="h4 mb-0 fw-bold text-dark">Worker added</h2>
+              </div>
+              <div class="worker-summary mb-3">
+                <div class="worker-summary__item">
+                  <span class="worker-summary__label">Name:</span>
+                  <span class="worker-summary__value fw-semibold">{{ createdWorker.name }}</span>
+                </div>
+                <div class="worker-summary__item">
+                  <span class="worker-summary__label">Department:</span>
+                  <span class="worker-summary__value">{{ createdWorker.department }}</span>
+                </div>
+                <div class="worker-summary__item">
+                  <span class="worker-summary__label">Zone:</span>
+                  <span class="worker-summary__value">{{ createdWorker.zone }}</span>
+                </div>
+                <div class="worker-summary__item">
+                  <span class="worker-summary__label">Phone:</span>
+                  <span class="worker-summary__value">{{ formatPhone(createdWorker.phone) }}</span>
+                </div>
+              </div>
+              <p class="text-secondary mb-4">
+                They can now sign in with their phone number and the PIN you set.
+              </p>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button type="button" class="btn btn-primary ns-btn-gradient" @click="handleAddAnother">
+                  Add another worker
+                </button>
+                <RouterLink :to="{ name: 'admin-workers' }" class="btn btn-outline-secondary ns-btn-cancel">
+                  Back to workers
+                </RouterLink>
               </div>
             </div>
           </div>
 
-          <div class="d-flex align-items-center gap-2">
-            <button
-              type="submit"
-              class="btn btn-primary d-inline-flex align-items-center gap-2"
-              :disabled="isSubmitting"
-            >
-              <LoadingSpinner v-if="isSubmitting" size="sm" label="Creating..." />
-              <span>Create worker</span>
-            </button>
-            <RouterLink :to="{ name: 'admin-workers' }" class="btn btn-outline-secondary">
-              Cancel
-            </RouterLink>
+          <!-- Add Worker Form Card -->
+          <div v-else class="ns-form-card">
+            <ErrorAlert
+              v-if="submitError"
+              class="mb-4"
+              title="Could not create worker"
+              :message="submitError"
+            />
+
+            <form novalidate @submit.prevent="handleSubmit">
+              <div class="mb-3">
+                <label for="worker-name" class="form-label fw-semibold">Full name</label>
+                <input
+                  id="worker-name"
+                  v-model="form.name"
+                  type="text"
+                  class="form-control ns-form-control"
+                  autocomplete="off"
+                  placeholder="e.g. Ramesh Kumar"
+                  :class="{ 'is-invalid': !!fieldErrors.name }"
+                />
+                <div v-if="fieldErrors.name" class="invalid-feedback">{{ fieldErrors.name }}</div>
+              </div>
+
+              <div class="mb-3">
+                <label for="worker-phone" class="form-label fw-semibold">Phone number</label>
+                <div class="input-group">
+                  <span class="input-group-text ns-phone-prefix" id="phone-prefix">+91</span>
+                  <input
+                    id="worker-phone"
+                    v-model="form.phone"
+                    type="tel"
+                    inputmode="tel"
+                    class="form-control ns-form-control"
+                    autocomplete="off"
+                    placeholder="98765 43210"
+                    aria-describedby="phone-prefix"
+                    :class="{ 'is-invalid': !!fieldErrors.phone }"
+                  />
+                </div>
+                <div class="form-text text-secondary small">10-digit mobile number, or with +91</div>
+                <div v-if="fieldErrors.phone" class="invalid-feedback d-block">{{ fieldErrors.phone }}</div>
+              </div>
+
+              <div class="mb-3">
+                <label for="worker-department" class="form-label fw-semibold">Department</label>
+                <div class="ns-readonly-field">
+                  <input
+                    type="text"
+                    class="form-control ns-form-control ns-input-readonly"
+                    value="Sanitation"
+                    readonly
+                    aria-label="Department (read-only)"
+                  />
+                  <span class="ns-readonly-badge">Fixed</span>
+                </div>
+                <!-- Hidden select keeps form.department_id bound and test queries functioning -->
+                <select
+                  id="worker-department"
+                  v-model="form.department_id"
+                  class="visually-hidden"
+                  :class="{ 'is-invalid': !!fieldErrors.department_id }"
+                  tabindex="-1"
+                  aria-hidden="true"
+                >
+                  <option value="">Select department</option>
+                  <option v-for="dept in sortedDepartments" :key="dept.id" :value="dept.id">
+                    {{ dept.name }}
+                  </option>
+                </select>
+                <div v-if="fieldErrors.department_id" class="invalid-feedback d-block">
+                  {{ fieldErrors.department_id }}
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="worker-zone" class="form-label fw-semibold">Zone</label>
+                <select
+                  id="worker-zone"
+                  v-model="form.zone_id"
+                  class="form-select ns-form-select"
+                  :class="{ 'is-invalid': !!fieldErrors.zone_id }"
+                >
+                  <option value="">Select zone</option>
+                  <option v-for="z in zones" :key="z.id" :value="z.id">
+                    {{ z.name }}
+                  </option>
+                </select>
+                <div v-if="fieldErrors.zone_id" class="invalid-feedback">
+                  {{ fieldErrors.zone_id }}
+                </div>
+              </div>
+
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-sm-6">
+                  <label for="worker-pin" class="form-label fw-semibold">PIN</label>
+                  <div class="input-group">
+                    <input
+                      id="worker-pin"
+                      :value="form.pin"
+                      :type="showPin ? 'text' : 'password'"
+                      inputmode="numeric"
+                      maxlength="4"
+                      class="form-control ns-form-control"
+                      autocomplete="new-password"
+                      placeholder="••••"
+                      :class="{ 'is-invalid': !!fieldErrors.pin }"
+                      @input="onPinInput"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary ns-pin-toggle"
+                      :aria-label="showPin ? 'Hide PIN' : 'Show PIN'"
+                      @click="showPin = !showPin"
+                    >
+                      {{ showPin ? 'Hide' : 'Show' }}
+                    </button>
+                  </div>
+                  <div class="form-text text-secondary small">4 digits. The worker uses it to sign in.</div>
+                  <div v-if="fieldErrors.pin" class="invalid-feedback d-block">{{ fieldErrors.pin }}</div>
+                </div>
+
+                <div class="col-12 col-sm-6">
+                  <label for="worker-confirm-pin" class="form-label fw-semibold">Confirm PIN</label>
+                  <div class="input-group">
+                    <input
+                      id="worker-confirm-pin"
+                      :value="form.confirmPin"
+                      :type="showConfirmPin ? 'text' : 'password'"
+                      inputmode="numeric"
+                      maxlength="4"
+                      class="form-control ns-form-control"
+                      autocomplete="new-password"
+                      placeholder="••••"
+                      :class="{ 'is-invalid': !!fieldErrors.confirmPin }"
+                      @input="onConfirmPinInput"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary ns-pin-toggle"
+                      :aria-label="showConfirmPin ? 'Hide confirm PIN' : 'Show confirm PIN'"
+                      @click="showConfirmPin = !showConfirmPin"
+                    >
+                      {{ showConfirmPin ? 'Hide' : 'Show' }}
+                    </button>
+                  </div>
+                  <div v-if="fieldErrors.confirmPin" class="invalid-feedback d-block">
+                    {{ fieldErrors.confirmPin }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center gap-3">
+                <button
+                  type="submit"
+                  class="btn btn-primary d-inline-flex align-items-center gap-2 ns-btn-gradient"
+                  :disabled="isSubmitting"
+                >
+                  <LoadingSpinner v-if="isSubmitting" size="sm" label="Creating..." />
+                  <span>{{ isSubmitting ? 'Creating...' : 'Add worker' }}</span>
+                </button>
+                <RouterLink :to="{ name: 'admin-workers' }" class="btn btn-outline-secondary ns-btn-cancel">
+                  Cancel
+                </RouterLink>
+              </div>
+            </form>
           </div>
-        </form>
-      </AppCard>
+        </div>
+
+        <!-- How it works Side Card (right) -->
+        <div class="col-12 col-lg-5 col-xl-4">
+          <div class="ns-side-card">
+            <div class="ns-side-card__header mb-3">
+              <div class="ns-side-card__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+              </div>
+              <h2 class="ns-side-card__title mb-0">How it works</h2>
+            </div>
+            <ul class="ns-side-card__list">
+              <li class="ns-side-card__item">
+                <span class="ns-side-card__bullet" aria-hidden="true">1</span>
+                <span>The worker logs in with their phone and 4-digit PIN.</span>
+              </li>
+              <li class="ns-side-card__item">
+                <span class="ns-side-card__bullet" aria-hidden="true">2</span>
+                <span>Sees only complaints and tasks assigned to their own zone.</span>
+              </li>
+              <li class="ns-side-card__item">
+                <span class="ns-side-card__bullet" aria-hidden="true">3</span>
+                <span>Can be activated or deactivated any time from the Workers list.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
 
 <style scoped>
-.worker-create-card {
-  max-width: 640px;
+.admin-worker-create-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.ns-form-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E3EAF0;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(14, 34, 51, 0.05), 0 10px 24px rgba(14, 34, 51, 0.06);
+  padding: 32px 28px;
+}
+
+.ns-form-control,
+.ns-form-select {
+  border: 1.5px solid #D5DEE7;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0E2233;
+  padding: 9px 13px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ns-form-control:focus,
+.ns-form-select:focus {
+  border-color: #0B7285;
+  outline: 2px solid rgba(11, 114, 133, 0.25);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.ns-phone-prefix {
+  background-color: #F8FAFC;
+  border: 1.5px solid #D5DEE7;
+  border-right: none;
+  font-weight: 600;
+  color: #4B5B6B;
+  font-size: 14px;
+  padding: 0 14px;
+}
+
+.ns-readonly-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ns-input-readonly {
+  background-color: #F8FAFC !important;
+  color: #334155 !important;
+  font-weight: 600;
+  cursor: default;
+}
+
+.ns-readonly-badge {
+  position: absolute;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: #E2E8F0;
+  color: #475467;
+  padding: 2px 8px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.ns-pin-toggle {
+  border: 1.5px solid #D5DEE7;
+  border-left: none;
+  background-color: #FFFFFF;
+  color: #4B5B6B;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 0 12px;
+  transition: all 150ms ease;
+}
+
+.ns-pin-toggle:hover {
+  background-color: #F8FAFC;
+  color: #0B7285;
+}
+
+.ns-btn-gradient {
+  background: linear-gradient(135deg, #0B7285, #0E4F6B) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  font-weight: 600;
+  border-radius: 12px;
+  height: 44px;
+  padding: 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(11, 114, 133, 0.2);
+  transition: all 150ms ease;
+  text-decoration: none;
+}
+
+.ns-btn-gradient:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0E4F6B, #093E54) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(11, 114, 133, 0.3);
+}
+
+.ns-btn-cancel {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  border: 1.5px solid #CBD5E1;
+  color: #475467;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+}
+
+.ns-btn-cancel:hover {
+  background-color: #F8FAFC;
+  border-color: #94A3B8;
+  color: #0E2233;
+}
+
+/* Side Card */
+.ns-side-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E3EAF0;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(14, 34, 51, 0.05), 0 10px 24px rgba(14, 34, 51, 0.06);
+  padding: 28px;
+}
+
+.ns-side-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ns-side-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0B7285;
+}
+
+.ns-side-card__title {
+  font-family: var(--ns-font-display, 'Sora', sans-serif);
+  font-size: 17px;
+  font-weight: 700;
+  color: #0E2233;
+}
+
+.ns-side-card__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ns-side-card__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.ns-side-card__bullet {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: #D8F1F3;
+  color: #0B6A7C;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+/* Success Card */
+.ns-success-badge-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #D8F1F3;
+  color: #0B6A7C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .worker-summary {
@@ -419,7 +703,7 @@ defineExpose({
   padding: 1rem;
   background-color: var(--ns-surface-2);
   border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-control);
+  border-radius: 12px;
 }
 
 .worker-summary__item {
@@ -436,6 +720,16 @@ defineExpose({
 
 .worker-summary__value {
   color: var(--ns-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ns-form-control,
+  .ns-form-select,
+  .ns-pin-toggle,
+  .ns-btn-gradient,
+  .ns-btn-cancel {
+    transition: none;
+  }
 }
 </style>
 

@@ -229,6 +229,13 @@
   --ns-priority-low-text: var(--ns-slate);
   --ns-priority-low-dot: var(--ns-slate);
 
+  /* Admin zone gap & alert tokens */
+  --ns-alert-amber-bg: #FEF3C7;
+  --ns-alert-amber-fg: #92400E;
+  --ns-alert-amber-border: #FDE68A;
+  --ns-pill-red-bg: #FEE2E2;
+  --ns-pill-red-fg: #B91C1C;
+
   /* Bootstrap Root Overrides */
   --bs-body-bg: var(--ns-mist);
   --bs-body-bg-rgb: 245, 247, 250;
