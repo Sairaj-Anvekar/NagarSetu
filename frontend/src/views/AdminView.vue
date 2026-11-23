@@ -1,16 +1,27 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { fetchStats, fetchTrends } from '../api/adminApi'
+import { RouterLink } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+import { fetchAdminComplaints, fetchStats, fetchTrends } from '../api/adminApi'
 import PageHeader from '../components/PageHeader.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import EmptyState from '../components/EmptyState.vue'
-import AppCard from '../components/AppCard.vue'
+import ChartCard from '../components/admin/ChartCard.vue'
+import DashboardHero from '../components/admin/DashboardHero.vue'
 import StatTile from '../components/admin/StatTile.vue'
 import AttentionStrip from '../components/admin/AttentionStrip.vue'
 import CategoryChart from '../components/admin/CategoryChart.vue'
 import ZoneBreakdown from '../components/admin/ZoneBreakdown.vue'
 import TrendChart from '../components/admin/TrendChart.vue'
+import NeedsAttentionTable from '../components/admin/NeedsAttentionTable.vue'
+
+let auth = null
+try {
+  auth = useAuthStore()
+} catch {
+  auth = null
+}
 
 // Stats state
 const statsLoading = ref(true)
@@ -19,22 +30,52 @@ const stats = ref(null)
 const tiles = computed(() => {
   const totals = stats.value?.totals
   if (!totals) return []
-  const percentage = (count) => totals.total > 0
-    ? `${Math.round((count / totals.total) * 100)}% of total` : ''
+  const percentage = (count) =>
+    totals.total > 0 ? `${Math.round((count / totals.total) * 100)}% of total` : ''
   return [
     { label: 'Total', key: 'total', icon: 'dashboard', tone: 'total', query: {}, hint: '' },
-    { label: 'Submitted', key: 'submitted', icon: 'tasks', tone: 'submitted',
-      query: { status: 'Submitted' }, hint: percentage(totals.submitted) },
-    { label: 'In-Progress', key: 'in_progress', icon: 'clock', tone: 'in-progress',
-      query: { status: 'In-Progress' }, hint: percentage(totals.in_progress) },
-    { label: 'Completed', key: 'completed', icon: 'history', tone: 'completed',
-      query: { status: 'Completed' }, hint: percentage(totals.completed) },
-    { label: 'Overdue', key: 'overdue', icon: 'clock', tone: 'overdue',
-      query: { overdue: 'true' }, attention: totals.overdue > 0,
-      hint: totals.overdue > 0 ? 'Needs attention' : 'All clear' },
-    { label: 'Unassigned', key: 'unassigned', icon: 'users', tone: 'unassigned',
-      query: { unassigned: 'true' }, attention: totals.unassigned > 0,
-      hint: totals.unassigned > 0 ? 'Needs attention' : 'All clear' },
+    {
+      label: 'Submitted',
+      key: 'submitted',
+      icon: 'tasks',
+      tone: 'submitted',
+      query: { status: 'Submitted' },
+      hint: percentage(totals.submitted),
+    },
+    {
+      label: 'In-Progress',
+      key: 'in_progress',
+      icon: 'clock',
+      tone: 'in-progress',
+      query: { status: 'In-Progress' },
+      hint: percentage(totals.in_progress),
+    },
+    {
+      label: 'Completed',
+      key: 'completed',
+      icon: 'history',
+      tone: 'completed',
+      query: { status: 'Completed' },
+      hint: percentage(totals.completed),
+    },
+    {
+      label: 'Overdue',
+      key: 'overdue',
+      icon: 'clock',
+      tone: 'overdue',
+      query: { overdue: 'true' },
+      attention: totals.overdue > 0,
+      hint: totals.overdue > 0 ? 'Needs attention' : 'All clear',
+    },
+    {
+      label: 'Unassigned',
+      key: 'unassigned',
+      icon: 'users',
+      tone: 'unassigned',
+      query: { unassigned: 'true' },
+      attention: totals.unassigned > 0,
+      hint: totals.unassigned > 0 ? 'Needs attention' : 'All clear',
+    },
   ]
 })
 
@@ -43,6 +84,11 @@ const trendsLoading = ref(true)
 const trendsError = ref(null)
 const trends = ref([])
 const trendDays = ref(14)
+
+// Overdue complaints state (isolated for NeedsAttentionTable)
+const overdueLoading = ref(true)
+const overdueError = ref(null)
+const overdueComplaints = ref([])
 
 async function loadStats() {
   statsLoading.value = true
@@ -68,9 +114,23 @@ async function loadTrends(days = trendDays.value) {
   }
 }
 
+async function loadOverdueComplaints() {
+  overdueLoading.value = true
+  overdueError.value = null
+  try {
+    const result = await fetchAdminComplaints({ overdue: true, pageSize: 4, page: 1 })
+    overdueComplaints.value = Array.isArray(result?.items) ? result.items : []
+  } catch (err) {
+    overdueError.value = err?.message || 'Failed to load overdue complaints.'
+  } finally {
+    overdueLoading.value = false
+  }
+}
+
 function handleRefresh() {
   loadStats()
   loadTrends(trendDays.value)
+  loadOverdueComplaints()
 }
 
 function setTrendRange(days) {
@@ -81,15 +141,20 @@ function setTrendRange(days) {
 defineExpose({
   loadStats,
   loadTrends,
+  loadOverdueComplaints,
   handleRefresh,
   setTrendRange,
   stats,
   trends,
+  overdueComplaints,
+  overdueLoading,
+  overdueError,
 })
 
 onMounted(() => {
   loadStats()
   loadTrends(trendDays.value)
+  loadOverdueComplaints()
 })
 </script>
 
@@ -129,26 +194,44 @@ onMounted(() => {
 
     <div v-else-if="statsError" class="admin-dashboard__state">
       <ErrorAlert
-      title="Unable to load statistics"
-      :message="statsError"
-      show-retry
-      @retry="loadStats"
+        title="Unable to load statistics"
+        :message="statsError"
+        show-retry
+        @retry="loadStats"
       />
     </div>
 
     <div v-else-if="stats" class="admin-dashboard__content">
-      <AttentionStrip :overdue="stats.totals.overdue" :unassigned="stats.totals.unassigned" />
-      <div class="row g-3 admin-dashboard__tiles mb-4">
-        <div v-for="tile in tiles" :key="tile.key" class="col-6 col-md-4 col-xl-2">
-          <StatTile
-            :label="tile.label" :value="stats.totals[tile.key]"
-            :icon="tile.icon" :tone="tile.tone" :hint="tile.hint"
-            :attention="tile.attention"
-            :to="{ path: '/admin/complaints', query: tile.query }"
-          />
-        </div>
+      <!-- 1. Hero Band -->
+      <DashboardHero
+        :user-name="auth?.user?.name || ''"
+        :department-name="stats?.department?.name || auth?.user?.department?.name || ''"
+        :open-count="(stats.totals.submitted || 0) + (stats.totals.in_progress || 0)"
+        :overdue-count="stats.totals.overdue || 0"
+      />
+
+      <!-- 2. Attention Strip Banner -->
+      <AttentionStrip
+        :overdue="stats.totals.overdue"
+        :unassigned="stats.totals.unassigned"
+      />
+
+      <!-- 3. Six Stat Tiles in One Row -->
+      <div class="admin-dashboard__tiles mb-4">
+        <StatTile
+          v-for="tile in tiles"
+          :key="tile.key"
+          :label="tile.label"
+          :value="stats.totals[tile.key]"
+          :icon="tile.icon"
+          :tone="tile.tone"
+          :hint="tile.hint"
+          :attention="tile.attention"
+          :to="{ path: '/admin/complaints', query: tile.query }"
+        />
       </div>
 
+      <!-- Empty State -->
       <div v-if="stats.totals.total === 0" class="admin-dashboard__empty mb-4">
         <EmptyState
           title="No complaints yet"
@@ -157,26 +240,11 @@ onMounted(() => {
       </div>
 
       <template v-else>
-        <div class="row g-4 mb-4 align-items-start">
-          <div class="col-12 col-lg-7">
-            <AppCard title="Complaints by Category" class="admin-dashboard__chart-card">
-              <p class="text-secondary small mb-4">Complaint volume across service categories</p>
-              <CategoryChart :categories="stats.by_category" />
-            </AppCard>
-          </div>
-          <div class="col-12 col-lg-5">
-            <AppCard title="Complaints by Zone" class="admin-dashboard__chart-card">
-              <p class="text-secondary small mb-4">Distribution across department zones</p>
-              <ZoneBreakdown :zones="stats.by_zone" />
-            </AppCard>
-          </div>
-        </div>
-
-        <div class="row g-4 align-items-start">
-          <div class="col-12">
-            <AppCard title="Complaint Trends" class="admin-dashboard__chart-card">
-              <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-                <span class="text-muted small">Daily volume of created and completed complaints</span>
+        <!-- 4. Chart Row -->
+        <div class="admin-dashboard__row admin-dashboard__row--charts mb-4">
+          <div class="admin-dashboard__col-trends">
+            <ChartCard title="Complaints over time" :subtitle="`Last ${trendDays} days`">
+              <template #actions>
                 <div class="trend-range" role="group" aria-label="Trend duration range">
                   <button
                     type="button"
@@ -203,7 +271,7 @@ onMounted(() => {
                     30 days
                   </button>
                 </div>
-              </div>
+              </template>
 
               <LoadingSpinner
                 v-if="trendsLoading"
@@ -218,7 +286,40 @@ onMounted(() => {
                 @retry="() => loadTrends(trendDays)"
               />
               <TrendChart v-else :trends="trends" />
-            </AppCard>
+            </ChartCard>
+          </div>
+
+          <div class="admin-dashboard__col-categories">
+            <ChartCard title="By category" subtitle="Complaint volume across service categories">
+              <CategoryChart :categories="stats.by_category" />
+            </ChartCard>
+          </div>
+        </div>
+
+        <!-- 5. Bottom Row -->
+        <div class="admin-dashboard__row admin-dashboard__row--bottom">
+          <div class="admin-dashboard__col-zones">
+            <ChartCard title="By zone" subtitle="Distribution across department zones">
+              <ZoneBreakdown :zones="stats.by_zone" />
+            </ChartCard>
+          </div>
+
+          <div class="admin-dashboard__col-attention">
+            <ChartCard title="Needs attention" subtitle="Overdue complaints, most urgent first">
+              <template #actions>
+                <RouterLink
+                  :to="{ path: '/admin/complaints', query: { overdue: 'true' } }"
+                  class="admin-dashboard__view-all-link"
+                >
+                  View all complaints
+                </RouterLink>
+              </template>
+              <NeedsAttentionTable
+                :items="overdueComplaints"
+                :loading="overdueLoading"
+                :error="overdueError"
+              />
+            </ChartCard>
           </div>
         </div>
       </template>
@@ -231,94 +332,137 @@ onMounted(() => {
   width: 100%;
   min-width: 0;
 }
-.admin-dashboard .row > *,
-.admin-dashboard__chart-card {
-  min-width: 0;
-  min-height: 0;
-}
-.admin-dashboard__chart-card {
-  height: auto;
-}
-.admin-dashboard__chart-card :deep(.card-header) {
-  padding: var(--ns-space-24) var(--ns-space-24) 0;
-  border-bottom: 0;
-  font-size: var(--ns-type-card-title-size);
-}
-.admin-dashboard__chart-card :deep(.card-body) {
-  padding: var(--ns-space-12) var(--ns-space-24) var(--ns-space-24);
-  min-width: 0;
-  min-height: 0;
-}
+
 .admin-dashboard__state {
-  padding: var(--ns-space-24);
-  margin-bottom: var(--ns-space-24);
-  background-color: var(--ns-surface);
-  border: 1px solid var(--ns-border-default);
-  border-radius: var(--ns-radius-card);
-  box-shadow: var(--ns-shadow-card);
+  padding: 24px;
+  margin-bottom: 24px;
+  background-color: #FFFFFF;
+  border: 1px solid #E3EAF0;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(14, 34, 51, 0.05);
 }
-.admin-dashboard__state :deep(.alert) {
-  margin-bottom: 0;
+
+.admin-dashboard__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
 }
-@media (max-width: 575.98px) {
-  .admin-dashboard__chart-card :deep(.card-header) {
-    padding-inline: var(--ns-space-16);
+
+@media (min-width: 768px) {
+  .admin-dashboard__tiles {
+    grid-template-columns: repeat(3, 1fr);
   }
-  .admin-dashboard__chart-card :deep(.card-body) {
-    padding-inline: var(--ns-space-16);
+}
+
+@media (min-width: 1200px) {
+  .admin-dashboard__tiles {
+    grid-template-columns: repeat(6, 1fr);
   }
+}
+
+.admin-dashboard__row {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 992px) {
+  .admin-dashboard__row {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .admin-dashboard__col-trends {
+    flex: 2;
+    min-width: 0;
+  }
+
+  .admin-dashboard__col-categories {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .admin-dashboard__col-zones {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .admin-dashboard__col-attention {
+    flex: 2;
+    min-width: 0;
+  }
+}
+
+.admin-dashboard__empty {
+  background-color: #FFFFFF;
+  border: 1px solid #E3EAF0;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(14, 34, 51, 0.05);
+}
+
+.admin-dashboard__view-all-link {
+  font-family: var(--ns-font-body, 'Public Sans', sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: #0B7285;
+  text-decoration: none;
+}
+
+.admin-dashboard__view-all-link:hover {
+  text-decoration: underline;
+  color: #0E4F6B;
+}
+
+.admin-dashboard__view-all-link:focus-visible {
+  outline: 2px solid #0B7285;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .refresh-btn {
   min-height: 44px;
   min-width: 44px;
+  border-radius: 10px;
 }
 
 .trend-range {
   display: inline-flex;
-  gap: var(--ns-space-4);
-  padding: var(--ns-space-4);
-  background: var(--ns-surface-2);
-  border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-md);
+  gap: 4px;
+  padding: 4px;
+  background: #F8FAFC;
+  border: 1px solid #E3EAF0;
+  border-radius: 10px;
 }
 
 .range-btn {
-  min-height: 44px;
-  min-width: 64px;
-  padding: 0 var(--ns-space-8);
+  min-height: 36px;
+  min-width: 60px;
+  padding: 0 10px;
   border: 1px solid transparent;
-  border-radius: var(--ns-radius-sm);
+  border-radius: 8px;
   background: transparent;
-  color: var(--ns-slate);
-  font: inherit;
-  font-size: 0.875rem;
+  color: #5B6B7A;
+  font-family: var(--ns-font-body, 'Public Sans', sans-serif);
+  font-size: 13px;
   cursor: pointer;
 }
 
 .range-btn:hover {
-  background: var(--ns-info-bg);
-  color: var(--ns-harbour);
+  background: #E4F1F8;
+  color: #0B6E99;
 }
 
 .range-btn[aria-pressed='true'] {
-  background: var(--ns-paper);
-  color: var(--ns-harbour);
-  border-color: var(--ns-line);
-  box-shadow: var(--ns-shadow-xs);
+  background: #FFFFFF;
+  color: #0B6E99;
+  border-color: #E3EAF0;
+  box-shadow: 0 1px 2px rgba(15, 34, 51, 0.04);
   font-weight: 600;
 }
 
 .range-btn:focus-visible {
-  outline: var(--ns-focus-ring);
-  outline-offset: var(--ns-focus-ring-offset);
-}
-
-.admin-dashboard__empty {
-  background-color: var(--ns-paper);
-  border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-card);
-  padding: var(--ns-space-24);
-  box-shadow: var(--ns-shadow-card);
+  outline: 2px solid #0B7285;
+  outline-offset: 2px;
 }
 </style>
