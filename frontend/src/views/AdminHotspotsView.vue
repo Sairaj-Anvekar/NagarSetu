@@ -16,6 +16,11 @@ const router = useRouter()
 const isLoading = ref(true)
 const error = ref('')
 const hotspots = ref([])
+const selectedHotspotId = ref('')
+
+function handleHotspotSelect(id) {
+  selectedHotspotId.value = id !== undefined && id !== null ? String(id) : ''
+}
 
 function parseQuery(query = {}) {
   const parsedDays = parseInt(query?.days, 10)
@@ -129,10 +134,10 @@ onMounted(() => {
   <div class="admin-hotspots">
     <PageHeader
       title="Hotspots"
-      subtitle="Geographic clustering of department grievances"
+      subtitle="Areas with repeated complaints, ranked by volume"
     />
 
-    <div class="admin-hotspots__filters">
+    <section class="admin-hotspots__filters" aria-label="Hotspots filters">
       <div class="admin-hotspots__filter-group">
         <span class="admin-hotspots__filter-label">Time range:</span>
         <div class="btn-group" role="group" aria-label="Select days range">
@@ -166,13 +171,13 @@ onMounted(() => {
           </option>
         </select>
       </div>
-    </div>
+    </section>
 
-    <div v-if="isLoading" class="admin-hotspots__loading">
+    <div v-if="isLoading" class="admin-hotspots__state-card admin-hotspots__loading">
       <LoadingSpinner label="Loading hotspots..." centered />
     </div>
 
-    <div v-else-if="error" class="admin-hotspots__error">
+    <div v-else-if="error" class="admin-hotspots__state-card admin-hotspots__error">
       <ErrorAlert
         :message="error"
         :show-retry="true"
@@ -180,7 +185,7 @@ onMounted(() => {
       />
     </div>
 
-    <div v-else-if="hotspots.length === 0" class="admin-hotspots__empty">
+    <div v-else-if="hotspots.length === 0" class="admin-hotspots__state-card admin-hotspots__empty">
       <EmptyState
         title="No hotspots found"
         message="No complaint clusters match the selected criteria."
@@ -190,10 +195,18 @@ onMounted(() => {
     <div v-else class="admin-hotspots__content">
       <div class="row g-4">
         <div class="col-12 col-lg-7 col-xl-8">
-          <HotspotMap :hotspots="hotspots" />
+          <HotspotMap
+            :hotspots="hotspots"
+            :selected-hotspot-id="selectedHotspotId"
+            @select="handleHotspotSelect"
+          />
         </div>
         <div class="col-12 col-lg-5 col-xl-4">
-          <HotspotList :hotspots="hotspots" />
+          <HotspotList
+            :hotspots="hotspots"
+            :selected-hotspot-id="selectedHotspotId"
+            @select="handleHotspotSelect"
+          />
         </div>
       </div>
     </div>
@@ -212,46 +225,117 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  background-color: var(--ns-paper);
-  border: 1px solid var(--ns-line);
-  border-radius: var(--ns-radius-card);
-  box-shadow: var(--ns-shadow-card);
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  background-color: var(--ns-paper, #FFFFFF);
+  border: 1px solid var(--ns-hotspot-card-border, #E3EAF0);
+  border-radius: var(--ns-hotspot-card-radius, 18px);
+  box-shadow: 0 1px 2px rgba(14, 34, 51, 0.05), 0 10px 24px rgba(14, 34, 51, 0.06);
 }
 
 .admin-hotspots__filter-group {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
 }
 
 .admin-hotspots__filter-label {
   font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--ns-slate);
+  font-weight: 600;
+  color: var(--ns-slate, #5B6B7A);
   white-space: nowrap;
 }
 
 .days-btn {
+  height: 38px;
   min-height: 38px;
-  min-width: 68px;
+  min-width: 72px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+  user-select: none;
+}
+
+.days-btn.btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--ns-hotspot-teal-primary, #0B7285),
+    var(--ns-hotspot-teal-dark, #0E4F6B)
+  ) !important;
+  border-color: var(--ns-hotspot-teal-primary, #0B7285) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(11, 114, 133, 0.25);
+}
+
+.days-btn.btn-outline-secondary {
+  background-color: #FFFFFF;
+  border-color: var(--ns-hotspot-field-border, #D5DEE7);
+  color: #334155;
+}
+
+.days-btn.btn-outline-secondary:hover {
+  background-color: var(--ns-hotspot-list-hover, #F8FAFC);
+  border-color: #CBD5E1;
+  color: #0E2233;
 }
 
 .category-select {
-  min-height: 38px;
-  min-width: 180px;
+  height: 40px;
+  min-height: 40px;
+  min-width: 200px;
+  border: 1.5px solid var(--ns-hotspot-field-border, #D5DEE7);
+  border-radius: 10px;
+  font-size: 0.875rem;
+  color: #0E2233;
+  padding: 8px 12px;
+  background-color: #FFFFFF;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.category-select:focus {
+  border-color: var(--ns-hotspot-teal-primary, #0B7285);
+  outline: 2px solid rgba(11, 114, 133, 0.25);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.admin-hotspots__state-card {
+  background-color: var(--ns-paper, #FFFFFF);
+  border: 1px solid var(--ns-hotspot-card-border, #E3EAF0);
+  border-radius: var(--ns-hotspot-card-radius, 18px);
+  box-shadow: 0 1px 2px rgba(14, 34, 51, 0.05), 0 10px 24px rgba(14, 34, 51, 0.06);
+  padding: 3rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .admin-hotspots__loading,
 .admin-hotspots__error,
 .admin-hotspots__empty {
-  padding: 1.5rem 0;
+  width: 100%;
+}
+
+.admin-hotspots__error :deep(.alert) {
+  margin-bottom: 0;
+  width: 100%;
+  max-width: 600px;
 }
 
 .admin-hotspots__content {
   width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .days-btn,
+  .category-select {
+    transition: none;
+  }
 }
 </style>

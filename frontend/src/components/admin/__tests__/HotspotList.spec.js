@@ -33,7 +33,14 @@ describe('HotspotList', () => {
   it('shows label, count and category as text with correct pluralization', () => {
     const hotspots = [
       { id: 'h-1', lat: 17.68, lng: 75.88, count: 5, label: 'Multi Issue Area', category: '' },
-      { id: 'h-2', lat: 17.67, lng: 75.87, count: 1, label: 'Single Issue Area', category: 'Streetlight' },
+      {
+        id: 'h-2',
+        lat: 17.67,
+        lng: 75.87,
+        count: 1,
+        label: 'Single Issue Area',
+        category: 'Streetlight',
+      },
     ]
 
     const wrapper = mount(HotspotList, {
@@ -93,5 +100,59 @@ describe('HotspotList', () => {
     expect(renderedText).toContain('Central Market Depot')
     expect(renderedText).toContain('14')
     expect(renderedText).toContain('Solid Waste')
+  })
+
+  it('renders zone tag only when zone is provided in data', () => {
+    const hotspots = [
+      { id: 'h-1', count: 10, label: 'Zone A Depot', zone: 'Zone A' },
+      { id: 'h-2', count: 5, label: 'No Zone Depot' },
+    ]
+
+    const wrapper = mount(HotspotList, {
+      props: { hotspots },
+    })
+
+    const items = wrapper.findAll('.hotspot-list__item')
+    expect(items[0].find('.hotspot-list__zone-tag').exists()).toBe(true)
+    expect(items[0].find('.hotspot-list__zone-tag').text()).toBe('Zone A')
+    expect(items[1].find('.hotspot-list__zone-tag').exists()).toBe(false)
+  })
+
+  it('emits select event with hotspot id on item click or enter keydown', async () => {
+    const hotspots = [
+      { id: 'spot-42', count: 12, label: 'Station Road' },
+      { id: 'spot-99', count: 6, label: 'Main Bazaar' },
+    ]
+
+    const wrapper = mount(HotspotList, {
+      props: { hotspots },
+    })
+
+    const items = wrapper.findAll('.hotspot-list__item')
+    await items[0].trigger('click')
+
+    expect(wrapper.emitted('select')).toBeTruthy()
+    expect(wrapper.emitted('select')[0]).toEqual(['spot-42'])
+
+    await items[1].trigger('keydown.enter')
+    expect(wrapper.emitted('select')[1]).toEqual(['spot-99'])
+  })
+
+  it('highlights the selected hotspot item with active modifier and aria-pressed', () => {
+    const hotspots = [
+      { id: 'spot-1', count: 10, label: 'Spot 1' },
+      { id: 'spot-2', count: 5, label: 'Spot 2' },
+    ]
+
+    const wrapper = mount(HotspotList, {
+      props: { hotspots, selectedHotspotId: 'spot-2' },
+    })
+
+    const items = wrapper.findAll('.hotspot-list__item')
+    expect(items[0].classes()).not.toContain('hotspot-list__item--selected')
+    expect(items[0].attributes('aria-pressed')).toBe('false')
+
+    expect(items[1].classes()).toContain('hotspot-list__item--selected')
+    expect(items[1].attributes('aria-pressed')).toBe('true')
   })
 })
