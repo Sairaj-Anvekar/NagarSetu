@@ -383,4 +383,118 @@ describe('AdminComplaintDetailView — Resolution section', () => {
   })
 })
 
+describe('AdminComplaintDetailView — Page Shell and Header Layout', () => {
+  const baseComplaint = {
+    id: 'comp-uuid-1',
+    tracking_code: 'SAN-20261114-1029',
+    category: 'Garbage Dump',
+    status: 'In-Progress',
+    priority: 'high',
+    zone: { id: '1', name: 'Zone A' },
+    assigned_worker: { id: '2', name: 'Ramesh Patil' },
+    description: 'Overflowing dump near market square',
+    sla_deadline: '2026-11-14T18:00:00Z',
+    is_overdue: true,
+    created_at: '2026-11-14T09:00:00Z',
+    resolved_at: null,
+    image_url: null,
+    latitude: 17.68,
+    longitude: 75.88,
+    carry_forward_count: 0,
+    logs: [],
+    resolution: null,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders the COMPLAINT eyebrow and two-column layout grid', async () => {
+    fetchAdminComplaint.mockResolvedValueOnce({ ...baseComplaint })
+    const { wrapper } = await mountView('comp-uuid-1')
+    await flushPromises()
+
+    expect(wrapper.find('.ns-eyebrow').text()).toBe('COMPLAINT')
+    expect(wrapper.find('.ns-left-column').exists()).toBe(true)
+    expect(wrapper.find('.ns-right-column').exists()).toBe(true)
+  })
+
+  it('renders overdue chip in header when complaint is overdue and active', async () => {
+    fetchAdminComplaint.mockResolvedValueOnce({ ...baseComplaint, is_overdue: true })
+    const { wrapper } = await mountView('comp-uuid-1')
+    await flushPromises()
+
+    const overdueChip = wrapper.find('.ns-chip-overdue')
+    expect(overdueChip.exists()).toBe(true)
+    expect(overdueChip.text()).toContain('Overdue')
+  })
+
+  it('renders styled back button with minimum touch target', async () => {
+    fetchAdminComplaint.mockResolvedValueOnce({ ...baseComplaint })
+    const { wrapper } = await mountView('comp-uuid-1')
+    await flushPromises()
+
+    const backBtn = wrapper.find('.ns-back-btn')
+    expect(backBtn.exists()).toBe(true)
+    expect(backBtn.text()).toContain('Back to complaints')
+  })
+
+  it('renders citizen photo and displays fallback text when image fails to load', async () => {
+    fetchAdminComplaint.mockResolvedValueOnce({
+      ...baseComplaint,
+      image_url: 'https://storage.local/citizen-broken.jpg',
+    })
+    const { wrapper } = await mountView('comp-uuid-1')
+    await flushPromises()
+
+    const citizenImg = wrapper.get('img[alt="Citizen photo"]')
+    expect(citizenImg.exists()).toBe(true)
+
+    await citizenImg.trigger('error')
+
+    expect(wrapper.find('img[alt="Citizen photo"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Photo unavailable. Reload the page to get a fresh link.')
+  })
+
+  it('displays fallback text when resolution photo fails to load', async () => {
+    fetchAdminComplaint.mockResolvedValueOnce({
+      ...baseComplaint,
+      status: 'Completed',
+      resolution: {
+        note: 'Cleared debris.',
+        photo_url: 'https://storage.local/resolution-broken.jpg',
+        completed_at: '2026-11-14T16:00:00Z',
+        worker: { id: 'w1', name: 'Ramesh Patil' },
+      },
+    })
+    const { wrapper } = await mountView('comp-uuid-1')
+    await flushPromises()
+
+    const resImg = wrapper.get('img[alt="Resolution photo"]')
+    expect(resImg.exists()).toBe(true)
+
+    await resImg.trigger('error')
+
+    expect(wrapper.find('img[alt="Resolution photo"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Photo unavailable. Reload the page to get a fresh link.')
+  })
+
+  it('renders dashed empty state for resolution photo when complaint is not completed', async () => {
+    fetchAdminComplaint.mockResolvedValueOnce({
+      ...baseComplaint,
+      status: 'In-Progress',
+      resolution: null,
+    })
+    const { wrapper } = await mountView('comp-uuid-1')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(
+      'No resolution photo yet. The worker adds a photo when they mark this complaint Completed.',
+    )
+    expect(wrapper.text()).not.toContain('Resolution note')
+  })
+})
+
+
+
 
