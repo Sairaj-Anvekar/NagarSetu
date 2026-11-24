@@ -376,5 +376,65 @@ describe('AdminWorkerCreateView - Server Errors and Lifecycle', () => {
     }).not.toThrow()
     await flushPromises()
   })
+
+  it('toggles password visibility with Show/Hide button for PIN and confirm PIN', async () => {
+    const wrapper = mount(AdminWorkerCreateView, {
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+    await flushPromises()
+
+    const pinInput = wrapper.find('#worker-pin')
+    const confirmPinInput = wrapper.find('#worker-confirm-pin')
+    const toggles = wrapper.findAll('.ns-pin-toggle')
+
+    expect(pinInput.attributes('type')).toBe('password')
+    expect(confirmPinInput.attributes('type')).toBe('password')
+    expect(toggles[0].text()).toBe('Show')
+    expect(toggles[1].text()).toBe('Show')
+
+    await toggles[0].trigger('click')
+    expect(pinInput.attributes('type')).toBe('text')
+    expect(toggles[0].text()).toBe('Hide')
+
+    await toggles[0].trigger('click')
+    expect(pinInput.attributes('type')).toBe('password')
+    expect(toggles[0].text()).toBe('Show')
+
+    await toggles[1].trigger('click')
+    expect(confirmPinInput.attributes('type')).toBe('text')
+    expect(toggles[1].text()).toBe('Hide')
+  })
+
+  it('renders "How it works" side card with 3 informational guidance points', async () => {
+    const wrapper = mount(AdminWorkerCreateView, {
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+    await flushPromises()
+
+    const sideCard = wrapper.find('.ns-side-card')
+    expect(sideCard.exists()).toBe(true)
+    expect(sideCard.find('h2').text()).toBe('How it works')
+
+    const items = sideCard.findAll('.ns-side-card__item')
+    expect(items).toHaveLength(3)
+    expect(items[0].text()).toContain('The worker logs in with their phone and 4-digit PIN.')
+    expect(items[1].text()).toContain('Sees only complaints and tasks assigned to their own zone.')
+    expect(items[2].text()).toContain(
+      'Can be activated or deactivated any time from the Workers list.',
+    )
+  })
+
+  it('displays read-only Sanitation department input and fixed badge', async () => {
+    const wrapper = mount(AdminWorkerCreateView, {
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+    await flushPromises()
+
+    const readonlyDept = wrapper.find('.ns-input-readonly')
+    expect(readonlyDept.exists()).toBe(true)
+    expect(readonlyDept.element.value).toBe('Sanitation')
+    expect(readonlyDept.attributes('readonly')).toBeDefined()
+    expect(wrapper.find('.ns-readonly-badge').text()).toBe('Fixed')
+  })
 })
 
