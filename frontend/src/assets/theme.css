@@ -61,6 +61,28 @@
   /* Muted label — used for unselected filter chip text and the "Due in …" pill text. */
   --ns-task-label: #334155;
 
+  /* Admin Hotspots redesign tokens */
+  --ns-hotspot-page-bg: #F3F6FA;
+  --ns-hotspot-card-border: #E3EAF0;
+  --ns-hotspot-card-radius: 18px;
+  --ns-hotspot-field-border: #D5DEE7;
+  --ns-hotspot-teal-primary: #0B7285;
+  --ns-hotspot-teal-dark: #0E4F6B;
+  --ns-hotspot-accent: #2DD4BF;
+  --ns-hotspot-accent-light: #7EE8D9;
+  --ns-hotspot-pin-bg: #0B7285;
+  --ns-hotspot-pin-text: #FFFFFF;
+  --ns-hotspot-pin-border: #FFFFFF;
+  --ns-hotspot-pin-selected: #0E4F6B;
+  --ns-hotspot-pin-glow: rgba(45, 212, 191, 0.45);
+  --ns-hotspot-radius-fill: rgba(45, 212, 191, 0.22);
+  --ns-hotspot-radius-stroke: #0B7285;
+  --ns-hotspot-badge-bg: #D8F1F3;
+  --ns-hotspot-badge-fg: #0B6A7C;
+  --ns-hotspot-list-hover: #F8FAFC;
+  --ns-hotspot-list-selected: #EFF8FA;
+  --ns-hotspot-list-selected-border: #0B7285;
+
   --ns-space-4: 4px;
   --ns-space-8: 8px;
   --ns-space-12: 12px;

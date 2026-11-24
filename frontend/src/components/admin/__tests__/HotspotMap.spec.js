@@ -8,6 +8,8 @@ vi.mock('leaflet', () => {
     setView: vi.fn().mockReturnThis(),
     fitBounds: vi.fn().mockReturnThis(),
     remove: vi.fn(),
+    getZoom: vi.fn(() => 13),
+    invalidateSize: vi.fn(),
   }
 
   const mockTileLayer = {
@@ -22,6 +24,15 @@ vi.mock('leaflet', () => {
   const mockCircleMarker = {
     bindPopup: vi.fn().mockReturnThis(),
     addTo: vi.fn().mockReturnThis(),
+    on: vi.fn().mockReturnThis(),
+    openPopup: vi.fn().mockReturnThis(),
+  }
+
+  const mockPinMarker = {
+    bindPopup: vi.fn().mockReturnThis(),
+    addTo: vi.fn().mockReturnThis(),
+    on: vi.fn().mockReturnThis(),
+    openPopup: vi.fn().mockReturnThis(),
   }
 
   return {
@@ -30,6 +41,8 @@ vi.mock('leaflet', () => {
       tileLayer: vi.fn(() => mockTileLayer),
       layerGroup: vi.fn(() => mockLayerGroup),
       circleMarker: vi.fn(() => mockCircleMarker),
+      marker: vi.fn(() => mockPinMarker),
+      divIcon: vi.fn((opts) => opts),
       latLngBounds: vi.fn((coords) => ({ coords })),
     },
   }
@@ -168,4 +181,67 @@ describe('HotspotMap - Markers, bounds, and prop updates', () => {
   })
 })
 
+describe('HotspotMap - Numbered pins, selection, and interactions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
+  it('creates numbered pin markers with custom divIcon for each valid hotspot', () => {
+    const hotspots = [
+      { id: 'h-1', lat: 17.68, lng: 75.88, count: 20, label: 'Area A' },
+      { id: 'h-2', lat: 17.67, lng: 75.87, count: 5, label: 'Area B' },
+    ]
+
+    mount(HotspotMap, {
+      props: { hotspots },
+    })
+
+    expect(L.marker).toHaveBeenCalledTimes(2)
+    expect(L.divIcon).toHaveBeenCalledTimes(2)
+
+    const divIconCalls = L.divIcon.mock.calls
+    expect(divIconCalls[0][0].html).toContain('ns-hotspot-pin')
+    expect(divIconCalls[0][0].html).toContain('rank 1')
+    expect(divIconCalls[1][0].html).toContain('rank 2')
+  })
+
+  it('emits select event when a marker is clicked', () => {
+    const hotspots = [{ id: 'h-100', lat: 17.68, lng: 75.88, count: 12, label: 'Market Depot' }]
+
+    const wrapper = mount(HotspotMap, {
+      props: { hotspots },
+    })
+
+    const markerInstance = L.circleMarker.mock.results[0].value
+    expect(markerInstance.on).toHaveBeenCalledWith('click', expect.any(Function))
+
+    // Trigger click callback
+    const clickHandler = markerInstance.on.mock.calls.find((call) => call[0] === 'click')?.[1]
+    expect(clickHandler).toBeDefined()
+    clickHandler()
+
+    expect(wrapper.emitted('select')).toBeTruthy()
+    expect(wrapper.emitted('select')[0]).toEqual(['h-100'])
+  })
+
+  it('centers map and opens popup when selectedHotspotId prop updates', async () => {
+    const hotspots = [
+      { id: 'h-1', lat: 17.68, lng: 75.88, count: 15, label: 'Hotspot 1' },
+      { id: 'h-2', lat: 17.67, lng: 75.87, count: 8, label: 'Hotspot 2' },
+    ]
+
+    const wrapper = mount(HotspotMap, {
+      props: { hotspots, selectedHotspotId: null },
+    })
+
+    const mapInstance = L.map.mock.results[0].value
+
+    await wrapper.setProps({ selectedHotspotId: 'h-2' })
+
+    expect(mapInstance.setView).toHaveBeenCalledWith(
+      [17.67, 75.87],
+      expect.any(Number),
+      expect.any(Object),
+    )
+  })
+})

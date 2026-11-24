@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount as baseMount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import AdminHotspotsView from '../AdminHotspotsView.vue'
+import PageHeader from '../../components/PageHeader.vue'
 import LoadingSpinner from '../../components/LoadingSpinner.vue'
 import ErrorAlert from '../../components/ErrorAlert.vue'
 import EmptyState from '../../components/EmptyState.vue'
@@ -37,7 +38,8 @@ async function mountView(initialQuery = {}) {
       stubs: {
         HotspotMap: {
           name: 'HotspotMap',
-          props: ['hotspots'],
+          props: ['hotspots', 'selectedHotspotId'],
+          emits: ['select'],
           template: '<div class="stubbed-hotspot-map" />',
         },
       },
@@ -46,6 +48,38 @@ async function mountView(initialQuery = {}) {
 
   return { wrapper, router }
 }
+
+describe('AdminHotspotsView — header and layout styling', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    vi.spyOn(adminApi, 'fetchStats').mockResolvedValue({
+      by_category: [{ category: 'Garbage Dump', count: 12 }],
+      by_zone: [],
+    })
+    vi.spyOn(adminApi, 'fetchHotspots').mockResolvedValue({ items: [] })
+  })
+
+  it('renders PageHeader with updated title and volume ranking subtitle', async () => {
+    const { wrapper } = await mountView()
+    await flushPromises()
+
+    const pageHeader = wrapper.findComponent(PageHeader)
+    expect(pageHeader.exists()).toBe(true)
+    expect(pageHeader.props('title')).toBe('Hotspots')
+    expect(pageHeader.props('subtitle')).toBe(
+      'Areas with repeated complaints, ranked by volume'
+    )
+  })
+
+  it('renders filters section inside an accessible card container', async () => {
+    const { wrapper } = await mountView()
+    await flushPromises()
+
+    const filtersSection = wrapper.find('section.admin-hotspots__filters')
+    expect(filtersSection.exists()).toBe(true)
+    expect(filtersSection.attributes('aria-label')).toBe('Hotspots filters')
+  })
+})
 
 describe('AdminHotspotsView — loading, error, 403, and empty states', () => {
   beforeEach(() => {
@@ -326,6 +360,31 @@ describe('AdminHotspotsView — URL query synchronization and data passing', () 
     expect(renderedText).toContain('Garbage Dump')
     expect(renderedText).toContain('Hotspot 2')
     expect(renderedText).toContain('6')
+  })
+
+  it('coordinates selection between map and list and resets selection on filter change', async () => {
+    const { wrapper } = await mountView()
+    await flushPromises()
+
+    const mapComponent = wrapper.findComponent(HotspotMap)
+    const listComponent = wrapper.findComponent(HotspotList)
+
+    expect(mapComponent.props('selectedHotspotId')).toBe('')
+    expect(listComponent.props('selectedHotspotId')).toBe('')
+
+    // Selecting from list updates map prop
+    await listComponent.vm.$emit('select', '17.68_75.88')
+    await flushPromises()
+
+    expect(mapComponent.props('selectedHotspotId')).toBe('17.68_75.88')
+    expect(listComponent.props('selectedHotspotId')).toBe('17.68_75.88')
+
+    // Selecting from map updates list prop
+    await mapComponent.vm.$emit('select', '17.66_75.85')
+    await flushPromises()
+
+    expect(mapComponent.props('selectedHotspotId')).toBe('17.66_75.85')
+    expect(listComponent.props('selectedHotspotId')).toBe('17.66_75.85')
   })
 })
 
