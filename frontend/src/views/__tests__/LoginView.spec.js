@@ -177,6 +177,43 @@ describe('LoginView — tabs and notices', () => {
 
     expect(wrapper.find('.alert-warning').exists()).toBe(false)
   })
+
+  it('opens the Worker tab directly when route has ?role=worker', async () => {
+    await router.push('/login?role=worker')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(true)
+    expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(false)
+    expect(wrapper.get('#login-heading').text()).toBe("Sign in to see today's tasks")
+    expect(wrapper.get('.ns-login-eyebrow').text()).toBe('FIELD WORKER')
+  })
+
+  it('hides the entire tab bar and shows no admin login option when the worker tab is active', async () => {
+    await router.push('/login?role=worker')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    // The whole tab bar is hidden so no lone tab or admin option remains
+    expect(wrapper.find('.ns-login-tabs').isVisible()).toBe(false)
+    expect(wrapper.find('#admin-login-tab').isVisible()).toBe(false)
+
+    // No admin portal heading or officer switch visible
+    expect(wrapper.find('.ns-admin-portal').exists()).toBe(false)
+    expect(wrapper.find('.ns-admin-signin-heading').exists()).toBe(false)
+    expect(wrapper.find('.ns-admin-access-notice').exists()).toBe(false)
+    expect(wrapper.find('.ns-admin-worker-switch').exists()).toBe(false)
+  })
 })
 
 describe('LoginView — login redirects and session state', () => {

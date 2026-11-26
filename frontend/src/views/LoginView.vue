@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getSafeRedirect } from '../utils/redirect'
@@ -11,7 +11,16 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
-const activeTab = ref('admin')
+const activeTab = ref(route.query.role === 'worker' ? 'worker' : 'admin')
+
+watch(
+  () => route.query.role,
+  (newRole) => {
+    if (newRole === 'worker' || newRole === 'admin') {
+      activeTab.value = newRole
+    }
+  },
+)
 
 function goHome() {
   const target = getSafeRedirect(route.query.redirect)
@@ -98,6 +107,7 @@ onMounted(() => {
           </div>
 
             <div
+              v-show="activeTab !== 'worker'"
               class="nav nav-pills nav-fill ns-login-tabs"
               role="tablist"
               aria-label="Sign-in role"

@@ -246,4 +246,28 @@ describe('auth store — registerUnauthorizedHandler', () => {
     expect(fakeRouter.push).toHaveBeenCalledOnce()
     expect(fakeRouter.push).toHaveBeenCalledWith({ path: '/login', query: { reason: 'expired' } })
   })
+
+  it('logs the store out and calls router.push with role="worker" on a 401 for a worker session', async () => {
+    saveAuth({ token: 'live-worker-tok', role: 'worker', user: null })
+    const store = useAuthStore()
+    expect(store.isAuthenticated).toBe(true)
+
+    const fakeRouter = { push: vi.fn() }
+    registerUnauthorizedHandler(fakeRouter)
+
+    http.defaults.adapter = async (config) => {
+      const response = { status: 401, data: {}, headers: {}, config }
+      throw new AxiosError('Unauthorized', 'ERR_BAD_RESPONSE', config, null, response)
+    }
+
+    await expect(http.get('/protected')).rejects.toThrow()
+
+    expect(store.isAuthenticated).toBe(false)
+    expect(store.token).toBeNull()
+    expect(fakeRouter.push).toHaveBeenCalledOnce()
+    expect(fakeRouter.push).toHaveBeenCalledWith({
+      path: '/login',
+      query: { role: 'worker', reason: 'expired' },
+    })
+  })
 })
