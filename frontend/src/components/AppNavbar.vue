@@ -1,14 +1,17 @@
 <script setup>
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { getLoginRoute } from '../utils/loginRoute'
 import BrandMark from './BrandMark.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 
 function handleLogout() {
+  const role = auth.role
+  const currentPath = router.currentRoute.value?.path
   auth.logout()
-  router.push('/login')
+  router.push(getLoginRoute({ role, currentPath }))
 }
 </script>
 

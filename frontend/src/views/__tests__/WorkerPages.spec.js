@@ -109,6 +109,7 @@ describe('Worker placeholder pages', () => {
 
       expect(localStorage.getItem('nagarsetu_auth')).toBeNull()
       expect(router.currentRoute.value.path).toBe('/login')
+      expect(router.currentRoute.value.query.role).toBe('worker')
     })
 
     it('falls back to "Worker" when the user name is missing', async () => {

@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { loadAuth, clearAuth, saveAuth } from '../utils/authStorage'
 import { loginAdmin as apiLoginAdmin, loginWorker as apiLoginWorker } from '../api/authApi'
 import { setUnauthorizedHandler } from '../api/http'
+import { getLoginRoute } from '../utils/loginRoute'
 
 const VALID_ROLES = ['admin', 'worker']
 
@@ -120,7 +121,9 @@ export const useAuthStore = defineStore('auth', () => {
 export function registerUnauthorizedHandler(router) {
   setUnauthorizedHandler(() => {
     const auth = useAuthStore()
+    const role = auth.role
+    const currentPath = router?.currentRoute?.value?.path || ''
     auth.logout()
-    router.push({ path: '/login', query: { reason: 'expired' } })
+    router.push(getLoginRoute({ role, currentPath, reason: 'expired' }))
   })
 }

@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { getInitials } from '../../utils/initials'
+import { getLoginRoute } from '../../utils/loginRoute'
 import AppIcon from '../AppIcon.vue'
 
 const router = useRouter()
@@ -51,8 +52,10 @@ onMounted(() => {
 onUnmounted(() => window.clearInterval(dateTimer))
 
 function handleLogout() {
+  const role = auth.role
+  const currentPath = route.path
   auth.logout()
-  router.push('/login')
+  router.push(getLoginRoute({ role, currentPath }))
 }
 </script>
 

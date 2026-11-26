@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { getLoginRoute } from '../utils/loginRoute'
 import WorkerHeader from '../components/worker/WorkerHeader.vue'
 import AccountProfileCard from '../components/worker/AccountProfileCard.vue'
 import AccountInfoRows from '../components/worker/AccountInfoRows.vue'
@@ -20,8 +21,10 @@ const zone = computed(() => auth.user?.zone || '')
 const phone = computed(() => auth.user?.phone || '')
 
 function handleLogout() {
+  const role = auth.role
+  const currentPath = router.currentRoute.value?.path
   auth.logout()
-  router.push('/login')
+  router.push(getLoginRoute({ role, currentPath }))
 }
 </script>
 
