@@ -119,11 +119,12 @@ export const useAuthStore = defineStore('auth', () => {
  * @param {import('vue-router').Router} router
  */
 export function registerUnauthorizedHandler(router) {
-  setUnauthorizedHandler(() => {
+  setUnauthorizedHandler((isDeactivated = false) => {
     const auth = useAuthStore()
     const role = auth.role
     const currentPath = router?.currentRoute?.value?.path || ''
     auth.logout()
-    router.push(getLoginRoute({ role, currentPath, reason: 'expired' }))
+    const reason = isDeactivated === true ? 'deactivated' : 'expired'
+    router.push(getLoginRoute({ role, currentPath, reason }))
   })
 }

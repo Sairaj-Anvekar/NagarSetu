@@ -99,7 +99,14 @@ onMounted(() => {
           <p>Use the credentials issued by your municipal administrator.</p>
         </div>
           <div
-            v-if="route.query.reason === 'expired'"
+            v-if="route.query.reason === 'deactivated'"
+            class="alert alert-warning ns-login-notice"
+            role="alert"
+          >
+            Your account has been deactivated. Please contact your administrator.
+          </div>
+          <div
+            v-else-if="route.query.reason === 'expired'"
             class="alert alert-warning ns-login-notice"
             role="alert"
           >

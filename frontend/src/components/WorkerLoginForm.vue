@@ -52,8 +52,15 @@ async function handleSubmit() {
     if (error?.response?.status === 401) {
       errorMessage.value = 'Incorrect phone number or PIN.'
     } else if (error?.response?.status === 403) {
-      errorMessage.value =
-        'This account is not allowed to log in. Please contact your administrator.'
+      const detail = error?.response?.data?.detail
+      const isDeactivated =
+        typeof detail === 'string' && detail.toLowerCase().includes('deactivated')
+      if (isDeactivated) {
+        errorMessage.value = 'This account is deactivated. Please contact your administrator.'
+      } else {
+        errorMessage.value =
+          'This account is not allowed to log in. Please contact your administrator.'
+      }
     } else {
       errorMessage.value = getErrorMessage(error)
     }

@@ -56,7 +56,14 @@ http.interceptors.response.use(
     const skipAuthRedirect = error?.config?.skipAuthRedirect
 
     if (status === 401 && !skipAuthRedirect && unauthorizedHandler) {
-      unauthorizedHandler()
+      const detail = error?.response?.data?.detail
+      const isDeactivated =
+        typeof detail === 'string' && detail.toLowerCase().includes('deactivated')
+      if (isDeactivated) {
+        unauthorizedHandler(true)
+      } else {
+        unauthorizedHandler()
+      }
     }
 
     // Always re-reject so callers can handle the error themselves

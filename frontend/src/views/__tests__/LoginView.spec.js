@@ -165,6 +165,24 @@ describe('LoginView — tabs and notices', () => {
     expect(notice.text()).toContain('Your session has expired. Please log in again.')
   })
 
+  it('shows deactivated notice when route query reason is "deactivated"', async () => {
+    router.push('/login?reason=deactivated')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    const notice = wrapper.find('.alert-warning')
+    expect(notice.exists()).toBe(true)
+    expect(notice.text()).toContain(
+      'Your account has been deactivated. Please contact your administrator.',
+    )
+    expect(notice.text()).not.toContain('Your session has expired.')
+  })
+
   it('does not show expired notice on normal /login', async () => {
     router.push('/login')
     await router.isReady()
