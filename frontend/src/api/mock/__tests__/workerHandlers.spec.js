@@ -1,8 +1,19 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
 import { createMockAdapter } from '../mockAdapter'
 import { workerRoutes } from '../workerHandlers'
 import { MOCK_TASKS } from '../mockData'
+
+const FIXED_SYSTEM_TIME = new Date('2026-11-14T12:00:00Z')
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(FIXED_SYSTEM_TIME)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('workerHandlers - authentication and error states', () => {
   const client = axios.create({

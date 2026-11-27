@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -37,6 +37,17 @@ async function mountView(id = 'comp-uuid-1') {
 
   return { wrapper, router }
 }
+
+const FIXED_SYSTEM_TIME = new Date('2026-11-14T20:00:00Z')
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(FIXED_SYSTEM_TIME)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('AdminComplaintDetailView — Loading, Error, 403 and 404 states', () => {
   beforeEach(() => {
