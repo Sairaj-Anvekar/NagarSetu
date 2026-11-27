@@ -3,6 +3,7 @@ import { AxiosError } from 'axios'
 import { createPinia, setActivePinia } from 'pinia'
 import { saveAuth } from '../../utils/authStorage'
 import http, { setUnauthorizedHandler } from '../../api/http'
+import * as httpModule from '../../api/http'
 
 // Mock the entire authApi module — real network calls must never happen in tests
 vi.mock('../../api/authApi')
@@ -269,5 +270,86 @@ describe('auth store — registerUnauthorizedHandler', () => {
       path: '/login',
       query: { role: 'worker', reason: 'expired' },
     })
+  })
+
+  it('logs the store out and calls router.push with reason="deactivated" on 401 when detail contains "deactivated" for a worker session', async () => {
+    saveAuth({ token: 'live-worker-tok', role: 'worker', user: null })
+    const store = useAuthStore()
+    expect(store.isAuthenticated).toBe(true)
+
+    const fakeRouter = { push: vi.fn() }
+    registerUnauthorizedHandler(fakeRouter)
+
+    http.defaults.adapter = async (config) => {
+      const response = {
+        status: 401,
+        data: { detail: 'Account is deactivated' },
+        headers: {},
+        config,
+      }
+      throw new AxiosError('Unauthorized', 'ERR_BAD_RESPONSE', config, null, response)
+    }
+
+    await expect(http.get('/protected')).rejects.toThrow()
+
+    expect(store.isAuthenticated).toBe(false)
+    expect(store.token).toBeNull()
+    expect(fakeRouter.push).toHaveBeenCalledOnce()
+    expect(fakeRouter.push).toHaveBeenCalledWith({
+      path: '/login',
+      query: { role: 'worker', reason: 'deactivated' },
+    })
+  })
+
+  it('logs the store out and calls router.push with reason="deactivated" on 401 when detail contains "deactivated" for an admin session', async () => {
+    saveAuth({ token: 'live-admin-tok', role: 'admin', user: null })
+    const store = useAuthStore()
+    expect(store.isAuthenticated).toBe(true)
+
+    const fakeRouter = { push: vi.fn() }
+    registerUnauthorizedHandler(fakeRouter)
+
+    http.defaults.adapter = async (config) => {
+      const response = {
+        status: 401,
+        data: { detail: 'This account is deactivated. Contact an administrator.' },
+        headers: {},
+        config,
+      }
+      throw new AxiosError('Unauthorized', 'ERR_BAD_RESPONSE', config, null, response)
+    }
+
+    await expect(http.get('/protected')).rejects.toThrow()
+
+    expect(store.isAuthenticated).toBe(false)
+    expect(store.token).toBeNull()
+    expect(fakeRouter.push).toHaveBeenCalledOnce()
+    expect(fakeRouter.push).toHaveBeenCalledWith({
+      path: '/login',
+      query: { reason: 'deactivated' },
+    })
+  })
+
+  it('defaults to reason="expired" when unauthorized handler is called with no argument', () => {
+    saveAuth({ token: 'live-worker-tok', role: 'worker', user: null })
+    const store = useAuthStore()
+
+    const spy = vi.spyOn(httpModule, 'setUnauthorizedHandler')
+    const fakeRouter = { push: vi.fn() }
+    registerUnauthorizedHandler(fakeRouter)
+
+    expect(spy).toHaveBeenCalled()
+    const registeredHandler = spy.mock.calls[spy.mock.calls.length - 1][0]
+    expect(typeof registeredHandler).toBe('function')
+
+    // Invoke directly with no argument
+    registeredHandler()
+
+    expect(store.isAuthenticated).toBe(false)
+    expect(fakeRouter.push).toHaveBeenCalledWith({
+      path: '/login',
+      query: { role: 'worker', reason: 'expired' },
+    })
+    spy.mockRestore()
   })
 })

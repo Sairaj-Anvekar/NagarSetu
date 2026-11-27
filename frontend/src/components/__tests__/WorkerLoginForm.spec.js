@@ -155,6 +155,69 @@ describe('WorkerLoginForm — submission, loading and error handling', () => {
     )
   })
 
+  it('shows deactivated message on 403 rejection when detail contains "deactivated" and preserves phone', async () => {
+    mockLoginWorker.mockRejectedValueOnce({
+      response: {
+        status: 403,
+        data: { detail: 'This account is deactivated. Contact an administrator.' },
+      },
+    })
+    const wrapper = mount(WorkerLoginForm)
+
+    await wrapper.find('#worker-phone').setValue('9876543210')
+    await wrapper.find('#worker-pin').setValue('1234')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Login failed')
+    expect(wrapper.text()).toContain(
+      'This account is deactivated. Please contact your administrator.',
+    )
+    expect(wrapper.find('#worker-phone').element.value).toBe('9876543210')
+    expect(wrapper.find('#worker-pin').element.value).toBe('')
+  })
+
+  it('shows deactivated message on 403 rejection when detail is "Account is deactivated" (mock format)', async () => {
+    mockLoginWorker.mockRejectedValueOnce({
+      response: {
+        status: 403,
+        data: { detail: 'Account is deactivated' },
+      },
+    })
+    const wrapper = mount(WorkerLoginForm)
+
+    await wrapper.find('#worker-phone').setValue('9876543210')
+    await wrapper.find('#worker-pin').setValue('1234')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Login failed')
+    expect(wrapper.text()).toContain(
+      'This account is deactivated. Please contact your administrator.',
+    )
+  })
+
+  it('shows generic not-allowed message on 403 rejection when detail does not contain "deactivated"', async () => {
+    mockLoginWorker.mockRejectedValueOnce({
+      response: {
+        status: 403,
+        data: { detail: 'Access restricted for your department.' },
+      },
+    })
+    const wrapper = mount(WorkerLoginForm)
+
+    await wrapper.find('#worker-phone').setValue('9876543210')
+    await wrapper.find('#worker-pin').setValue('1234')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(
+      'This account is not allowed to log in. Please contact your administrator.',
+    )
+    expect(wrapper.find('#worker-phone').element.value).toBe('9876543210')
+    expect(wrapper.find('#worker-pin').element.value).toBe('')
+  })
+
   it('shows generic error message on non-HTTP error', async () => {
     mockLoginWorker.mockRejectedValueOnce(new Error('Network failure'))
     const wrapper = mount(WorkerLoginForm)

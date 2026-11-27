@@ -93,6 +93,26 @@ describe('http — response interceptor (errors)', () => {
     expect(handler).toHaveBeenCalledTimes(1)
   })
 
+  it('calls the registered handler with true when 401 detail contains "deactivated"', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    http.defaults.adapter = makeErrorAdapter(401, { detail: 'Account is deactivated' })
+
+    await expect(http.get('/test')).rejects.toThrow()
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(handler).toHaveBeenCalledWith(true)
+  })
+
+  it('calls the registered handler with no arguments when 401 detail does not contain "deactivated"', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    http.defaults.adapter = makeErrorAdapter(401, { detail: 'Token has expired' })
+
+    await expect(http.get('/test')).rejects.toThrow()
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(handler).toHaveBeenCalledWith()
+  })
+
   it('does NOT call the handler when skipAuthRedirect is true on a 401', async () => {
     const handler = vi.fn()
     setUnauthorizedHandler(handler)

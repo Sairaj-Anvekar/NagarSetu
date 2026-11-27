@@ -21,11 +21,27 @@ describe('getLoginRoute helper', () => {
       })
     })
 
+    it('returns worker login with reason="deactivated" on 401 for worker session', () => {
+      const result = getLoginRoute({ role: 'worker', reason: 'deactivated' })
+      expect(result).toEqual({
+        path: '/login',
+        query: { role: 'worker', reason: 'deactivated' },
+      })
+    })
+
     it('returns exact admin login with reason="expired" on 401 for admin session', () => {
       const result = getLoginRoute({ role: 'admin', reason: 'expired' })
       expect(result).toEqual({
         path: '/login',
         query: { reason: 'expired' },
+      })
+    })
+
+    it('returns exact admin login with reason="deactivated" on 401 for admin session', () => {
+      const result = getLoginRoute({ role: 'admin', reason: 'deactivated' })
+      expect(result).toEqual({
+        path: '/login',
+        query: { reason: 'deactivated' },
       })
     })
 
@@ -60,6 +76,14 @@ describe('getLoginRoute helper', () => {
       })
     })
 
+    it('falls back to admin login with reason="deactivated" when in /admin area on 401', () => {
+      const result = getLoginRoute({ currentPath: '/admin/complaints', reason: 'deactivated' })
+      expect(result).toEqual({
+        path: '/login',
+        query: { reason: 'deactivated' },
+      })
+    })
+
     it('falls back to worker login when current path starts with /worker', () => {
       const result = getLoginRoute({ currentPath: '/worker/account' })
       expect(result).toEqual({
@@ -73,6 +97,14 @@ describe('getLoginRoute helper', () => {
       expect(result).toEqual({
         path: '/login',
         query: { role: 'worker', reason: 'expired' },
+      })
+    })
+
+    it('falls back to worker login with reason="deactivated" when in /worker area on 401', () => {
+      const result = getLoginRoute({ currentPath: '/worker/tasks/1', reason: 'deactivated' })
+      expect(result).toEqual({
+        path: '/login',
+        query: { role: 'worker', reason: 'deactivated' },
       })
     })
 
