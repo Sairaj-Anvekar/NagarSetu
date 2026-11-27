@@ -54,7 +54,7 @@ CATEGORIES: dict[str, CategoryInfo] = {
         name="Stray Animals & Pest Control",
         input_type="text",
         department_name="Public Health & Veterinary",
-        sla_hours=48,
+        sla_hours=24,
         priority="high",
     ),
 }

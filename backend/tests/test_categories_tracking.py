@@ -52,7 +52,7 @@ def test_categories_sla_and_priority_values():
         "Waterlogging & Drainage": (24, "high"),
         "Streetlight": (4, "medium"),
         "Illegal Encroachment": (168, "low"),
-        "Stray Animals & Pest Control": (48, "high"),
+        "Stray Animals & Pest Control": (24, "high"),
     }
 
     valid_priorities = {p.value for p in Priority}
