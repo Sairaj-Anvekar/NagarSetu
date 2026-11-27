@@ -52,6 +52,11 @@ def override_db():
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def mock_active_task_counts(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(worker_service, "active_task_counts", lambda db, worker_ids: {})
+
+
 @pytest.fixture
 def as_admin():
     app.dependency_overrides[get_current_admin] = lambda: SimpleAdmin()

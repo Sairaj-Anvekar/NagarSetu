@@ -98,6 +98,8 @@ def test_worker_login_success(
     fake_worker.name = "Dev Worker"
     fake_worker.phone = "+919000000001"
     fake_worker.is_active = True
+    fake_worker.department = None
+    fake_worker.zone = None
 
     monkeypatch.setattr(
         "app.services.auth_service.authenticate_worker",
@@ -249,6 +251,8 @@ def test_worker_login_returns_department_null(
     fake_worker.name = "Dev Worker"
     fake_worker.phone = "+919000000001"
     fake_worker.is_active = True
+    fake_worker.department = None
+    fake_worker.zone = None
 
     monkeypatch.setattr(
         "app.services.auth_service.authenticate_worker",
@@ -262,5 +266,25 @@ def test_worker_login_returns_department_null(
     assert response.status_code == 200
     data = response.json()
     assert data["user"]["department"] is None
+    assert data["user"]["zone"] is None
+
+    # When fake worker has department and zone
+    dept = MagicMock()
+    dept.id = 1
+    dept.name = "Sanitation"
+    fake_worker.department = dept
+    zone = MagicMock()
+    zone.id = 2
+    zone.name = "Zone A"
+    fake_worker.zone = zone
+
+    response2 = client.post(
+        "/api/v1/auth/worker/login",
+        json={"phone": "+919000000001", "pin": "1234"},
+    )
+    assert response2.status_code == 200
+    data2 = response2.json()
+    assert data2["user"]["department"] == {"id": "1", "name": "Sanitation"}
+    assert data2["user"]["zone"] == {"id": "2", "name": "Zone A"}
 
 

@@ -1,4 +1,6 @@
 import logging
+import threading
+import time
 from typing import Any
 
 import httpx
@@ -9,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 _CACHE_MAX_SIZE = 256
 _cache: dict[tuple[float, float], str] = {}
+_lock = threading.Lock()
+_last_request_time: float | None = None
 
 
 def reverse_geocode(
@@ -16,6 +20,8 @@ def reverse_geocode(
     longitude: float,
     client: httpx.Client | None = None,
 ) -> str | None:
+    global _last_request_time
+
     settings = get_settings()
     if not settings.geocode_enabled:
         return None
@@ -40,72 +46,83 @@ def reverse_geocode(
     }
 
     try:
-        if client is not None:
-            response = client.get(
-                settings.geocode_url,
-                params=params,
-                headers=headers,
-                timeout=settings.geocode_timeout,
-            )
-        else:
-            with httpx.Client(timeout=settings.geocode_timeout) as default_client:
-                response = default_client.get(
+        with _lock:
+            if cache_key in _cache:
+                return _cache[cache_key]
+
+            now = time.monotonic()
+            if _last_request_time is not None:
+                elapsed = now - _last_request_time
+                if elapsed < settings.geocode_min_interval:
+                    time.sleep(settings.geocode_min_interval - elapsed)
+            _last_request_time = time.monotonic()
+
+            if client is not None:
+                response = client.get(
                     settings.geocode_url,
                     params=params,
                     headers=headers,
+                    timeout=settings.geocode_timeout,
                 )
+            else:
+                with httpx.Client(timeout=settings.geocode_timeout) as default_client:
+                    response = default_client.get(
+                        settings.geocode_url,
+                        params=params,
+                        headers=headers,
+                    )
 
-        if response.status_code != 200:
-            return None
+            if response.status_code != 200:
+                return None
 
-        data = response.json()
-        if not isinstance(data, dict):
-            return None
+            data = response.json()
+            if not isinstance(data, dict):
+                return None
 
-        address = data.get("address")
-        if not isinstance(address, dict):
-            return None
+            address = data.get("address")
+            if not isinstance(address, dict):
+                return None
 
-        def _first_non_empty(addr: dict[str, Any], keys: tuple[str, ...]) -> str | None:
-            for k in keys:
-                v = addr.get(k)
-                if isinstance(v, str) and v.strip():
-                    return v.strip()
-            return None
+            def _first_non_empty(addr: dict[str, Any], keys: tuple[str, ...]) -> str | None:
+                for k in keys:
+                    v = addr.get(k)
+                    if isinstance(v, str) and v.strip():
+                        return v.strip()
+                return None
 
-        p1 = _first_non_empty(
-            address,
-            ("suburb", "neighbourhood", "village", "hamlet", "quarter"),
-        )
-        p2 = _first_non_empty(
-            address,
-            ("city_district", "county", "state_district"),
-        )
-        p3 = _first_non_empty(
-            address,
-            ("city", "town", "municipality"),
-        )
+            p1 = _first_non_empty(
+                address,
+                ("suburb", "neighbourhood", "village", "hamlet", "quarter"),
+            )
+            p2 = _first_non_empty(
+                address,
+                ("city_district", "county", "state_district"),
+            )
+            p3 = _first_non_empty(
+                address,
+                ("city", "town", "municipality"),
+            )
 
-        raw_parts = [p for p in (p1, p2, p3) if p]
-        if not raw_parts:
-            return None
+            raw_parts = [p for p in (p1, p2, p3) if p]
+            if not raw_parts:
+                return None
 
-        seen: set[str] = set()
-        unique_parts: list[str] = []
-        for p in raw_parts:
-            p_lower = p.lower()
-            if p_lower not in seen:
-                seen.add(p_lower)
-                unique_parts.append(p)
+            seen: set[str] = set()
+            unique_parts: list[str] = []
+            for p in raw_parts:
+                p_lower = p.lower()
+                if p_lower not in seen:
+                    seen.add(p_lower)
+                    unique_parts.append(p)
 
-        label = ", ".join(unique_parts)[:120]
-        if not label:
-            return None
+            label = ", ".join(unique_parts)[:120]
+            if not label:
+                return None
 
-        if len(_cache) >= _CACHE_MAX_SIZE:
-            _cache.clear()
-        _cache[cache_key] = label
-        return label
+            if len(_cache) >= _CACHE_MAX_SIZE:
+                _cache.clear()
+            _cache[cache_key] = label
+            return label
 
     except Exception as exc:
         logger.warning("Reverse geocode failed: %s", type(exc).__name__)

@@ -31,6 +31,7 @@ class StatsOut(BaseModel):
     totals: StatsTotals
     by_category: list[CategoryCount]
     by_zone: list[ZoneCount]
+    unassigned_by_zone: list[ZoneCount] = []
     pending_triage: int
 
 
@@ -44,6 +45,9 @@ class HotspotCell(BaseModel):
     latitude: float
     longitude: float
     count: int
+    id: str = ""
+    zone: str | None = None
+    area_label: str = ""
 
 
 class AdminComplaintItem(BaseModel):
@@ -95,6 +99,9 @@ class TriageItemOut(BaseModel):
     description: str | None = None
     image_url: str | None = None
     created_at: datetime
+    zone: RefOut | None = None
+    classifier_source: str | None = None
+    reviewed_at: datetime | None = None
 
 
 class TriageReviewRequest(BaseModel):

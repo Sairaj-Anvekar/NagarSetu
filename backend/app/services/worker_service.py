@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import hash_secret
-from app.models import Department, Worker, Zone
+from app.models import Complaint, ComplaintAssignment, Department, Worker, Zone
 from app.schemas.workers import WorkerCreate
 from app.services import assignment_service
 
@@ -103,6 +103,24 @@ def set_worker_active(
     db.commit()
     db.refresh(worker)
     return worker
+
+
+def active_task_counts(db: Session, worker_ids: list[int]) -> dict[int, int]:
+    if not worker_ids:
+        return {}
+
+    rows = db.execute(
+        select(ComplaintAssignment.worker_id, func.count(ComplaintAssignment.id))
+        .join(Complaint, ComplaintAssignment.complaint_id == Complaint.id)
+        .where(
+            ComplaintAssignment.worker_id.in_(worker_ids),
+            ComplaintAssignment.is_active.is_(True),
+            Complaint.status != "Completed",
+        )
+        .group_by(ComplaintAssignment.worker_id)
+    ).all()
+
+    return {int(row[0]): int(row[1]) for row in rows}
 
 
 def list_departments(

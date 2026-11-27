@@ -27,8 +27,15 @@ def get_workers(
     items, total = worker_service.list_workers(
         db, page=page, page_size=page_size, department_id=admin.department_id
     )
+    counts = worker_service.active_task_counts(db, [w.id for w in items])
+    worker_outs: list[WorkerOut] = []
+    for w in items:
+        out = WorkerOut.model_validate(w)
+        out.active_tasks = counts.get(w.id, 0)
+        worker_outs.append(out)
+
     return Page[WorkerOut](
-        items=items,
+        items=worker_outs,
         total=total,
         page=page,
         page_size=page_size,
@@ -51,7 +58,10 @@ def create_worker(
             detail="A worker with this phone number already exists",
         ) from None
 
-    return WorkerOut.model_validate(worker)
+    counts = worker_service.active_task_counts(db, [worker.id])
+    out = WorkerOut.model_validate(worker)
+    out.active_tasks = counts.get(worker.id, 0)
+    return out
 
 
 @router.patch("/{worker_id}", response_model=WorkerOut)
@@ -72,4 +82,7 @@ def update_worker(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Worker not found",
         )
-    return WorkerOut.model_validate(worker)
+    counts = worker_service.active_task_counts(db, [worker.id])
+    out = WorkerOut.model_validate(worker)
+    out.active_tasks = counts.get(worker.id, 0)
+    return out
