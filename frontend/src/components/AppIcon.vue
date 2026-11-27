@@ -18,6 +18,7 @@ const names = [
   'map-pin',
   'clock',
   'camera',
+  'triage',
 ]
 </script>
 
@@ -78,6 +79,13 @@ const names = [
     <template v-else-if="name === 'camera'">
       <path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
       <circle cx="12" cy="13" r="3.5" />
+    </template>
+    <template v-else-if="name === 'triage'">
+      <circle cx="12" cy="18" r="3" />
+      <circle cx="6" cy="6" r="3" />
+      <circle cx="18" cy="6" r="3" />
+      <path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9" />
+      <path d="M12 12v3" />
     </template>
   </svg>
 </template>

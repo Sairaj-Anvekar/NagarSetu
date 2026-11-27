@@ -37,6 +37,11 @@ describe('AdminLayout', () => {
           children: [
             { path: '', name: 'admin', component: DashboardPage },
             { path: 'complaints', name: 'admin-complaints', component: ComplaintsPage },
+            {
+              path: 'triage',
+              name: 'admin-triage',
+              component: defineComponent(() => () => h('p', 'Triage child content')),
+            },
             { path: 'hotspots', name: 'admin-hotspots', component: HotspotsPage },
             { path: 'workers', name: 'admin-workers', component: WorkersPage },
             { path: 'complaints/:id', name: 'admin-complaint-detail', component: ComplaintsPage },
@@ -168,19 +173,21 @@ describe('AdminLayout', () => {
     expect(wrapper.text()).toBe('Login page')
   })
 
-  it('shows Dashboard, Complaints, Hotspots, and Workers links in the sidebar in order', async () => {
+  it('shows Dashboard, Complaints, Triage, Hotspots, and Workers links in the sidebar in order', async () => {
     await mountLayout()
     const links = wrapper.get('nav[aria-label="Admin navigation"]').findAll('a')
 
     expect(links.map((link) => link.text())).toEqual([
       'Dashboard',
       'Complaints',
+      'Triage',
       'Hotspots',
       'Workers',
     ])
     expect(links.map((link) => link.attributes('href'))).toEqual([
       '/admin',
       '/admin/complaints',
+      '/admin/triage',
       '/admin/hotspots',
       '/admin/workers',
     ])

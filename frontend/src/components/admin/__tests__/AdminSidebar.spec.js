@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import AdminSidebar from '../AdminSidebar.vue'
 import { useAuthStore } from '../../../stores/auth'
+import { useTriageBadgeStore } from '../../../stores/triageBadge'
 
 describe('AdminSidebar', () => {
   let router
@@ -20,6 +21,11 @@ describe('AdminSidebar', () => {
           path: '/admin/complaints',
           name: 'admin-complaints',
           component: { template: '<div>Complaints</div>' },
+        },
+        {
+          path: '/admin/triage',
+          name: 'admin-triage',
+          component: { template: '<div>Triage</div>' },
         },
         {
           path: '/admin/hotspots',
@@ -41,7 +47,7 @@ describe('AdminSidebar', () => {
     localStorage.clear()
   })
 
-  it('groups exactly four ordered links under non-link section labels', () => {
+  it('groups exactly five ordered links under non-link section labels', () => {
     const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
     const nav = wrapper.get('nav[aria-label="Admin navigation"]')
     const labels = nav.findAll('.ns-admin-sidebar__section-label')
@@ -54,6 +60,7 @@ describe('AdminSidebar', () => {
     expect(nav.findAll('a').map((link) => [link.text(), link.attributes('href')])).toEqual([
       ['Dashboard', '/admin'],
       ['Complaints', '/admin/complaints'],
+      ['Triage', '/admin/triage'],
       ['Hotspots', '/admin/hotspots'],
       ['Workers', '/admin/workers'],
     ])
@@ -153,5 +160,50 @@ describe('AdminSidebar', () => {
       .find((link) => link.text().includes('Dashboard'))
 
     expect(dashboardLink.attributes('aria-current')).toBeUndefined()
+  })
+
+  it('renders a Triage link pointing to /admin/triage', () => {
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const links = wrapper.findAll('.ns-admin-sidebar__link')
+    const triageLink = links.find((link) => link.text().includes('Triage'))
+
+    expect(triageLink).toBeDefined()
+    expect(triageLink.attributes('href')).toBe('/admin/triage')
+  })
+
+  it('sets aria-current="page" on the Triage link when active on that route', async () => {
+    await router.push('/admin/triage')
+    await flushPromises()
+
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const triageLink = wrapper
+      .findAll('.ns-admin-sidebar__link')
+      .find((link) => link.text().includes('Triage'))
+
+    expect(triageLink.attributes('aria-current')).toBe('page')
+
+    const dashboardLink = wrapper
+      .findAll('.ns-admin-sidebar__link')
+      .find((link) => link.text().includes('Dashboard'))
+    expect(dashboardLink.attributes('aria-current')).toBeUndefined()
+  })
+
+  it('shows the triage count badge when pending_triage > 0', () => {
+    const store = useTriageBadgeStore(pinia)
+    store.setPendingCount(5)
+
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const badge = wrapper.find('[data-test="triage-badge"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toBe('5')
+  })
+
+  it('hides the triage count badge when pending_triage is 0', () => {
+    const store = useTriageBadgeStore(pinia)
+    store.setPendingCount(0)
+
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const badge = wrapper.find('[data-test="triage-badge"]')
+    expect(badge.exists()).toBe(false)
   })
 })
