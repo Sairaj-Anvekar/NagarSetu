@@ -1,9 +1,12 @@
+import time
 from datetime import UTC, datetime, timedelta, timezone
+from typing import Any
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.core.categories import CATEGORIES, get_category
+from app.core.config import get_settings
 from app.models import Complaint, ComplaintAssignment, Department, TriageQueue, Zone
 from app.schemas.admin import (
     CategoryCount,
@@ -14,6 +17,7 @@ from app.schemas.admin import (
     ZoneCount,
 )
 from app.schemas.common import RefOut
+from app.services import geocode_service
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -94,6 +98,24 @@ def get_stats(
     ).all()
     by_zone = [ZoneCount(zone=name, count=cnt) for name, cnt in zone_rows]
 
+    unassigned_zone_rows = db.execute(
+        select(Zone.name, func.count(Complaint.id))
+        .outerjoin(
+            Complaint,
+            and_(
+                Complaint.zone_id == Zone.id,
+                Complaint.department_id == department_id,
+                Complaint.status != "Completed",
+                ~active_assignment_exists,
+            ),
+        )
+        .group_by(Zone.id, Zone.name)
+        .order_by(Zone.name.asc())
+    ).all()
+    unassigned_by_zone = [
+        ZoneCount(zone=name, count=cnt) for name, cnt in unassigned_zone_rows
+    ]
+
     pending_triage = (
         db.scalar(
             select(func.count(TriageQueue.id))
@@ -111,6 +133,7 @@ def get_stats(
         totals=totals,
         by_category=by_category,
         by_zone=by_zone,
+        unassigned_by_zone=unassigned_by_zone,
         pending_triage=pending_triage,
     )
 
@@ -176,6 +199,32 @@ def get_trends(
     return points
 
 
+def label_hotspots(
+    cells: list[Any],
+    label_limit: int = 5,
+    budget_seconds: float = 6.0,
+) -> list[Any]:
+    start_time = time.monotonic()
+    for idx, cell in enumerate(cells):
+        is_dict = isinstance(cell, dict)
+        lat = cell["latitude"] if is_dict else cell.latitude
+        lon = cell["longitude"] if is_dict else cell.longitude
+        zone = cell.get("zone") if is_dict else getattr(cell, "zone", None)
+        default_label = f"{zone} area" if zone else "Unnamed area"
+
+        label = default_label
+        if idx < label_limit and (time.monotonic() - start_time) < budget_seconds:
+            res = geocode_service.reverse_geocode(lat, lon)
+            if res and res.strip():
+                label = res.strip()
+
+        if is_dict:
+            cell["area_label"] = label
+        else:
+            cell.area_label = label
+    return cells
+
+
 def get_hotspots(
     db: Session,
     department_id: int,
@@ -202,7 +251,14 @@ def get_hotspots(
     count_expr = func.count()
 
     stmt = (
-        select(lat_expr.label("lat"), lon_expr.label("lon"), count_expr.label("cnt"))
+        select(
+            lat_expr.label("lat"),
+            lon_expr.label("lon"),
+            Complaint.zone_id.label("zone_id"),
+            Zone.name.label("zone_name"),
+            count_expr.label("cnt"),
+        )
+        .outerjoin(Zone, Complaint.zone_id == Zone.id)
         .where(
             Complaint.department_id == department_id,
             Complaint.location.is_not(None),
@@ -213,18 +269,72 @@ def get_hotspots(
     if category is not None:
         stmt = stmt.where(Complaint.category == category)
 
-    stmt = (
-        stmt.group_by(snapped)
-        .order_by(count_expr.desc(), lat_expr.asc(), lon_expr.asc())
-        .limit(100)
-    )
+    stmt = stmt.group_by(snapped, Complaint.zone_id, Zone.name)
 
     rows = db.execute(stmt).all()
+
+    cells_map: dict[tuple[float, float], dict[str, Any]] = {}
+    for row in rows:
+        lat = round(float(row.lat), 6)
+        lon = round(float(row.lon), 6)
+        key = (lat, lon)
+        if key not in cells_map:
+            cells_map[key] = {
+                "latitude": lat,
+                "longitude": lon,
+                "count": 0,
+                "zone_counts": {},
+                "zone_names": {},
+            }
+        cnt = int(row.cnt)
+        cells_map[key]["count"] += cnt
+        if row.zone_id is not None:
+            zid = int(row.zone_id)
+            cells_map[key]["zone_counts"][zid] = (
+                cells_map[key]["zone_counts"].get(zid, 0) + cnt
+            )
+            if row.zone_name is not None:
+                cells_map[key]["zone_names"][zid] = str(row.zone_name)
+
+    merged_cells: list[dict[str, Any]] = []
+    for cell_data in cells_map.values():
+        zone_counts = cell_data["zone_counts"]
+        if zone_counts:
+            best_zone_id = min(
+                zone_counts.keys(),
+                key=lambda zid: (-zone_counts[zid], zid),
+            )
+            zone_name = cell_data["zone_names"].get(best_zone_id)
+        else:
+            zone_name = None
+
+        merged_cells.append(
+            {
+                "latitude": cell_data["latitude"],
+                "longitude": cell_data["longitude"],
+                "count": cell_data["count"],
+                "zone": zone_name,
+            }
+        )
+
+    merged_cells.sort(key=lambda c: (-c["count"], c["latitude"], c["longitude"]))
+    top_cells = merged_cells[:100]
+
+    settings = get_settings()
+    label_hotspots(
+        top_cells,
+        label_limit=settings.hotspot_label_limit,
+        budget_seconds=settings.hotspot_label_budget_seconds,
+    )
+
     return [
         HotspotCell(
-            latitude=round(float(row.lat), 6),
-            longitude=round(float(row.lon), 6),
-            count=int(row.cnt),
+            id=f"{cell['latitude']:.3f},{cell['longitude']:.3f}",
+            latitude=cell["latitude"],
+            longitude=cell["longitude"],
+            count=cell["count"],
+            zone=cell["zone"],
+            area_label=cell["area_label"],
         )
-        for row in rows
+        for cell in top_cells
     ]

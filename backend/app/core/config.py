@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     geocode_enabled: bool = True
     geocode_url: str = "https://nominatim.openstreetmap.org/reverse"
     geocode_timeout: float = 3.0
+    geocode_min_interval: float = 1.0
+
+    hotspot_label_limit: int = 5
+    hotspot_label_budget_seconds: float = 6.0
 
     image_model_enabled: bool = True
     image_model_path: str = "/app/app/ml/models/smart_grievance_mobilenetv2_v2_with_rejection.keras"

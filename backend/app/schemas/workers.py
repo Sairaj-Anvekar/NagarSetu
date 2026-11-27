@@ -47,6 +47,7 @@ class WorkerOut(BaseModel):
     department: RefOut
     zone: RefOut
     is_active: bool
+    active_tasks: int = 0
 
     @field_validator("id", mode="before")
     @classmethod

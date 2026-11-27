@@ -43,6 +43,7 @@ class UserOut(BaseModel):
     name: str
     role: str
     department: RefOut | None = None
+    zone: RefOut | None = None
 
 
 class TokenResponse(BaseModel):

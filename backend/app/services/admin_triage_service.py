@@ -5,9 +5,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.categories import get_category
-from app.models import Complaint, ComplaintAssignment, Department, TriageQueue
+from app.models import Complaint, ComplaintAssignment, Department, TriageQueue, Zone
 from app.models.constants import ActorType, LogEvent
 from app.schemas.admin import TriageItemOut, TriageReviewOut
+from app.schemas.common import RefOut
 from app.services import assignment_service, complaint_log_service
 from app.services.admin_complaint_service import _signed
 
@@ -41,8 +42,9 @@ def list_triage(
     total = db.scalar(count_stmt) or 0
 
     base_query = (
-        select(TriageQueue, Complaint)
+        select(TriageQueue, Complaint, Zone)
         .join(Complaint, TriageQueue.complaint_id == Complaint.id)
+        .outerjoin(Zone, Complaint.zone_id == Zone.id)
         .where(
             Complaint.department_id == department_id,
             TriageQueue.status == status,
@@ -72,8 +74,11 @@ def list_triage(
             description=complaint.description,
             image_url=_signed(complaint.image_object_key),
             created_at=triage.created_at,
+            zone=RefOut(id=str(zone.id), name=zone.name) if zone is not None else None,
+            classifier_source=complaint.ai_classification_source,
+            reviewed_at=triage.reviewed_at,
         )
-        for triage, complaint in rows
+        for triage, complaint, zone in rows
     ]
     return items, total
 

@@ -67,17 +67,34 @@ def authenticate_worker(db: Session, phone: str, pin: str) -> Worker:
 def build_token_response(user: Any, role: str) -> TokenResponse:
     """Generate a JWT and structure the standard TokenResponse."""
     department_out: RefOut | None = None
+    zone_out: RefOut | None = None
+
     if role == "admin":
         name = getattr(user, "full_name", None) or getattr(user, "username", "")
         dept = getattr(user, "department", None)
         if dept is not None:
             department_out = RefOut(id=str(dept.id), name=dept.name)
+        zone_out = None
+    elif role == "worker":
+        name = getattr(user, "name", "")
+        dept = getattr(user, "department", None)
+        if dept is not None and isinstance(getattr(dept, "name", None), str):
+            department_out = RefOut(id=str(dept.id), name=dept.name)
+        zone = getattr(user, "zone", None)
+        if zone is not None and isinstance(getattr(zone, "name", None), str):
+            zone_out = RefOut(id=str(zone.id), name=zone.name)
     else:
         name = getattr(user, "name", "")
 
     user_id_str = str(user.id)
     token = create_access_token(subject=user_id_str, role=role, name=name)
-    user_out = UserOut(id=user_id_str, name=name, role=role, department=department_out)
+    user_out = UserOut(
+        id=user_id_str,
+        name=name,
+        role=role,
+        department=department_out,
+        zone=zone_out,
+    )
 
     return TokenResponse(
         access_token=token,
