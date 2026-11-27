@@ -1,12 +1,15 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useTriageBadgeStore } from '../../stores/triageBadge'
 import { getInitials } from '../../utils/initials'
 import BrandMark from '../BrandMark.vue'
 import AppIcon from '../AppIcon.vue'
 
 const auth = useAuthStore()
+const triageBadgeStore = useTriageBadgeStore()
+
 const userName = computed(() => {
   const name = auth.user?.name
   return typeof name === 'string' && name.trim() ? name.trim() : 'Admin'
@@ -14,6 +17,11 @@ const userName = computed(() => {
 const departmentName = computed(() => {
   const name = auth.user?.department?.name
   return typeof name === 'string' && name.trim() ? name.trim() : 'Department unavailable'
+})
+const pendingTriageCount = computed(() => triageBadgeStore.pendingCount)
+
+onMounted(() => {
+  triageBadgeStore.fetchPendingCount()
 })
 </script>
 
@@ -42,6 +50,19 @@ const departmentName = computed(() => {
           <RouterLink class="ns-admin-sidebar__link" :to="{ name: 'admin-complaints' }">
             <AppIcon name="tasks" />
             <span>Complaints</span>
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink class="ns-admin-sidebar__link" to="/admin/triage">
+            <AppIcon name="triage" />
+            <span>Triage</span>
+            <span
+              v-if="pendingTriageCount > 0"
+              class="ns-admin-sidebar__badge"
+              data-test="triage-badge"
+            >
+              {{ pendingTriageCount }}
+            </span>
           </RouterLink>
         </li>
         <li>
@@ -174,6 +195,21 @@ const departmentName = computed(() => {
 }
 .ns-admin-sidebar__link :deep(svg) {
   flex-shrink: 0;
+}
+.ns-admin-sidebar__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--ns-radius-pill);
+  background-color: var(--ns-teal-400);
+  color: var(--ns-navy-900);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
 }
 @media (prefers-reduced-motion: no-preference) {
   .ns-admin-sidebar__link {

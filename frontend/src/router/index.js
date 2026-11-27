@@ -30,6 +30,11 @@ const router = createRouter({
           component: () => import('../views/AdminComplaintDetailView.vue'),
         },
         {
+          path: 'triage',
+          name: 'admin-triage',
+          component: () => import('../views/AdminTriageView.vue'),
+        },
+        {
           path: 'hotspots',
           name: 'admin-hotspots',
           component: () => import('../views/AdminHotspotsView.vue'),

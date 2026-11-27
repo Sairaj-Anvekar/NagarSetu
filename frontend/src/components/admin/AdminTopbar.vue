@@ -13,6 +13,7 @@ const pageTitles = {
   admin: 'Dashboard',
   'admin-complaints': 'Complaints',
   'admin-complaint-detail': 'Complaint details',
+  'admin-triage': 'Triage',
   'admin-hotspots': 'Hotspots',
   'admin-workers': 'Workers',
   'admin-worker-new': 'Add worker',
