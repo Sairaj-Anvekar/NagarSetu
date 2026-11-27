@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { createPinia } from 'pinia'
@@ -43,6 +43,17 @@ async function mountDetailView(id = 'task-uuid-1') {
   const wrapper = mount(WorkerTaskDetailView, { global: { plugins: [router, pinia] } })
   return { wrapper, router }
 }
+
+const FIXED_SYSTEM_TIME = new Date('2026-11-14T12:00:00Z')
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(FIXED_SYSTEM_TIME)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('WorkerTaskDetailView — Loading, Render & Directions', () => {
   beforeEach(() => {

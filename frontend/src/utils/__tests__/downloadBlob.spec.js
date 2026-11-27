@@ -1,6 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildComplaintsCsvFilename, downloadBlob } from '../downloadBlob'
 
+const FIXED_SYSTEM_TIME = new Date(2026, 10, 14, 12, 0, 0)
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(FIXED_SYSTEM_TIME)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('downloadBlob utility', () => {
   describe('buildComplaintsCsvFilename', () => {
     it('formats a provided Date object as complaints-YYYY-MM-DD.csv with zero-padding', () => {

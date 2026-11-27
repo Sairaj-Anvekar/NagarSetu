@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import WorkerHistoryView from '../WorkerHistoryView.vue'
@@ -11,11 +11,20 @@ vi.mock('../../api/workerApi', () => ({
   fetchMyHistory: vi.fn(),
 }))
 
-// Current reference dates for testing
-const now = new Date()
-const todayIso = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 15).toISOString()
-const yesterdayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 11, 30)
+// Fixed reference date: Wednesday, 18 Nov 2026, 12:00:00 local time
+const FIXED_SYSTEM_TIME = new Date(2026, 10, 18, 12, 0, 0)
+const todayIso = new Date(2026, 10, 18, 14, 15).toISOString()
+const yesterdayDate = new Date(2026, 10, 17, 11, 30)
 const yesterdayIso = yesterdayDate.toISOString()
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(FIXED_SYSTEM_TIME)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 const mockHistoryItems = [
   {

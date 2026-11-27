@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount as baseMount, RouterLinkStub } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
@@ -62,6 +62,17 @@ async function mountView(initialQuery = {}, user = null) {
   })
   return { wrapper, router }
 }
+
+const FIXED_SYSTEM_TIME = new Date('2026-11-14T12:00:00Z')
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(FIXED_SYSTEM_TIME)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('AdminComplaintsView — initial loading, errors, and empty states', () => {
   beforeEach(() => {
