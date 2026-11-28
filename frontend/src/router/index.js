@@ -1,9 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
-import AdminView from '../views/AdminView.vue'
-import AdminComplaintsView from '../views/AdminComplaintsView.vue'
-import AdminWorkersView from '../views/AdminWorkersView.vue'
-import AdminWorkerCreateView from '../views/AdminWorkerCreateView.vue'
 import AdminLayout from '../components/admin/AdminLayout.vue'
 import WorkerLayout from '../components/worker/WorkerLayout.vue'
 import WorkerView from '../views/WorkerView.vue'
@@ -22,8 +18,12 @@ const router = createRouter({
       component: AdminLayout,
       meta: { requiresAuth: true, role: 'admin', noNavbar: true },
       children: [
-        { path: '', name: 'admin', component: AdminView },
-        { path: 'complaints', name: 'admin-complaints', component: AdminComplaintsView },
+        { path: '', name: 'admin', component: () => import('../views/AdminView.vue') },
+        {
+          path: 'complaints',
+          name: 'admin-complaints',
+          component: () => import('../views/AdminComplaintsView.vue'),
+        },
         {
           path: 'complaints/:id',
           name: 'admin-complaint-detail',
@@ -39,8 +39,16 @@ const router = createRouter({
           name: 'admin-hotspots',
           component: () => import('../views/AdminHotspotsView.vue'),
         },
-        { path: 'workers', name: 'admin-workers', component: AdminWorkersView },
-        { path: 'workers/new', name: 'admin-worker-new', component: AdminWorkerCreateView },
+        {
+          path: 'workers',
+          name: 'admin-workers',
+          component: () => import('../views/AdminWorkersView.vue'),
+        },
+        {
+          path: 'workers/new',
+          name: 'admin-worker-new',
+          component: () => import('../views/AdminWorkerCreateView.vue'),
+        },
       ],
     },
     {
