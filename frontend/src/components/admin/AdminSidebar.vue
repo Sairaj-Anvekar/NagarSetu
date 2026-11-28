@@ -1,12 +1,16 @@
 <script setup>
 import { computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useTriageBadgeStore } from '../../stores/triageBadge'
 import { getInitials } from '../../utils/initials'
+import { getLoginRoute } from '../../utils/loginRoute'
+import { labelOf } from '../../utils/labelOf'
 import BrandMark from '../BrandMark.vue'
 import AppIcon from '../AppIcon.vue'
 
+const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const triageBadgeStore = useTriageBadgeStore()
 
@@ -15,14 +19,23 @@ const userName = computed(() => {
   return typeof name === 'string' && name.trim() ? name.trim() : 'Admin'
 })
 const departmentName = computed(() => {
-  const name = auth.user?.department?.name
-  return typeof name === 'string' && name.trim() ? name.trim() : 'Department unavailable'
+  return labelOf(auth.user?.department, 'Department unavailable')
 })
 const pendingTriageCount = computed(() => triageBadgeStore.pendingCount)
 
 onMounted(() => {
   triageBadgeStore.fetchPendingCount()
 })
+
+function handleLogout() {
+  const role = auth.role || 'admin'
+  const currentPath = route?.path || '/admin'
+  auth.logout()
+  const target = getLoginRoute({ role, currentPath })
+  if (router?.push) {
+    router.push(target)
+  }
+}
 </script>
 
 <template>
@@ -79,12 +92,26 @@ onMounted(() => {
         </li>
       </ul>
     </nav>
-    <div class="ns-admin-sidebar__user">
-      <span class="ns-admin-sidebar__avatar" aria-hidden="true">{{ getInitials(userName) }}</span>
-      <div class="ns-admin-sidebar__brand-text">
-        <span class="fw-semibold">{{ userName }}</span>
-        <span class="ns-admin-sidebar__caption">{{ departmentName }}</span>
+    <div
+      class="ns-admin-sidebar__user"
+      :aria-label="`User profile: ${userName}`"
+    >
+      <div class="ns-admin-sidebar__user-profile">
+        <span class="ns-admin-sidebar__avatar" aria-hidden="true">{{ getInitials(userName) }}</span>
+        <div class="ns-admin-sidebar__brand-text ns-admin-sidebar__user-details">
+          <span class="fw-semibold ns-admin-sidebar__user-name">{{ userName }}</span>
+          <span class="ns-admin-sidebar__caption">{{ departmentName }}</span>
+        </div>
       </div>
+      <button
+        type="button"
+        class="btn btn-outline-light btn-sm ns-admin-sidebar__logout"
+        aria-label="Log out"
+        @click="handleLogout"
+      >
+        <AppIcon name="logout" aria-hidden="true" />
+        <span>Log out</span>
+      </button>
     </div>
   </div>
 </template>
@@ -98,13 +125,51 @@ onMounted(() => {
 }
 .ns-admin-sidebar__user {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--ns-space-12);
   margin-top: auto;
   padding: var(--ns-space-16);
   border-top: 1px solid var(--ns-navy-700);
   color: var(--ns-paper);
+}
+.ns-admin-sidebar__user-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--ns-space-12);
+  min-width: 0;
+}
+.ns-admin-sidebar__user-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ns-admin-sidebar__user-name {
+  line-height: var(--ns-type-body-line-height);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ns-admin-sidebar__logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ns-space-8);
+  min-height: 44px;
+  width: 100%;
+  border-color: var(--ns-navy-600);
+  color: var(--ns-navy-100);
+  font-weight: 500;
+  border-radius: var(--ns-radius-control);
+}
+.ns-admin-sidebar__logout:hover {
+  background-color: var(--ns-navy-700);
+  border-color: var(--ns-navy-500);
+  color: var(--ns-paper);
+}
+.ns-admin-sidebar__logout:focus-visible {
+  outline: 2px solid var(--ns-teal-300) !important;
+  outline-offset: var(--ns-focus-ring-offset);
 }
 .ns-admin-sidebar__avatar {
   display: grid;

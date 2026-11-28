@@ -1,63 +1,66 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { getInitials } from '../../utils/initials'
-import { getLoginRoute } from '../../utils/loginRoute'
+import { RouterLink, useRoute } from 'vue-router'
 import AppIcon from '../AppIcon.vue'
 
-const router = useRouter()
 const route = useRoute()
-const auth = useAuthStore()
-const pageTitles = {
-  admin: 'Dashboard',
-  'admin-complaints': 'Complaints',
-  'admin-complaint-detail': 'Complaint details',
-  'admin-triage': 'Triage',
-  'admin-hotspots': 'Hotspots',
-  'admin-workers': 'Workers',
-  'admin-worker-new': 'Add worker',
-}
-const pageTitle = computed(() => pageTitles[route.name] || 'Admin')
 
-const userName = computed(() => {
-  const name = auth.user?.name
-  return typeof name === 'string' && name.trim() ? name.trim() : 'Admin'
+const deeperRoutes = {
+  'admin-complaint-detail': {
+    parent: { name: 'Complaints', to: { name: 'admin-complaints' } },
+    current: 'Complaint details',
+  },
+  'admin-worker-new': {
+    parent: { name: 'Workers', to: { name: 'admin-workers' } },
+    current: 'Add worker',
+  },
+}
+
+const breadcrumbTrail = computed(() => {
+  if (deeperRoutes[route.name]) {
+    return deeperRoutes[route.name]
+  }
+  const path = route.path || ''
+  if (path.startsWith('/admin/complaints/') && path !== '/admin/complaints') {
+    return deeperRoutes['admin-complaint-detail']
+  }
+  if (path === '/admin/workers/new' || path.startsWith('/admin/workers/new')) {
+    return deeperRoutes['admin-worker-new']
+  }
+  return null
 })
-const initials = computed(() => getInitials(userName.value))
-const departmentName = computed(() => {
-  const name = auth.user?.department?.name
-  return typeof name === 'string' && name.trim() ? name.trim() : 'Department unavailable'
-})
+
 const now = ref(new Date())
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {
   weekday: 'short',
   day: 'numeric',
   month: 'short',
+  year: 'numeric',
 })
+
 const todayLabel = computed(() => {
   const parts = Object.fromEntries(
     dateFormatter.formatToParts(now.value).map(({ type, value }) => [type, value]),
   )
-  return `${parts.weekday}, ${parts.day} ${parts.month}`
+  return `${parts.weekday}, ${parts.day} ${parts.month} ${parts.year}`
 })
+
 const todayIso = computed(() => {
   const date = now.value
-  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0')].join('-')
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
 })
+
 let dateTimer
 onMounted(() => {
-  dateTimer = window.setInterval(() => { now.value = new Date() }, 60000)
+  dateTimer = window.setInterval(() => {
+    now.value = new Date()
+  }, 60000)
 })
 onUnmounted(() => window.clearInterval(dateTimer))
-
-function handleLogout() {
-  const role = auth.role
-  const currentPath = route.path
-  auth.logout()
-  router.push(getLoginRoute({ role, currentPath }))
-}
 </script>
 
 <template>
@@ -72,43 +75,24 @@ function handleLogout() {
     >
       <AppIcon name="menu" />
     </button>
-    <div class="ns-admin-topbar__page">
-      <span class="text-secondary">Admin / </span>
-      <span class="fw-semibold">{{ pageTitle }}</span>
-    </div>
-    <span class="ns-admin-topbar__department ms-auto d-none d-md-inline-block"
-      :title="departmentName">{{ departmentName }}</span>
-    <time class="text-secondary small text-nowrap d-none d-lg-block"
-      :datetime="todayIso">{{ todayLabel }}</time>
-    <div class="dropdown ms-auto ms-md-0">
-      <button
-        id="admin-user-menu"
-        type="button"
-        class="btn btn-light d-flex align-items-center gap-2"
-        data-bs-toggle="dropdown"
-        aria-expanded="false"
-        :aria-label="`${userName} user menu`"
-      >
-        <span class="ns-admin-topbar__avatar" aria-hidden="true">{{ initials }}</span>
-        <span class="d-none d-sm-inline">{{ userName }}</span>
-        <AppIcon name="chevron-down" />
-      </button>
-      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="admin-user-menu">
-        <li>
-          <div class="dropdown-header">
-            <div class="text-body fw-semibold">{{ userName }}</div>
-            <div class="text-secondary">Administrator</div>
-          </div>
-        </li>
-        <li><hr class="dropdown-divider" /></li>
-        <li>
-          <button type="button" class="dropdown-item" @click="handleLogout">
-            <AppIcon name="logout" class="me-2" />
-            Log out
-          </button>
-        </li>
-      </ul>
-    </div>
+    <nav class="ns-admin-topbar__page" aria-label="Breadcrumb">
+      <template v-if="breadcrumbTrail">
+        <RouterLink
+          class="ns-admin-topbar__crumb-link text-decoration-none"
+          :to="breadcrumbTrail.parent.to"
+        >
+          {{ breadcrumbTrail.parent.name }}
+        </RouterLink>
+        <span class="ns-admin-topbar__crumb-sep text-secondary mx-1" aria-hidden="true">
+          &gt;
+        </span>
+        <span class="fw-semibold text-body">{{ breadcrumbTrail.current }}</span>
+      </template>
+      <span v-else class="text-secondary fw-medium">NagarSetu admin</span>
+    </nav>
+    <time class="text-secondary small text-nowrap ms-auto" :datetime="todayIso">
+      {{ todayLabel }}
+    </time>
   </header>
 </template>
 
@@ -128,62 +112,31 @@ function handleLogout() {
   box-shadow: var(--ns-shadow-xs);
 }
 .ns-admin-topbar__page {
+  display: flex;
+  align-items: center;
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: var(--ns-type-small-size);
 }
-.ns-admin-topbar > .btn,
-.ns-admin-topbar > .dropdown {
-  flex-shrink: 0;
+.ns-admin-topbar__crumb-link {
+  color: var(--ns-teal-700);
+  font-weight: 500;
+}
+.ns-admin-topbar__crumb-link:hover {
+  color: var(--ns-teal-800);
+  text-decoration: underline !important;
+}
+.ns-admin-topbar__crumb-link:focus-visible {
+  outline: 2px solid var(--ns-teal-300) !important;
+  outline-offset: var(--ns-focus-ring-offset);
+  border-radius: var(--ns-radius-control);
+}
+.ns-admin-topbar__crumb-sep {
+  user-select: none;
 }
 .ns-admin-topbar > .btn {
+  flex-shrink: 0;
   min-width: 44px;
-}
-#admin-user-menu > span:not(.ns-admin-topbar__avatar) {
-  max-width: 8rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ns-admin-topbar .dropdown-item {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-}
-.ns-admin-topbar__department {
-  max-width: 12rem;
-  flex-shrink: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: var(--ns-space-4) var(--ns-space-12);
-  border-radius: var(--ns-radius-pill);
-  background-color: var(--ns-teal-100);
-  color: var(--ns-teal-700);
-  font-size: var(--ns-type-small-size);
-}
-.ns-admin-topbar__avatar {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: var(--ns-radius-pill);
-  background-color: var(--ns-teal-100);
-  color: var(--ns-teal-700);
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-.ns-admin-topbar .dropdown-menu {
-  background-color: var(--ns-paper);
-  border-color: var(--ns-line);
-  border-radius: var(--ns-radius-control);
-  box-shadow: var(--ns-shadow-pop);
-  max-width: calc(100vw - 2rem);
-}
-.ns-admin-topbar .dropdown-header {
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 @media (min-width: 768px) {
   .ns-admin-topbar {

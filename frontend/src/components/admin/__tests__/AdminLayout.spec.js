@@ -78,16 +78,27 @@ describe('AdminLayout', () => {
     await mountLayout()
     await router.push(path)
     await flushPromises()
-    expect(wrapper.get('.ns-admin-topbar__page').text()).toBe(`Admin / ${title}`)
+    if (path === '/admin/complaints/123') {
+      expect(wrapper.get('.ns-admin-topbar__page').text()).toBe('Complaints > Complaint details')
+      expect(wrapper.get('.ns-admin-topbar__crumb-link').attributes('href')).toBe('/admin/complaints')
+    } else if (path === '/admin/workers/new') {
+      expect(wrapper.get('.ns-admin-topbar__page').text()).toBe('Workers > Add worker')
+      expect(wrapper.get('.ns-admin-topbar__crumb-link').attributes('href')).toBe('/admin/workers')
+    } else {
+      expect(wrapper.get('.ns-admin-topbar__page').text()).toBe('NagarSetu admin')
+      expect(wrapper.get('.ns-admin-topbar__page').text()).not.toContain(title)
+    }
   })
 
   it('shows the session department and a fallback when it is missing', async () => {
     await mountLayout()
-    const pill = wrapper.get('.ns-admin-topbar__department')
-    expect(pill.text()).toBe('Department unavailable')
+    expect(wrapper.find('.ns-admin-topbar__department').exists()).toBe(false)
     useAuthStore(pinia).user.department = { id: '1', name: 'Sanitation' }
     await flushPromises()
-    expect(pill.text()).toBe('Sanitation')
+    expect(wrapper.find('.ns-admin-topbar__department').exists()).toBe(false)
+    expect(wrapper.get('.ns-admin-sidebar__user .ns-admin-sidebar__caption').text()).toBe(
+      'Sanitation',
+    )
   })
 
   it('shows the local date and refreshes it across midnight', async () => {
@@ -95,11 +106,11 @@ describe('AdminLayout', () => {
     vi.setSystemTime(new Date(2026, 10, 17, 23, 59, 30))
     await mountLayout()
     const date = wrapper.get('.ns-admin-topbar time')
-    expect(date.text()).toBe('Tue, 17 Nov')
+    expect(date.text()).toBe('Tue, 17 Nov 2026')
     expect(date.attributes('datetime')).toBe('2026-11-17')
     await vi.advanceTimersByTimeAsync(60000)
     await flushPromises()
-    expect(date.text()).toBe('Wed, 18 Nov')
+    expect(date.text()).toBe('Wed, 18 Nov 2026')
     expect(date.attributes('datetime')).toBe('2026-11-18')
   })
 
@@ -107,11 +118,9 @@ describe('AdminLayout', () => {
     await mountLayout()
     const topbar = wrapper.get('header.ns-admin-topbar')
 
-    expect(topbar.get('.ns-admin-topbar__avatar').text()).toBe('DA')
-    expect(topbar.get('#admin-user-menu').text()).toContain('Demo Admin')
-    expect(topbar.get('#admin-user-menu').attributes('aria-label')).toBe('Demo Admin user menu')
-    expect(topbar.get('.dropdown-header').text()).toContain('Demo Admin')
-    expect(topbar.get('.dropdown-header').text()).toContain('Administrator')
+    expect(topbar.find('.ns-admin-topbar__avatar').exists()).toBe(false)
+    expect(topbar.find('#admin-user-menu').exists()).toBe(false)
+    expect(topbar.find('.dropdown-menu').exists()).toBe(false)
   })
 
   it('falls back to Admin when the session user has no name', async () => {
@@ -123,10 +132,9 @@ describe('AdminLayout', () => {
     await mountLayout()
     const topbar = wrapper.get('header.ns-admin-topbar')
 
-    expect(topbar.get('.ns-admin-topbar__avatar').text()).toBe('A')
-    expect(topbar.get('#admin-user-menu').text()).toContain('Admin')
-    expect(topbar.get('#admin-user-menu').attributes('aria-label')).toBe('Admin user menu')
-    expect(topbar.get('.dropdown-header .fw-semibold').text()).toBe('Admin')
+    expect(topbar.find('#admin-user-menu').exists()).toBe(false)
+    expect(topbar.find('.ns-admin-topbar__avatar').exists()).toBe(false)
+    expect(wrapper.get('.ns-admin-sidebar__user .fw-semibold').text()).toBe('Admin')
   })
 
   it.each([
@@ -162,8 +170,8 @@ describe('AdminLayout', () => {
   it('clears the stored session and navigates to login when Log out is clicked', async () => {
     await mountLayout()
     expect(localStorage.getItem('nagarsetu_auth')).not.toBeNull()
-    const logoutButton = wrapper.get('header.ns-admin-topbar button.dropdown-item')
-    expect(logoutButton.text()).toBe('Log out')
+    const logoutButton = wrapper.get('aside#adminSidebar button.ns-admin-sidebar__logout')
+    expect(logoutButton.text()).toContain('Log out')
 
     await logoutButton.trigger('click')
     await flushPromises()
