@@ -206,4 +206,60 @@ describe('AdminSidebar', () => {
     const badge = wrapper.find('[data-test="triage-badge"]')
     expect(badge.exists()).toBe(false)
   })
+
+  it('displays the full name without early truncation in the user card', () => {
+    const auth = useAuthStore(pinia)
+    auth.user = {
+      name: 'Sanitation Administrator Special Operations',
+      department: { id: '1', name: 'Sanitation' },
+    }
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const userCard = wrapper.get('.ns-admin-sidebar__user')
+    expect(userCard.get('.fw-semibold').text()).toBe(
+      'Sanitation Administrator Special Operations',
+    )
+    wrapper.unmount()
+  })
+
+  it('resolves string and object department values via labelOf', () => {
+    const auth = useAuthStore(pinia)
+    auth.user = {
+      name: 'Admin User',
+      department: 'Solid Waste Management',
+    }
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const userCard = wrapper.get('.ns-admin-sidebar__user')
+    expect(userCard.get('.ns-admin-sidebar__caption').text()).toBe('Solid Waste Management')
+    wrapper.unmount()
+  })
+
+  it('has accessible aria-labels on the user card and Log out button', () => {
+    const auth = useAuthStore(pinia)
+    auth.user = { name: 'Demo Admin', department: { name: 'Sanitation' } }
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const userCard = wrapper.get('.ns-admin-sidebar__user')
+    expect(userCard.attributes('aria-label')).toBe('User profile: Demo Admin')
+    const logoutBtn = wrapper.get('button.ns-admin-sidebar__logout')
+    expect(logoutBtn.attributes('aria-label')).toBe('Log out')
+    expect(logoutBtn.text()).toContain('Log out')
+    wrapper.unmount()
+  })
+
+  it('clears auth session and navigates to login when Log out is clicked', async () => {
+    router.addRoute({ path: '/login', component: { template: '<div>Login</div>' } })
+    const auth = useAuthStore(pinia)
+    auth.token = 'admin-token'
+    auth.role = 'admin'
+    auth.user = { id: '1', name: 'Demo Admin', role: 'admin' }
+    const wrapper = mount(AdminSidebar, { global: { plugins: [pinia, router] } })
+    const logoutBtn = wrapper.get('button.ns-admin-sidebar__logout')
+
+    await logoutBtn.trigger('click')
+    await flushPromises()
+
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.user).toBeNull()
+    expect(router.currentRoute.value.path).toBe('/login')
+    wrapper.unmount()
+  })
 })
