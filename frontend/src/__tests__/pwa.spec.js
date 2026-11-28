@@ -23,6 +23,7 @@ describe('PWA configuration and assets', () => {
     expect(manifest.name).toBe('NagarSetu')
     expect(manifest.short_name).toBe('NagarSetu')
     expect(manifest.start_url).toBe('/worker')
+    expect(manifest.scope).toBe('/')
     expect(manifest.display).toBe('standalone')
     expect(manifest.theme_color).toBe('#0F2233')
 

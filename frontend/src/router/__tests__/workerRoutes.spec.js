@@ -20,7 +20,16 @@ describe('Worker routes', () => {
     await router.push('/worker/account')
 
     expect(router.currentRoute.value.path).toBe('/login')
+    expect(router.currentRoute.value.query.role).toBe('worker')
     expect(router.currentRoute.value.query.redirect).toBe('/worker/account')
+  })
+
+  it('redirects a logged-out visit to /worker to login with worker role and redirect query', async () => {
+    await router.push('/worker')
+
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(router.currentRoute.value.query.role).toBe('worker')
+    expect(router.currentRoute.value.query.redirect).toBe('/worker')
   })
 
   it.each(['/worker', '/worker/history', '/worker/account'])(

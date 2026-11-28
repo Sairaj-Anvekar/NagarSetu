@@ -119,11 +119,13 @@ describe('auth store — logout', () => {
 
   it('clears localStorage on logout', () => {
     saveAuth({ token: 'tok', role: 'admin', user: null })
+    localStorage.setItem('ns_last_role', 'admin')
     const store = useAuthStore()
 
     store.logout()
 
     expect(localStorage.getItem('nagarsetu_auth')).toBeNull()
+    expect(localStorage.getItem('ns_last_role')).toBe('admin')
   })
 
   it('isAuthenticated becomes false after logout', () => {
@@ -152,6 +154,7 @@ describe('auth store — loginAdmin', () => {
     expect(store.user).toEqual({ id: 1 })
     expect(store.isAdmin).toBe(true)
     expect(localStorage.getItem('nagarsetu_auth')).not.toBeNull()
+    expect(localStorage.getItem('ns_last_role')).toBe('admin')
   })
 
   it('leaves the store logged out and writes nothing to storage when the API throws', async () => {
@@ -166,6 +169,7 @@ describe('auth store — loginAdmin', () => {
     expect(store.role).toBeNull()
     expect(store.user).toBeNull()
     expect(localStorage.getItem('nagarsetu_auth')).toBeNull()
+    expect(localStorage.getItem('ns_last_role')).toBeNull()
   })
 
   it('re-throws the exact error object from the API', async () => {
@@ -189,6 +193,7 @@ describe('auth store — loginWorker', () => {
     expect(store.user).toEqual({ id: 2 })
     expect(store.isWorker).toBe(true)
     expect(localStorage.getItem('nagarsetu_auth')).not.toBeNull()
+    expect(localStorage.getItem('ns_last_role')).toBe('worker')
   })
 
   it('leaves the store logged out and writes nothing to storage when the API throws', async () => {
@@ -202,6 +207,7 @@ describe('auth store — loginWorker', () => {
     expect(store.token).toBeNull()
     expect(store.isWorker).toBe(false)
     expect(localStorage.getItem('nagarsetu_auth')).toBeNull()
+    expect(localStorage.getItem('ns_last_role')).toBeNull()
   })
 
   it('re-throws the exact error object from the API', async () => {

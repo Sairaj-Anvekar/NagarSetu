@@ -1,4 +1,42 @@
 const STORAGE_KEY = 'nagarsetu_auth'
+const LAST_ROLE_STORAGE_KEY = 'ns_last_role'
+
+/**
+ * Persist the last authenticated role ('worker' or 'admin') to localStorage.
+ * Ignores any other value.
+ * Never stores tokens, credentials, or personal information.
+ *
+ * @param {string} role
+ */
+export function saveLastRole(role) {
+  if (role !== 'worker' && role !== 'admin') {
+    return
+  }
+  try {
+    localStorage.setItem(LAST_ROLE_STORAGE_KEY, role)
+  } catch {
+    // localStorage unavailable or blocked — fail silently
+  }
+}
+
+/**
+ * Retrieve the last authenticated role from localStorage.
+ * Returns only 'worker' or 'admin', otherwise null.
+ * Never throws.
+ *
+ * @returns {'worker' | 'admin' | null}
+ */
+export function getLastRole() {
+  try {
+    const role = localStorage.getItem(LAST_ROLE_STORAGE_KEY)
+    if (role === 'worker' || role === 'admin') {
+      return role
+    }
+    return null
+  } catch {
+    return null
+  }
+}
 
 /**
  * Persist auth data to localStorage.
