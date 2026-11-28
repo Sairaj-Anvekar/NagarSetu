@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { labelOf } from '../../utils/labelOf'
 
 const props = defineProps({
   department: {
@@ -15,14 +16,6 @@ const props = defineProps({
     default: '',
   },
 })
-
-function extractName(value) {
-  if (typeof value === 'string') return value.trim()
-  if (value && typeof value === 'object' && typeof value.name === 'string') {
-    return value.name.trim()
-  }
-  return ''
-}
 
 function maskPhoneNumber(value) {
   if (typeof value !== 'string') return ''
@@ -41,12 +34,12 @@ function maskPhoneNumber(value) {
 
 const rows = computed(() => {
   const list = []
-  const dept = extractName(props.department)
+  const dept = labelOf(props.department)
   if (dept) {
     list.push({ id: 'dept', label: 'Department', value: dept })
   }
 
-  const zn = extractName(props.zone)
+  const zn = labelOf(props.zone)
   if (zn) {
     list.push({ id: 'zone', label: 'Zone', value: zn })
   }

@@ -6,6 +6,7 @@ import PriorityBadge from '../PriorityBadge.vue'
 import StatusBadge from '../StatusBadge.vue'
 import { isOverdue, timeLeftLabel } from '../../utils/taskDisplay'
 import { buildDirectionsUrl } from '../../utils/googleMaps'
+import { labelOf } from '../../utils/labelOf'
 
 const props = defineProps({
   task: {
@@ -13,7 +14,7 @@ const props = defineProps({
     required: true,
   },
   zone: {
-    type: String,
+    type: [String, Object],
     default: '',
   },
   now: {
@@ -28,7 +29,7 @@ const taskDetailPath = computed(() =>
   `/worker/tasks/${encodeURIComponent(props.task?.id ?? '')}`,
 )
 
-const taskZone = computed(() => props.zone || props.task?.zone || '')
+const taskZone = computed(() => labelOf(props.zone) || labelOf(props.task?.zone))
 const timeInfo = computed(() => timeLeftLabel(props.task, props.now))
 const showOverdueFallback = computed(() => !timeInfo.value && isOverdue(props.task, props.now))
 

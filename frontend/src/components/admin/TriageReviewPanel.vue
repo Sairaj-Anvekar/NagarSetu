@@ -8,6 +8,7 @@ import {
   getCategoryDepartment,
 } from '../../constants/triageCategories'
 import { formatDateTime } from '../../utils/formatDate'
+import { labelOf } from '../../utils/labelOf'
 
 const props = defineProps({
   item: {
@@ -94,8 +95,8 @@ function handleConfirm() {
         <span class="ns-review-eyebrow">CASE DETAILS</span>
         <h2 class="ns-review-title">Reviewing {{ item.tracking_code }}</h2>
       </div>
-      <span v-if="item.zone" class="ns-review-zone-chip" data-test="review-zone-chip">
-        {{ item.zone }}
+      <span v-if="labelOf(item.zone)" class="ns-review-zone-chip" data-test="review-zone-chip">
+        {{ labelOf(item.zone) }}
       </span>
     </div>
 

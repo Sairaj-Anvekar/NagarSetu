@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatCompletionTime } from '../../utils/historyGroups'
+import { labelOf } from '../../utils/labelOf'
 
 const props = defineProps({
   task: {
@@ -9,14 +10,7 @@ const props = defineProps({
   },
 })
 
-const zoneName = computed(() => {
-  const z = props.task?.zone
-  if (typeof z === 'string' && z.trim()) return z.trim()
-  if (z && typeof z === 'object' && typeof z.name === 'string' && z.name.trim()) {
-    return z.name.trim()
-  }
-  return ''
-})
+const zoneName = computed(() => labelOf(props.task?.zone))
 
 const timeStr = computed(() => formatCompletionTime(props.task?.resolved_at))
 

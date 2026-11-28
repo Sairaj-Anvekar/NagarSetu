@@ -57,6 +57,20 @@ describe('TaskDetailHeader', () => {
 
     const meta = wrapper.get('.ns-task-detail-header__meta')
     expect(meta.text()).toBe('Solid Waste Management · Zone A')
+    expect(meta.text()).not.toContain('[object Object]')
+    expect(meta.text()).not.toContain('{')
+  })
+
+  it('renders category and zone joined by a dot when zone is an object from real backend', async () => {
+    const wrapper = await mountHeader({
+      category: 'Solid Waste Management',
+      zone: { id: '1', name: 'Zone A' },
+    })
+
+    const meta = wrapper.get('.ns-task-detail-header__meta')
+    expect(meta.text()).toBe('Solid Waste Management · Zone A')
+    expect(meta.text()).not.toContain('[object Object]')
+    expect(meta.text()).not.toContain('{')
   })
 
   it('omits the zone entirely when not provided', async () => {

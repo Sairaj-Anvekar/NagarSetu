@@ -101,5 +101,28 @@ describe('ZoneBreakdown', () => {
     expect(bars[0].attributes('style')).toContain('width: 0%')
     expect(bars[1].attributes('style')).toContain('width: 0%')
   })
+
+  it('does not throw and renders clean zone labels when zone is an object { id, name }', () => {
+    const zones = [
+      { zone: { id: 'z1', name: 'Zone A' }, count: 12 },
+      { zone: { id: 'z2', name: 'Zone B' }, count: 8 },
+    ]
+
+    expect(() => {
+      const wrapper = mount(ZoneBreakdown, { props: { zones } })
+      const chips = wrapper.findAll('.zone-breakdown__chip').map((c) => c.text())
+      expect(chips).toEqual(['A', 'B'])
+
+      const names = wrapper.findAll('.zone-breakdown__name').map((n) => n.text())
+      expect(names).toEqual(['Zone A', 'Zone B'])
+
+      expect(wrapper.text()).not.toContain('[object Object]')
+      expect(wrapper.text()).not.toContain('{')
+
+      const bar = wrapper.find('.zone-breakdown__bar')
+      expect(bar.attributes('aria-label')).toBe('Zone A: 12')
+      wrapper.unmount()
+    }).not.toThrow()
+  })
 })
 

@@ -60,9 +60,22 @@ describe('WorkerHeader', () => {
     expect(wrapper.find('.ns-worker-header__chip').exists()).toBe(false)
     await wrapper.setProps({ chip: 'Sanitation · Zone A' })
     expect(wrapper.get('.ns-worker-header__chip').text()).toBe('Sanitation · Zone A')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('{')
     expect(wrapper.get('.ns-worker-header__dot').attributes('aria-hidden')).toBe('true')
     await wrapper.setProps({ chip: '   ' })
     expect(wrapper.find('.ns-worker-header__chip').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('renders department · zone chip cleanly without [object Object] or JSON', () => {
+    const wrapper = mount(WorkerHeader, {
+      props: { variant: 'greeting', name: 'Ravi Patil', chip: 'Sanitation · Zone A' },
+    })
+    const chip = wrapper.get('.ns-worker-header__chip')
+    expect(chip.text()).toBe('Sanitation · Zone A')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('{')
     wrapper.unmount()
   })
 

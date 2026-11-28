@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import { labelOf } from '../../utils/labelOf'
 
 const props = defineProps({
   trackingCode: {
@@ -17,7 +18,7 @@ const props = defineProps({
     validator: (v) => ['critical', 'high', 'medium', 'low'].includes(String(v).toLowerCase()),
   },
   zone: {
-    type: String,
+    type: [String, Object],
     default: '',
   },
   backTo: {
@@ -70,7 +71,7 @@ const priorityInfo = computed(() => PRIORITY_CONFIG[normalizedPriority.value])
 
 const subtitle = computed(() => {
   const cat = props.category?.trim() || ''
-  const z = props.zone?.trim() || ''
+  const z = labelOf(props.zone)
   if (cat && z) return `${cat} · ${z}`
   return cat || z
 })

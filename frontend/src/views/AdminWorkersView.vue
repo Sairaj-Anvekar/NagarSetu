@@ -11,6 +11,7 @@ import { fetchStats } from '../api/adminApi'
 import { computeZoneCoverage, DEFAULT_ZONES, getPrimaryZoneGap } from '../utils/workerZones'
 import { getErrorMessage } from '../utils/apiError'
 import { formatPhone } from '../utils/formatPhone'
+import { labelOf } from '../utils/labelOf'
 
 const workers = ref([])
 const total = ref(0)
@@ -60,8 +61,9 @@ const subtitle = computed(() => {
 const departmentOptions = computed(() => {
   const set = new Set()
   for (const w of workers.value) {
-    if (w.department && typeof w.department === 'string' && w.department.trim()) {
-      set.add(w.department.trim())
+    const dept = labelOf(w.department)
+    if (dept) {
+      set.add(dept)
     }
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b))
@@ -70,8 +72,9 @@ const departmentOptions = computed(() => {
 const zoneOptions = computed(() => {
   const set = new Set(DEFAULT_ZONES)
   for (const w of workers.value) {
-    if (w.zone && typeof w.zone === 'string' && w.zone.trim()) {
-      set.add(w.zone.trim())
+    const z = labelOf(w.zone)
+    if (z) {
+      set.add(z)
     }
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b))
@@ -87,11 +90,11 @@ const filteredWorkers = computed(() => {
   const searchDigits = filters.search.replace(/\D/g, '')
 
   return workers.value.filter((w) => {
-    if (filters.department !== 'all' && w.department !== filters.department) {
+    if (filters.department !== 'all' && labelOf(w.department) !== filters.department) {
       return false
     }
 
-    if (filters.zone !== 'all' && w.zone !== filters.zone) {
+    if (filters.zone !== 'all' && labelOf(w.zone) !== filters.zone) {
       return false
     }
 
@@ -384,7 +387,7 @@ defineExpose({
               </template>
 
               <template #cell-zone="{ row }">
-                <span class="worker-zone fw-medium">{{ row.zone }}</span>
+                <span class="worker-zone fw-medium">{{ labelOf(row.zone) }}</span>
               </template>
 
               <template #cell-active_tasks="{ row }">

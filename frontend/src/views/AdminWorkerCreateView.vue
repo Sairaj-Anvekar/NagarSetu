@@ -9,6 +9,7 @@ import { createWorker } from '../api/workersApi'
 import { getFieldErrors } from '../utils/fieldErrors'
 import { getErrorMessage } from '../utils/apiError'
 import { formatPhone } from '../utils/formatPhone'
+import { labelOf } from '../utils/labelOf'
 
 const form = reactive({
   name: '',
@@ -265,11 +266,11 @@ defineExpose({
                 </div>
                 <div class="worker-summary__item">
                   <span class="worker-summary__label">Department:</span>
-                  <span class="worker-summary__value">{{ createdWorker.department }}</span>
+                  <span class="worker-summary__value">{{ labelOf(createdWorker.department) }}</span>
                 </div>
                 <div class="worker-summary__item">
                   <span class="worker-summary__label">Zone:</span>
-                  <span class="worker-summary__value">{{ createdWorker.zone }}</span>
+                  <span class="worker-summary__value">{{ labelOf(createdWorker.zone) }}</span>
                 </div>
                 <div class="worker-summary__item">
                   <span class="worker-summary__label">Phone:</span>

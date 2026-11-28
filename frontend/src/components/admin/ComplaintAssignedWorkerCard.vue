@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { getInitials } from '../../utils/initials'
 import { getWorkerDeadlinePill } from '../../utils/complaintTimeline'
+import { labelOf } from '../../utils/labelOf'
 
 const props = defineProps({
   complaint: {
@@ -59,7 +60,7 @@ const deferredCountText = computed(() => {
           <div class="ns-worker-info">
             <span class="ns-worker-name fw-semibold d-block">{{ workerName }}</span>
             <div class="d-flex align-items-center flex-wrap gap-2 mt-1">
-              <span v-if="worker.zone" class="text-secondary small">{{ worker.zone }}</span>
+              <span v-if="labelOf(worker.zone)" class="text-secondary small">{{ labelOf(worker.zone) }}</span>
               <span
                 v-if="typeof worker.is_active === 'boolean'"
                 class="worker-status-pill"
