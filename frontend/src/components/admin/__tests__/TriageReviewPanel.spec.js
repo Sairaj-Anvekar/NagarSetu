@@ -137,4 +137,21 @@ describe('TriageReviewPanel', () => {
     expect(summary.text()).toContain('Public Works Department')
     expect(summary.text()).toContain('Reviewed:')
   })
+
+  it('renders zone chip cleanly when item has object zone { id, name }', () => {
+    const itemWithObjectZone = {
+      ...MOCK_ITEM,
+      zone: { id: 'z1', name: 'Zone A' },
+    }
+
+    const wrapper = mount(TriageReviewPanel, {
+      props: { item: itemWithObjectZone },
+    })
+
+    const chip = wrapper.find('[data-test="review-zone-chip"]')
+    expect(chip.exists()).toBe(true)
+    expect(chip.text()).toBe('Zone A')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('{')
+  })
 })

@@ -249,6 +249,54 @@ describe('AdminWorkersView - Table, Formatting & Filters', () => {
     expect(wrapper.findAll('tbody tr')).toHaveLength(8)
   })
 
+  it('renders zone cell cleanly and filters correctly when department and zone are { id, name } objects', async () => {
+    fetchWorkers.mockResolvedValueOnce({
+      items: [
+        {
+          id: '101',
+          name: 'Ravi Patil',
+          phone: '+919800000001',
+          department: { id: 'd1', name: 'Solid Waste Management' },
+          zone: { id: 'z1', name: 'Zone A' },
+          is_active: true,
+          active_tasks: 2,
+        },
+        {
+          id: '102',
+          name: 'Anita Sharma',
+          phone: '+919800000002',
+          department: { id: 'd2', name: 'Water Supply Board' },
+          zone: { id: 'z2', name: 'Zone B' },
+          is_active: true,
+          active_tasks: 0,
+        },
+      ],
+      total: 2,
+    })
+
+    const wrapper = mount(AdminWorkersView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Zone A')
+    expect(wrapper.text()).toContain('Zone B')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('{')
+
+    // Department filter matches object shape
+    await wrapper.get('#worker-department').setValue('Solid Waste Management')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Ravi Patil')
+
+    // Zone filter matches object shape
+    await wrapper.get('#worker-zone').setValue('Zone A')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Ravi Patil')
+
+    // Zone filter mismatch
+    await wrapper.get('#worker-zone').setValue('Zone B')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(0)
+  })
+
   it('shows "No workers yet" when the worker list is empty', async () => {
     fetchWorkers.mockResolvedValueOnce({
       items: [],

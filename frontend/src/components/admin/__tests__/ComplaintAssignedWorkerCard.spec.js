@@ -75,4 +75,23 @@ describe('ComplaintAssignedWorkerCard', () => {
 
     expect(zeroWrapper.text()).not.toContain('Deferred')
   })
+
+  it('renders zone cleanly when assigned worker has object zone { id, name }', () => {
+    const complaintWithWorkerZone = {
+      ...baseComplaint,
+      assigned_worker: {
+        id: 'w1',
+        name: 'Ramesh Patil',
+        zone: { id: 'z1', name: 'Zone A' },
+      },
+    }
+
+    const wrapper = mount(ComplaintAssignedWorkerCard, {
+      props: { complaint: complaintWithWorkerZone },
+    })
+
+    expect(wrapper.text()).toContain('Zone A')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('{')
+  })
 })

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { labelOf } from '../../utils/labelOf'
 
 const props = defineProps({
   zones: {
@@ -74,12 +75,12 @@ function getSegmentWidth(segmentCount, rowTotal) {
     </div>
 
     <div v-else class="zone-breakdown__list" role="list">
-      <div v-for="item in zones" :key="item.zone" class="zone-breakdown__item" role="listitem">
+      <div v-for="item in zones" :key="labelOf(item.zone) || item.zone" class="zone-breakdown__item" role="listitem">
         <div class="zone-breakdown__header">
           <span class="zone-breakdown__chip" aria-hidden="true">
-            {{ item.zone.replace(/^Zone\s+/i, '').charAt(0) }}
+            {{ labelOf(item.zone).replace(/^Zone\s+/i, '').charAt(0) }}
           </span>
-          <span class="zone-breakdown__name">{{ item.zone }}</span>
+          <span class="zone-breakdown__name">{{ labelOf(item.zone) }}</span>
           <span class="zone-breakdown__percentage ns-num">
             {{ getPercentage(item.count) }}%
           </span>
@@ -95,7 +96,7 @@ function getSegmentWidth(segmentCount, rowTotal) {
             :aria-valuemax="maxCount"
             aria-valuemin="0"
             role="progressbar"
-            :aria-label="`${item.zone}: ${item.count}`"
+            :aria-label="`${labelOf(item.zone)}: ${item.count}`"
           >
             <template v-if="hasStatusBreakdown(item)">
               <span

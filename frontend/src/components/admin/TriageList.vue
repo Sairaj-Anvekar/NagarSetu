@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatDateTime } from '../../utils/formatDate'
+import { labelOf } from '../../utils/labelOf'
 
 const props = defineProps({
   items: {
@@ -145,8 +146,8 @@ function handlePageChange(newPage) {
           <span v-else-if="item.reviewed_at" class="ns-reviewed-time">
             Reviewed {{ formatDateTime(item.reviewed_at) }}
           </span>
-          <span v-if="item.zone" class="ns-zone-badge">
-            {{ item.zone }}
+          <span v-if="labelOf(item.zone)" class="ns-zone-badge">
+            {{ labelOf(item.zone) }}
           </span>
         </div>
 

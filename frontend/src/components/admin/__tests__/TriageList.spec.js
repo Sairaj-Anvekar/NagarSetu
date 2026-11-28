@@ -162,4 +162,27 @@ describe('TriageList', () => {
     expect(wrapper.emitted('page-change')).toBeTruthy()
     expect(wrapper.emitted('page-change')[0]).toEqual([2])
   })
+
+  it('renders zone badge cleanly when item has object zone { id, name }', () => {
+    const items = [
+      {
+        ...MOCK_PENDING_ITEMS[0],
+        zone: { id: 'z1', name: 'Zone A' },
+      },
+    ]
+
+    const wrapper = mount(TriageList, {
+      props: {
+        items,
+        status: 'pending',
+        total: 1,
+      },
+    })
+
+    const badge = wrapper.find('.ns-zone-badge')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toBe('Zone A')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('{')
+  })
 })

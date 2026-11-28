@@ -436,5 +436,37 @@ describe('AdminWorkerCreateView - Server Errors and Lifecycle', () => {
     expect(readonlyDept.attributes('readonly')).toBeDefined()
     expect(wrapper.find('.ns-readonly-badge').text()).toBe('Fixed')
   })
+
+  it('renders success card with clean department and zone when returned as { id, name } objects', async () => {
+    createWorker.mockResolvedValueOnce({
+      id: '109',
+      name: 'Ramesh Kumar',
+      phone: '+919822200001',
+      department: { id: 'd1', name: 'Solid Waste Management' },
+      zone: { id: 'z1', name: 'Zone A' },
+      is_active: true,
+    })
+
+    const wrapper = mount(AdminWorkerCreateView, {
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+    await flushPromises()
+
+    await wrapper.find('#worker-name').setValue('Ramesh Kumar')
+    await wrapper.find('#worker-phone').setValue('9822200001')
+    await wrapper.find('#worker-department').setValue('d1')
+    await wrapper.find('#worker-zone').setValue('z1')
+    await wrapper.find('#worker-pin').setValue('1234')
+    await wrapper.find('#worker-confirm-pin').setValue('1234')
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Worker added')
+    expect(wrapper.text()).toContain('Solid Waste Management')
+    expect(wrapper.text()).toContain('Zone A')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.find('.worker-summary').text()).not.toContain('{')
+  })
 })
 
