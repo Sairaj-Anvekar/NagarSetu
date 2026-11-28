@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { clearAuth, getToken, loadAuth, saveAuth } from '../authStorage'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearAuth, getLastRole, getToken, loadAuth, saveAuth, saveLastRole } from '../authStorage'
 
 describe('authStorage', () => {
   beforeEach(() => {
@@ -51,5 +51,61 @@ describe('authStorage', () => {
     // Clear and confirm null is returned immediately
     clearAuth()
     expect(getToken()).toBeNull()
+  })
+
+  describe('saveLastRole and getLastRole', () => {
+    it('saves worker role and retrieves it', () => {
+      saveLastRole('worker')
+      expect(getLastRole()).toBe('worker')
+      expect(localStorage.getItem('ns_last_role')).toBe('worker')
+    })
+
+    it('saves admin role and retrieves it', () => {
+      saveLastRole('admin')
+      expect(getLastRole()).toBe('admin')
+      expect(localStorage.getItem('ns_last_role')).toBe('admin')
+    })
+
+    it('ignores invalid roles when saving', () => {
+      saveLastRole('superuser')
+      expect(getLastRole()).toBeNull()
+      expect(localStorage.getItem('ns_last_role')).toBeNull()
+
+      saveLastRole('worker')
+      expect(getLastRole()).toBe('worker')
+
+      saveLastRole('guest')
+      expect(getLastRole()).toBe('worker')
+    })
+
+    it('returns null if stored value in localStorage is corrupted or not a valid role', () => {
+      localStorage.setItem('ns_last_role', 'random-value')
+      expect(getLastRole()).toBeNull()
+    })
+
+    it('does not remove last role on clearAuth', () => {
+      saveAuth({ token: 'tok', role: 'worker', user: null })
+      saveLastRole('worker')
+
+      clearAuth()
+
+      expect(loadAuth()).toBeNull()
+      expect(getLastRole()).toBe('worker')
+    })
+
+    it('handles localStorage errors gracefully without throwing', () => {
+      const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('QuotaExceeded')
+      })
+      expect(() => saveLastRole('worker')).not.toThrow()
+      setItemSpy.mockRestore()
+
+      const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('AccessDenied')
+      })
+      expect(() => getLastRole()).not.toThrow()
+      expect(getLastRole()).toBeNull()
+      getItemSpy.mockRestore()
+    })
   })
 })

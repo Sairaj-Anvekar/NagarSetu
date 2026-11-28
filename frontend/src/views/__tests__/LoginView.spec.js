@@ -232,6 +232,136 @@ describe('LoginView — tabs and notices', () => {
     expect(wrapper.find('.ns-admin-access-notice').exists()).toBe(false)
     expect(wrapper.find('.ns-admin-worker-switch').exists()).toBe(false)
   })
+
+  it('opens Admin tab when route query has ?role=admin even if worker role is remembered in localStorage', async () => {
+    localStorage.setItem('ns_last_role', 'worker')
+    await router.push('/login?role=admin')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(true)
+    expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(false)
+  })
+
+  it('renders the admin form for ?redirect=%2Fadmin%2Fcomplaints even when ns_last_role is worker', async () => {
+    localStorage.setItem('ns_last_role', 'worker')
+    await router.push('/login?redirect=/admin/complaints')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(true)
+    expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(false)
+    expect(wrapper.find('.ns-login-tabs').isVisible()).toBe(true)
+  })
+
+  it('opens the Worker tab directly when route has ?role=worker even if admin role is remembered', async () => {
+    localStorage.setItem('ns_last_role', 'admin')
+    await router.push('/login?role=worker')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(true)
+    expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(false)
+  })
+
+  it('opens Worker tab when worker role is remembered in localStorage and route query has no role', async () => {
+    localStorage.setItem('ns_last_role', 'worker')
+    await router.push('/login')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(true)
+    expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(false)
+    expect(wrapper.get('#login-heading').text()).toBe("Sign in to see today's tasks")
+  })
+
+  it('opens Admin tab when admin role is remembered in localStorage and route query has no role', async () => {
+    localStorage.setItem('ns_last_role', 'admin')
+    await router.push('/login')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [pinia, router],
+      },
+    })
+
+    expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(true)
+    expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(false)
+  })
+
+  it('opens Worker tab when running in standalone PWA display mode without query role or remembered role', async () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === '(display-mode: standalone)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    try {
+      await router.push('/login')
+      await router.isReady()
+
+      const wrapper = mount(LoginView, {
+        global: {
+          plugins: [pinia, router],
+        },
+      })
+
+      expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(true)
+      expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(false)
+    } finally {
+      window.matchMedia = originalMatchMedia
+    }
+  })
+
+  it('handles localStorage errors gracefully without crashing and falls back to admin', async () => {
+    localStorage.setItem('ns_last_role', 'worker')
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError: Access Denied')
+    })
+
+    try {
+      await router.push('/login')
+      await router.isReady()
+
+      const wrapper = mount(LoginView, {
+        global: {
+          plugins: [pinia, router],
+        },
+      })
+
+      expect(wrapper.findComponent(AdminLoginForm).exists()).toBe(true)
+      expect(wrapper.findComponent(WorkerLoginForm).exists()).toBe(false)
+    } finally {
+      getItemSpy.mockRestore()
+    }
+  })
 })
 
 describe('LoginView — login redirects and session state', () => {

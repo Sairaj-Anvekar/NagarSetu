@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { loadAuth, clearAuth, saveAuth } from '../utils/authStorage'
+import { loadAuth, clearAuth, saveAuth, saveLastRole } from '../utils/authStorage'
 import { loginAdmin as apiLoginAdmin, loginWorker as apiLoginWorker } from '../api/authApi'
 import { setUnauthorizedHandler } from '../api/http'
 import { getLoginRoute } from '../utils/loginRoute'
@@ -64,6 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
       role.value = auth.role
       user.value = auth.user
       saveAuth(auth)
+      saveLastRole('admin')
     } catch (err) {
       // Ensure store stays logged out; storage is untouched
       token.value = null
@@ -86,6 +87,7 @@ export const useAuthStore = defineStore('auth', () => {
       role.value = auth.role
       user.value = auth.user
       saveAuth(auth)
+      saveLastRole('worker')
     } catch (err) {
       token.value = null
       role.value = null

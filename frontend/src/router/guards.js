@@ -1,4 +1,5 @@
 import { useAuthStore } from '../stores/auth'
+import { getLoginRoute } from '../utils/loginRoute'
 
 /**
  * Route guard enforcing authentication and role-based access.
@@ -15,6 +16,10 @@ export function authGuard(to) {
   const auth = useAuthStore()
 
   if (!auth.isAuthenticated) {
+    const isWorkerRoute = to.path === '/worker' || to.path?.startsWith('/worker/')
+    if (isWorkerRoute) {
+      return getLoginRoute({ role: 'worker', redirect: to.fullPath })
+    }
     return { path: '/login', query: { redirect: to.fullPath } }
   }
 

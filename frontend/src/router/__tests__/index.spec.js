@@ -30,7 +30,9 @@ describe('router — worker task detail route', () => {
   it('redirects an anonymous user from /worker/tasks/abc to /login with redirect query', async () => {
     await router.push('/worker/tasks/abc')
 
-    expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/worker/tasks/abc')
+    expect(router.currentRoute.value.fullPath).toBe(
+      '/login?role=worker&redirect=/worker/tasks/abc',
+    )
     expect(router.resolve('/login').meta.noNavbar).toBe(true)
   })
 

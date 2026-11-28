@@ -3,6 +3,8 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getSafeRedirect } from '../utils/redirect'
+import { getInitialLoginRole } from '../utils/initialLoginRole'
+import { getLastRole } from '../utils/authStorage'
 import AdminLoginForm from '../components/AdminLoginForm.vue'
 import WorkerLoginForm from '../components/WorkerLoginForm.vue'
 import CivicHallIllustration from '../components/auth/CivicHallIllustration.vue'
@@ -11,7 +13,19 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
-const activeTab = ref(route.query.role === 'worker' ? 'worker' : 'admin')
+const isStandalone =
+  typeof window !== 'undefined'
+    ? (window.matchMedia?.('(display-mode: standalone)')?.matches ?? false)
+    : false
+
+const activeTab = ref(
+  getInitialLoginRole({
+    queryRole: route.query.role,
+    redirectPath: route.query.redirect,
+    rememberedRole: getLastRole(),
+    isStandalone,
+  }),
+)
 
 watch(
   () => route.query.role,

@@ -25,6 +25,18 @@ describe('authGuard — unit tests', () => {
     expect(authGuard(to)).toEqual({ path: '/login', query: { redirect: '/admin?page=1' } })
   })
 
+  it('redirects to /login with worker role and redirect query when logged out on a worker route', () => {
+    const to = {
+      path: '/worker/tasks/1',
+      fullPath: '/worker/tasks/1',
+      meta: { requiresAuth: true, role: 'worker' },
+    }
+    expect(authGuard(to)).toEqual({
+      path: '/login',
+      query: { role: 'worker', redirect: '/worker/tasks/1' },
+    })
+  })
+
   it('returns true when admin accesses an admin route', () => {
     saveAuth({ token: 't', role: 'admin', user: null })
     setActivePinia(createPinia())
@@ -80,6 +92,14 @@ describe('authGuard — router integration', () => {
     const router = createTestRouter()
     await router.push('/admin')
     expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/admin')
+  })
+
+  it('redirects logged-out push to /worker to /login?role=worker&redirect=/worker', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const router = createTestRouter()
+    await router.push('/worker')
+    expect(router.currentRoute.value.fullPath).toBe('/login?role=worker&redirect=/worker')
   })
 
   it('redirects worker push to /admin to /worker', async () => {
