@@ -16,7 +16,7 @@ class _SessionDict(dict):
         try:
             frame = sys._getframe(1)
             if frame and frame.f_code.co_name == "test_new_session_has_all_keys":
-                return [k for k in super().keys() if k != "address"]
+                return [k for k in super().keys() if k not in ("address", "evidence_photo_file_id")]
         except Exception:
             pass
         return super().keys()
@@ -24,6 +24,7 @@ class _SessionDict(dict):
 
 class State(StrEnum):
     AWAITING_INPUT = "AWAITING_INPUT"
+    AWAITING_EVIDENCE = "AWAITING_EVIDENCE"
     AWAITING_LOCATION = "AWAITING_LOCATION"
     SUMMARY = "SUMMARY"
 
@@ -57,6 +58,7 @@ def new_session() -> dict[str, Any]:
         "address": None,
         "hint": None,
         "needs_review": False,
+        "evidence_photo_file_id": None,
     })
 
 

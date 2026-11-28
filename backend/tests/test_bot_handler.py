@@ -580,12 +580,15 @@ def test_location_intake_ordering_and_summary(
     bot_handler.handle_update(
         fake_db, fake_client, _msg_update(update_id=1, text="Streetlights not working")
     )
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
     fake_client.sent_messages.clear()
 
     bot_handler.handle_update(
         fake_db,
         fake_client,
-        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+        _msg_update(update_id=3, latitude=17.684, longitude=75.880),
     )
     assert len(fake_client.sent_messages) == 2
     msg1 = fake_client.sent_messages[0]
@@ -624,18 +627,24 @@ def test_location_fallbacks(
         fake_db, fake_client, _msg_update(update_id=1, text="Pothole issue on road")
     )
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=2, latitude=17.684, longitude=75.880)
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=3, latitude=17.684, longitude=75.880)
     )
     summary1 = fake_client.sent_messages[-1]["text"]
     assert "Location: Zone A" in summary1
 
     # 2. No zone match -> "Pinned location"
-    bot_handler.handle_update(fake_db, fake_client, _msg_update(update_id=3, text="/cancel"))
+    bot_handler.handle_update(fake_db, fake_client, _msg_update(update_id=4, text="/cancel"))
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=4, text="Pothole issue on road")
+        fake_db, fake_client, _msg_update(update_id=5, text="Pothole issue on road")
     )
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=5, latitude=17.000, longitude=75.000)
+        fake_db, fake_client, _cb_update(update_id=6, callback_data="evi:skip")
+    )
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=7, latitude=17.000, longitude=75.000)
     )
     summary2 = fake_client.sent_messages[-1]["text"]
     assert "Location: Pinned location" in summary2
@@ -651,16 +660,19 @@ def test_summary_state_text_and_location_updates(
         fake_db, fake_client, _msg_update(update_id=1, text="Pothole on main road")
     )
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=2, latitude=17.684, longitude=75.880)
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=3, latitude=17.684, longitude=75.880)
     )
 
     # 3-character text -> MSG_TEXT_TOO_SHORT
-    bot_handler.handle_update(fake_db, fake_client, _msg_update(update_id=3, text="abc"))
+    bot_handler.handle_update(fake_db, fake_client, _msg_update(update_id=4, text="abc"))
     assert bot_messages.MSG_TEXT_TOO_SHORT in fake_client.sent_messages[-1]["text"]
 
     # >= 5 character text -> updates description and re-shows summary
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=4, text="Near water tank gate")
+        fake_db, fake_client, _msg_update(update_id=5, text="Near water tank gate")
     )
     summary = fake_client.sent_messages[-1]["text"]
     assert "Details: Near water tank gate" in summary
@@ -671,13 +683,13 @@ def test_summary_state_text_and_location_updates(
     bot_handler.handle_update(
         fake_db,
         fake_client,
-        _msg_update(update_id=5, photo_file_id="dummy", photo_file_size=100),
+        _msg_update(update_id=6, photo_file_id="dummy", photo_file_size=100),
     )
     assert bot_messages.MSG_USE_BUTTONS in fake_client.sent_messages[-1]["text"]
 
     # New location updates coordinates and address
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=6, latitude=17.690, longitude=75.890)
+        fake_db, fake_client, _msg_update(update_id=7, latitude=17.690, longitude=75.890)
     )
     sess_loc = session_service.load_session(123456)
     assert sess_loc["latitude"] == 17.690
@@ -695,7 +707,10 @@ def test_button_stripping_and_failed_save_retention(
         fake_db, fake_client, _msg_update(update_id=1, text="Broken streetlight")
     )
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=2, latitude=17.684, longitude=75.880)
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=3, latitude=17.684, longitude=75.880)
     )
 
     # Simulate save failure on submit
@@ -707,7 +722,7 @@ def test_button_stripping_and_failed_save_retention(
     )
     fake_client.edited_markups.clear()
     bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=3, callback_data="sub:yes")
+        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
     )
     # Buttons NOT stripped on failed save
     assert len(fake_client.edited_markups) == 0
@@ -720,7 +735,7 @@ def test_button_stripping_and_failed_save_retention(
     monkeypatch.setattr(complaint_service, "create_complaint", orig_create)
     fake_client.edited_markups.clear()
     bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
+        fake_db, fake_client, _cb_update(update_id=5, callback_data="sub:yes")
     )
     assert len(fake_client.edited_markups) == 1
     assert fake_client.edited_markups[0]["message_id"] == 100
@@ -805,16 +820,19 @@ def test_removed_and_unknown_callbacks_reply_use_buttons(
         fake_db, fake_client, _msg_update(update_id=1, text="Broken streetlight")
     )
     bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
+    bot_handler.handle_update(
         fake_db,
         fake_client,
-        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+        _msg_update(update_id=3, latitude=17.684, longitude=75.880),
     )
     before = session_service.load_session(123456)
     assert before is not None
     assert before["state"] == session_service.State.SUMMARY
 
     fake_client.edited_markups.clear()
-    for idx, cb_data in enumerate(["sub:cat", "cat:0", "cat:back", "cat:xyz"], start=3):
+    for idx, cb_data in enumerate(["sub:cat", "cat:0", "cat:back", "cat:xyz"], start=4):
         bot_handler.handle_update(
             fake_db, fake_client, _cb_update(update_id=idx, callback_data=cb_data)
         )
@@ -833,17 +851,21 @@ def test_full_happy_path_text(
     mock_domain_services: dict[str, list[Any]],
 ) -> None:
     text = "Streetlights not working on the main road"
-    # Step 1: user sends text -> directly AWAITING_LOCATION
+    # Step 1: user sends text -> AWAITING_EVIDENCE
     bot_handler.handle_update(fake_db, fake_client, _msg_update(update_id=1, text=text))
-    # Step 2: user sends location -> SUMMARY
+    # Step 2: user taps Skip -> AWAITING_LOCATION
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
+    # Step 3: user sends location -> SUMMARY
     bot_handler.handle_update(
         fake_db,
         fake_client,
-        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+        _msg_update(update_id=3, latitude=17.684, longitude=75.880),
     )
-    # Step 3: user taps Confirm & Submit
+    # Step 4: user taps Confirm & Submit
     bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=3, callback_data="sub:yes")
+        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
     )
 
     created = mock_domain_services["created_complaints"]
@@ -924,10 +946,13 @@ def test_low_confidence_triggers_triage(
         fake_db, fake_client, _msg_update(update_id=1, text="qqzz xx")
     )
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=2, latitude=17.684, longitude=75.880)
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
     )
     bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=3, callback_data="sub:yes")
+        fake_db, fake_client, _msg_update(update_id=3, latitude=17.684, longitude=75.880)
+    )
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
     )
 
     triage_entries = mock_domain_services["triage_entries"]
@@ -946,9 +971,12 @@ def test_invalid_latitude_replies_location_not_expected(
         fake_db, fake_client, _msg_update(update_id=1, text="Streetlights out")
     )
     bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
+    bot_handler.handle_update(
         fake_db,
         fake_client,
-        _msg_update(update_id=2, latitude=95.0, longitude=75.880),
+        _msg_update(update_id=3, latitude=95.0, longitude=75.880),
     )
     assert (
         bot_messages.MSG_LOCATION_NOT_EXPECTED
@@ -968,7 +996,10 @@ def test_text_in_awaiting_location_replies_location_not_expected(
         fake_db, fake_client, _msg_update(update_id=1, text="Streetlights out")
     )
     bot_handler.handle_update(
-        fake_db, fake_client, _msg_update(update_id=2, text="near post office")
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=3, text="near post office")
     )
     assert (
         bot_messages.MSG_LOCATION_NOT_EXPECTED
@@ -1076,20 +1107,23 @@ def test_double_submission_second_attempt_expires(
         fake_db, fake_client, _msg_update(update_id=1, text="Streetlights out")
     )
     bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
+    bot_handler.handle_update(
         fake_db,
         fake_client,
-        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+        _msg_update(update_id=3, latitude=17.684, longitude=75.880),
     )
 
     # First submit
     bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=3, callback_data="sub:yes")
+        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
     )
     assert len(mock_domain_services["created_complaints"]) == 1
 
     # Second submit (double tap)
     bot_handler.handle_update(
-        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
+        fake_db, fake_client, _cb_update(update_id=5, callback_data="sub:yes")
     )
     assert len(mock_domain_services["created_complaints"]) == 1
     assert bot_messages.MSG_EXPIRED in fake_client.sent_messages[-1]["text"]
@@ -1380,4 +1414,314 @@ def test_photo_clear_prediction_confidence_095_creates_no_triage(
 
     assert len(mock_domain_services["triage_entries"]) == 0
     _assert_message_invariants(fake_client)
+
+
+def test_evidence_text_path_with_photo(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+    mock_domain_services: dict[str, list[Any]],
+) -> None:
+    jpeg = _make_jpeg_bytes()
+    fake_client.files["f_evi_test"] = jpeg
+
+    # 1. Text input
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=1, text="Streetlights not working on the main road"),
+    )
+    sess1 = session_service.load_session(123456)
+    assert sess1["state"] == session_service.State.AWAITING_EVIDENCE
+    assert sess1["source"] == "text"
+    assert bot_messages.MSG_ASK_EVIDENCE in fake_client.sent_messages[-1]["text"]
+
+    # 2. Upload supporting photo
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(
+            update_id=2,
+            photo_file_id="f_evi_test",
+            photo_file_size=len(jpeg),
+        ),
+    )
+    sess2 = session_service.load_session(123456)
+    assert sess2["state"] == session_service.State.AWAITING_LOCATION
+    assert sess2["evidence_photo_file_id"] == "f_evi_test"
+    # Nothing in storage yet
+    assert len(fake_storage.objects) == 0
+
+    # 3. Location
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=3, latitude=17.684, longitude=75.880),
+    )
+    sess3 = session_service.load_session(123456)
+    assert sess3["state"] == session_service.State.SUMMARY
+    summary_msg = fake_client.sent_messages[-1]["text"]
+    assert "Supporting photo: attached" in summary_msg
+
+    # 4. Confirm & Submit
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
+    )
+    created = mock_domain_services["created_complaints"]
+    assert len(created) == 1
+    c = created[0]
+    assert c["category"] == "Streetlight"
+    assert c["ai_classification_source"] == "text"
+    assert c["image_object_key"] is not None
+    assert fake_storage.object_exists(c["image_object_key"])
+    assert session_service.load_session(123456) is None
+    _assert_message_invariants(fake_client)
+
+
+def test_evidence_text_path_with_skip(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+    mock_domain_services: dict[str, list[Any]],
+) -> None:
+    # 1. Text input
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=1, text="Streetlights not working on the main road"),
+    )
+    sess1 = session_service.load_session(123456)
+    assert sess1["state"] == session_service.State.AWAITING_EVIDENCE
+
+    # 2. Skip photo
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:skip")
+    )
+    sess2 = session_service.load_session(123456)
+    assert sess2["state"] == session_service.State.AWAITING_LOCATION
+    assert sess2["evidence_photo_file_id"] is None
+
+    # 3. Location
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=3, latitude=17.684, longitude=75.880),
+    )
+    summary_msg = fake_client.sent_messages[-1]["text"]
+    assert "Supporting photo: none" in summary_msg
+
+    # 4. Submit
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
+    )
+    created = mock_domain_services["created_complaints"]
+    assert len(created) == 1
+    c = created[0]
+    assert c["image_object_key"] is None
+    assert c["ai_classification_source"] == "text"
+    assert len(fake_storage.objects) == 0
+    assert session_service.load_session(123456) is None
+    _assert_message_invariants(fake_client)
+
+
+def test_evidence_wrong_input_stays_in_state(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+) -> None:
+    # 1. Text input
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=1, text="Streetlights broken")
+    )
+    sess = session_service.load_session(123456)
+    assert sess["state"] == session_service.State.AWAITING_EVIDENCE
+
+    # 2. Send plain text -> reminder, state unchanged
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=2, text="Here is some text")
+    )
+    assert bot_messages.MSG_EVIDENCE_REMINDER in fake_client.sent_messages[-1]["text"]
+    sess = session_service.load_session(123456)
+    assert sess["state"] == session_service.State.AWAITING_EVIDENCE
+
+    # 3. Send location -> reminder, state unchanged
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=3, latitude=17.684, longitude=75.880)
+    )
+    assert bot_messages.MSG_EVIDENCE_REMINDER in fake_client.sent_messages[-1]["text"]
+    sess = session_service.load_session(123456)
+    assert sess["state"] == session_service.State.AWAITING_EVIDENCE
+
+    # 4. Send non-text/non-photo message (e.g. sticker/document) -> reminder, state unchanged
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=4)
+    )
+    assert bot_messages.MSG_EVIDENCE_REMINDER in fake_client.sent_messages[-1]["text"]
+    sess = session_service.load_session(123456)
+    assert sess["state"] == session_service.State.AWAITING_EVIDENCE
+    _assert_message_invariants(fake_client)
+
+
+def test_evidence_cancel_deletes_session_and_nothing_uploaded(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+) -> None:
+    # 1. Text input
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=1, text="Streetlights broken")
+    )
+    assert session_service.load_session(123456) is not None
+
+    # 2. Tap Cancel
+    fake_client.edited_markups.clear()
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=2, callback_data="evi:cancel")
+    )
+    assert len(fake_client.edited_markups) == 1
+    assert session_service.load_session(123456) is None
+    assert bot_messages.MSG_CANCELLED in fake_client.sent_messages[-1]["text"]
+    assert len(fake_storage.objects) == 0
+    _assert_message_invariants(fake_client)
+
+
+def test_evidence_image_classifier_never_called(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+    mock_domain_services: dict[str, list[Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    classifier_called = False
+
+    def mock_classify_image(*args, **kwargs):
+        nonlocal classifier_called
+        classifier_called = True
+        raise AssertionError(
+            "Image classifier should never be called for supporting evidence photo!"
+        )
+
+    monkeypatch.setattr(classification_service, "classify_image", mock_classify_image)
+
+    jpeg = _make_jpeg_bytes()
+    fake_client.files["f_no_classify"] = jpeg
+
+    # 1. Text input
+    bot_handler.handle_update(
+        fake_db, fake_client, _msg_update(update_id=1, text="Streetlights broken")
+    )
+
+    # 2. Send photo in AWAITING_EVIDENCE
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=2, photo_file_id="f_no_classify", photo_file_size=len(jpeg)),
+    )
+
+    # 3. Location
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=3, latitude=17.684, longitude=75.880),
+    )
+
+    # 4. Submit
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=4, callback_data="sub:yes")
+    )
+
+    assert not classifier_called
+    assert len(mock_domain_services["created_complaints"]) == 1
+    assert mock_domain_services["created_complaints"][0]["ai_classification_source"] == "text"
+    _assert_message_invariants(fake_client)
+
+
+def test_evidence_photo_first_regression_completely_unchanged(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+    fake_storage: FakeStorage,
+    mock_domain_services: dict[str, list[Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pred = classification_service.Prediction(
+        category="Potholes & Road Damage",
+        confidence=0.88,
+        source="image",
+        model="mobilenetv2-v2",
+        needs_review=False,
+    )
+    monkeypatch.setattr(classification_service, "classify_image", lambda *a, **kw: pred)
+
+    jpeg = _make_jpeg_bytes()
+    fake_client.files["f_regr"] = jpeg
+
+    # 1. Photo first
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=1, photo_file_id="f_regr", photo_file_size=len(jpeg)),
+    )
+    sess = session_service.load_session(123456)
+    assert sess["state"] == session_service.State.AWAITING_LOCATION  # Directly AWAITING_LOCATION!
+    assert sess["source"] == "image"
+    assert sess["image_key"] is not None
+    assert fake_storage.object_exists(sess["image_key"])
+
+    # 2. Location
+    bot_handler.handle_update(
+        fake_db,
+        fake_client,
+        _msg_update(update_id=2, latitude=17.684, longitude=75.880),
+    )
+    summary_msg = fake_client.sent_messages[-1]["text"]
+    assert "📷 Photo: attached" in summary_msg
+    assert "Supporting photo:" not in summary_msg
+
+    # 3. Submit
+    bot_handler.handle_update(
+        fake_db, fake_client, _cb_update(update_id=3, callback_data="sub:yes")
+    )
+    created = mock_domain_services["created_complaints"]
+    assert len(created) == 1
+    c = created[0]
+    assert c["category"] == "Potholes & Road Damage"
+    assert c["ai_classification_source"] == "image"
+    _assert_message_invariants(fake_client)
+
+
+def test_evidence_nsfw_photo_rejected_stays_in_state(
+    fake_db: FakeDB,
+    fake_client: FakeClient,
+    fake_redis: FakeRedis,
+) -> None:
+    nsfw_check_service.set_classifier(lambda data: 0.99)
+    try:
+        jpeg = _make_jpeg_bytes()
+        fake_client.files["f_unsafe"] = jpeg
+
+        # 1. Text input
+        bot_handler.handle_update(
+            fake_db, fake_client, _msg_update(update_id=1, text="Garbage dumped")
+        )
+        sess = session_service.load_session(123456)
+        assert sess["state"] == session_service.State.AWAITING_EVIDENCE
+
+        # 2. Send unsafe photo
+        bot_handler.handle_update(
+            fake_db,
+            fake_client,
+            _msg_update(update_id=2, photo_file_id="f_unsafe", photo_file_size=len(jpeg)),
+        )
+        assert bot_messages.MSG_IMAGE_REJECTED in fake_client.sent_messages[-1]["text"]
+        sess = session_service.load_session(123456)
+        assert sess["state"] == session_service.State.AWAITING_EVIDENCE
+        assert sess["evidence_photo_file_id"] is None
+        _assert_message_invariants(fake_client)
+    finally:
+        nsfw_check_service.set_classifier(None)
 

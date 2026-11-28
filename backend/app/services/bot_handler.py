@@ -168,6 +168,10 @@ def _show_summary(
     has_photo = bool(session.get("image_key"))
     sla_hours = CATEGORIES[category].sla_hours if category in CATEGORIES else 48
 
+    supporting_photo: bool | None = None
+    if session.get("source") == "text":
+        supporting_photo = bool(session.get("evidence_photo_file_id"))
+
     text = bot_messages.format_summary(
         category=category,
         location_text=address,
@@ -175,6 +179,7 @@ def _show_summary(
         description=description,
         has_photo=has_photo,
         sla_hours=sla_hours,
+        supporting_photo=supporting_photo,
     )
     _say(client, chat_id, text, markup=bot_messages.summary_keyboard())
 
@@ -224,8 +229,25 @@ def _submit(
         return
 
     settings = get_settings()
+    uploaded_evidence_key: str | None = None
 
     try:
+        evidence_file_id = session.get("evidence_photo_file_id")
+        if evidence_file_id and not session.get("image_key"):
+            data = client.get_file_bytes(
+                evidence_file_id, settings.max_upload_bytes
+            )
+            image = image_service.validate_image(
+                data, max_bytes=settings.max_upload_bytes
+            )
+            uploaded_evidence_key = (
+                f"complaints/{uuid.uuid4()}/photo.{image.extension}"
+            )
+            storage_service.get_storage().put_object(
+                uploaded_evidence_key, data, image.content_type
+            )
+            session["image_key"] = uploaded_evidence_key
+
         citizen = citizen_service.get_or_create_citizen(
             db, inc.chat_id, inc.username, inc.first_name
         )
@@ -260,6 +282,11 @@ def _submit(
         commit()
     except Exception as exc:
         db.rollback()
+        if uploaded_evidence_key:
+            try:
+                storage_service.get_storage().delete_object(uploaded_evidence_key)
+            except Exception:
+                pass
         logger.warning("Failed to submit complaint (%s)", type(exc).__name__)
         _say(client, inc.chat_id, bot_messages.MSG_SAVE_FAILED)
         return
@@ -313,6 +340,35 @@ def _handle_callback(
         )
         return
 
+    if data == "evi:skip":
+        if state != session_service.State.AWAITING_EVIDENCE:
+            _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
+            return
+        _strip_buttons(client, inc)
+        session["state"] = session_service.State.AWAITING_LOCATION.value
+        session_service.save_session(inc.chat_id, session)
+        _say(
+            client,
+            inc.chat_id,
+            "📍 Now share the exact location of the problem using the button below.",
+            markup=location_keyboard("Share my location"),
+        )
+        return
+
+    if data == "evi:cancel":
+        if state != session_service.State.AWAITING_EVIDENCE:
+            _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
+            return
+        _strip_buttons(client, inc)
+        _discard(inc.chat_id, session)
+        _say(
+            client,
+            inc.chat_id,
+            bot_messages.MSG_CANCELLED,
+            markup=main_menu_keyboard(),
+        )
+        return
+
     _say(client, inc.chat_id, bot_messages.MSG_USE_BUTTONS)
 
 
@@ -325,6 +381,61 @@ def _handle_message_in_state(
     commit: Any,
 ) -> None:
     state = session.get("state")
+
+    if state == session_service.State.AWAITING_EVIDENCE:
+        if inc.photo_file_id is not None:
+            settings = get_settings()
+            _typing(client, inc.chat_id)
+            if (
+                inc.photo_file_size is not None
+                and inc.photo_file_size > settings.max_upload_bytes
+            ):
+                _say(client, inc.chat_id, bot_messages.MSG_PHOTO_TOO_LARGE)
+                return
+
+            try:
+                data = client.get_file_bytes(
+                    inc.photo_file_id, settings.max_upload_bytes
+                )
+            except TelegramError as exc:
+                if "too large" in str(exc).lower():
+                    _say(client, inc.chat_id, bot_messages.MSG_PHOTO_TOO_LARGE)
+                else:
+                    _say(client, inc.chat_id, bot_messages.MSG_PHOTO_DOWNLOAD_FAILED)
+                return
+
+            try:
+                image_service.validate_image(
+                    data, max_bytes=settings.max_upload_bytes
+                )
+            except image_service.ImageRejected as exc:
+                _say(client, inc.chat_id, str(exc))
+                return
+
+            verdict = nsfw_check_service.check_image(data)
+            if not verdict.allowed:
+                _say(client, inc.chat_id, bot_messages.MSG_IMAGE_REJECTED)
+                return
+
+            session["evidence_photo_file_id"] = inc.photo_file_id
+            session["state"] = session_service.State.AWAITING_LOCATION.value
+            session_service.save_session(inc.chat_id, session)
+
+            _say(
+                client,
+                inc.chat_id,
+                "📍 Now share the exact location of the problem using the button below.",
+                markup=location_keyboard("Share my location"),
+            )
+            return
+
+        _say(
+            client,
+            inc.chat_id,
+            bot_messages.MSG_EVIDENCE_REMINDER,
+            markup=bot_messages.evidence_keyboard(),
+        )
+        return
 
     if state == session_service.State.AWAITING_LOCATION:
         if inc.latitude is not None and inc.longitude is not None:
@@ -439,6 +550,21 @@ def _handle_new_input(
         session["source"] = "image"
         session["image_key"] = key
         session["needs_review"] = prediction.needs_review
+        session["category"] = prediction.category
+        session["confidence"] = prediction.confidence
+        session["state"] = session_service.State.AWAITING_LOCATION.value
+        session_service.save_session(inc.chat_id, session)
+
+        msg = bot_messages.format_detected(
+            prediction.category,
+            classification_service.is_confident(prediction),
+        )
+        _say(
+            client,
+            inc.chat_id,
+            msg,
+            markup=location_keyboard("Share my location"),
+        )
     elif inc.text is not None:
         _typing(client, inc.chat_id)
         text = inc.text.strip()
@@ -461,25 +587,25 @@ def _handle_new_input(
         session["input_type"] = "text"
         session["source"] = "text"
         session["image_key"] = None
+        session["evidence_photo_file_id"] = None
         session["needs_review"] = prediction.needs_review
+        session["category"] = prediction.category
+        session["confidence"] = prediction.confidence
+        session["state"] = session_service.State.AWAITING_EVIDENCE.value
+        session_service.save_session(inc.chat_id, session)
+
+        msg = f"🔎 Detected: {prediction.category}"
+        if not classification_service.is_confident(prediction):
+            msg += "\n\nI am not fully sure, so an official will double-check it for you."
+        msg += f"\n\n{bot_messages.MSG_ASK_EVIDENCE}"
+        _say(
+            client,
+            inc.chat_id,
+            msg,
+            markup=bot_messages.evidence_keyboard(),
+        )
     else:
         return
-
-    session["category"] = prediction.category
-    session["confidence"] = prediction.confidence
-    session["state"] = session_service.State.AWAITING_LOCATION.value
-    session_service.save_session(inc.chat_id, session)
-
-    msg = bot_messages.format_detected(
-        prediction.category,
-        classification_service.is_confident(prediction),
-    )
-    _say(
-        client,
-        inc.chat_id,
-        msg,
-        markup=location_keyboard("Share my location"),
-    )
 
 
 def handle_update(
@@ -570,15 +696,23 @@ def handle_update(
     has_text = bool(inc.text and inc.text.strip())
     has_location = inc.latitude is not None and inc.longitude is not None
 
-    if not (has_photo or has_text or has_location):
-        return
-
     session = session_service.load_session(inc.chat_id)
 
     # Discard sessions with legacy or unknown states
     if session is not None and session.get("state") not in _VALID_STATES:
         _discard(inc.chat_id, session)
         _say(client, inc.chat_id, bot_messages.MSG_EXPIRED)
+        return
+
+    # In AWAITING_EVIDENCE, handle any incoming message (photo advances, non-photo gets reminder)
+    if (
+        session is not None
+        and session.get("state") == session_service.State.AWAITING_EVIDENCE
+    ):
+        _handle_message_in_state(db, client, inc, session, now, commit)
+        return
+
+    if not (has_photo or has_text or has_location):
         return
 
     # Direct tracking code lookup when no session or in AWAITING_INPUT

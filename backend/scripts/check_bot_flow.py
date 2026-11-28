@@ -324,8 +324,8 @@ def main() -> None:
         )
         run_check(2, "Lodge Complaint creates session in AWAITING_INPUT", ok_2)
 
-        # Check 3: text "Streetlights not working on the main road", location 17.684, 75.880,
-        # then "sub:yes"
+        # Check 3: text "Streetlights not working on the main road", skip photo,
+        # location 17.684, 75.880, then "sub:yes"
         cid_3 = next_chat_id()
         client_3 = FakeBotClient()
         bot_handler.handle_update(
@@ -336,6 +336,18 @@ def main() -> None:
                 cid_3,
                 text="Streetlights not working on the main road",
             ),
+            commit=db.flush,
+        )
+        sess_3_evi = session_service.load_session(cid_3)
+        evi_prompt_ok_3 = (
+            sess_3_evi is not None
+            and sess_3_evi["state"] == session_service.State.AWAITING_EVIDENCE
+            and bot_messages.MSG_ASK_EVIDENCE in client_3.messages[-1]["text"]
+        )
+        bot_handler.handle_update(
+            db,
+            client_3,
+            make_cb(next_uid(), cid_3, "evi:skip"),
             commit=db.flush,
         )
         bot_handler.handle_update(
@@ -353,6 +365,7 @@ def main() -> None:
             and real_redis.exists(session_service.session_key(cid_3)) == 1
             and 1 <= ttl_3_mid <= 1200
             and summary_buttons_ok_3
+            and evi_prompt_ok_3
         )
         bot_handler.handle_update(
             db,
@@ -390,6 +403,7 @@ def main() -> None:
             and complaint_3.zone.name == "Zone A"
             and complaint_3.status == "Submitted"
             and complaint_3.ai_classification_source == "text"
+            and complaint_3.image_object_key is None
             and len(logs_3) == 3
             and len(triage_3) == 0
             and len(assigns_3) == 0
@@ -398,8 +412,9 @@ def main() -> None:
             and real_redis.exists(session_service.session_key(cid_3)) == 0
             and mid_flow_ok_3
             and "Test Locality, Solapur" in summary_msg_3
+            and "Supporting photo: none" in summary_msg_3
         )
-        run_check(3, "full text complaint flow and summary locality", ok_3)
+        run_check(3, "full text complaint flow with skip", ok_3)
 
         # Check 4: photo with caption -> Potholes, assigned to worker +919000000002, storage exists
         cid_4 = next_chat_id()
@@ -522,6 +537,12 @@ def main() -> None:
         bot_handler.handle_update(
             db,
             client_6,
+            make_cb(next_uid(), cid_6, "evi:skip"),
+            commit=db.flush,
+        )
+        bot_handler.handle_update(
+            db,
+            client_6,
             make_msg(next_uid(), cid_6, latitude=17.684, longitude=75.880),
             commit=db.flush,
         )
@@ -572,6 +593,12 @@ def main() -> None:
             make_msg(
                 next_uid(), cid_7, text="Streetlight outage outside zones"
             ),
+            commit=db.flush,
+        )
+        bot_handler.handle_update(
+            db,
+            client_7,
+            make_cb(next_uid(), cid_7, "evi:skip"),
             commit=db.flush,
         )
         bot_handler.handle_update(
@@ -674,6 +701,12 @@ def main() -> None:
             db,
             client_8c,
             make_msg(next_uid(), cid_8c, text="Encroachment problem cancel sub:no test"),
+            commit=db.flush,
+        )
+        bot_handler.handle_update(
+            db,
+            client_8c,
+            make_cb(next_uid(), cid_8c, "evi:skip"),
             commit=db.flush,
         )
         bot_handler.handle_update(
@@ -864,7 +897,69 @@ def main() -> None:
         ok_12 = photo_ok and fallback_ok
         run_check(12, "completion notification delivery and fallback", ok_12)
 
-        # Check 13: rollback and verify all counts, redis keys, and storage objects are restored
+        # Check 13: text complaint flow with supporting photo uploaded at final confirmation
+        cid_13 = next_chat_id()
+        client_13 = FakeBotClient()
+        jpeg_13 = make_jpeg_bytes()
+        client_13.files["evi_photo_13"] = jpeg_13
+        bot_handler.handle_update(
+            db,
+            client_13,
+            make_msg(
+                next_uid(),
+                cid_13,
+                text="Streetlights not working on the main road",
+            ),
+            commit=db.flush,
+        )
+        sess_13_evi = session_service.load_session(cid_13)
+        bot_handler.handle_update(
+            db,
+            client_13,
+            make_msg(
+                next_uid(),
+                cid_13,
+                photo_file_id="evi_photo_13",
+                photo_file_size=len(jpeg_13),
+            ),
+            commit=db.flush,
+        )
+        storage_count_before_submit = len(uploaded_storage_keys)
+        bot_handler.handle_update(
+            db,
+            client_13,
+            make_msg(next_uid(), cid_13, latitude=17.684, longitude=75.880),
+            commit=db.flush,
+        )
+        summary_msg_13 = client_13.messages[-1]["text"]
+        bot_handler.handle_update(
+            db,
+            client_13,
+            make_cb(next_uid(), cid_13, "sub:yes"),
+            commit=db.flush,
+        )
+        citizen_13 = db.execute(
+            select(Citizen).where(Citizen.telegram_chat_id == cid_13)
+        ).scalar_one()
+        complaint_13 = db.execute(
+            select(Complaint).where(Complaint.citizen_id == citizen_13.id)
+        ).scalar_one()
+
+        ok_13 = (
+            complaint_13.category == "Streetlight"
+            and complaint_13.ai_classification_source == "text"
+            and complaint_13.image_object_key is not None
+            and real_storage.object_exists(complaint_13.image_object_key)
+            and complaint_13.image_object_key in uploaded_storage_keys
+            and len(uploaded_storage_keys) == storage_count_before_submit + 1
+            and "Supporting photo: attached" in summary_msg_13
+            and session_service.load_session(cid_13) is None
+            and sess_13_evi is not None
+            and sess_13_evi["state"] == session_service.State.AWAITING_EVIDENCE
+        )
+        run_check(13, "text complaint flow with supporting photo", ok_13)
+
+        # Check 14: rollback and verify all counts, redis keys, and storage objects are restored
         db.rollback()
 
         for cid in used_chat_ids:
@@ -889,8 +984,8 @@ def main() -> None:
             not real_storage.object_exists(k) for k in uploaded_storage_keys
         )
 
-        ok_13 = counts_match and redis_clean and storage_clean
-        run_check(13, "rollback and resource cleanup", ok_13)
+        ok_14 = counts_match and redis_clean and storage_clean
+        run_check(14, "rollback and resource cleanup", ok_14)
 
     finally:
         db.rollback()

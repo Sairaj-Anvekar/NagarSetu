@@ -178,6 +178,7 @@ def test_session_key_format():
 def test_state_enum_has_only_valid_live_states():
     assert [s.value for s in State] == [
         "AWAITING_INPUT",
+        "AWAITING_EVIDENCE",
         "AWAITING_LOCATION",
         "SUMMARY",
     ]

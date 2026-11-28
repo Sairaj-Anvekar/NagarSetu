@@ -9,7 +9,9 @@ from app.services.telegram_api import inline_keyboard, main_menu_keyboard
 __all__ = [
     "IST",
     "HELP_TEXT",
+    "MSG_ASK_EVIDENCE",
     "MSG_CANCELLED",
+    "MSG_EVIDENCE_REMINDER",
     "MSG_EXPIRED",
     "MSG_GENERIC_ERROR",
     "MSG_IMAGE_REJECTED",
@@ -27,6 +29,7 @@ __all__ = [
     "MSG_TRACK_PROMPT",
     "MSG_USE_BUTTONS",
     "WELCOME_TEXT",
+    "evidence_keyboard",
     "format_completion",
     "format_detected",
     "format_eta",
@@ -62,6 +65,10 @@ MSG_NEW_REPORT = (
 )
 
 MSG_TRACK_PROMPT = "🔎 Send me your grievance code, for example GRV-2026-AB12."
+
+MSG_ASK_EVIDENCE = "Want to add a supporting photo? It helps the worker. You can skip."
+
+MSG_EVIDENCE_REMINDER = "Send a photo or press Skip"
 
 MSG_LOCATION_RECEIVED = "📍 Got it! Location saved."
 
@@ -155,6 +162,7 @@ def format_summary(
     description: str | None,
     has_photo: bool,
     sla_hours: int,
+    supporting_photo: bool | None = None,
 ) -> str:
     msg = (
         "📝 Please review your complaint\n\n"
@@ -164,7 +172,12 @@ def format_summary(
     )
     if description and description.strip():
         msg += f"\n💬 Details: {description.strip()[:200]}"
-    if has_photo:
+    if supporting_photo is not None:
+        if supporting_photo:
+            msg += "\n📷 Supporting photo: attached"
+        else:
+            msg += "\n📷 Supporting photo: none"
+    elif has_photo:
         msg += "\n📷 Photo: attached"
     msg += f"\n⏳ Estimated time: {format_eta(sla_hours)}"
     msg += (
@@ -236,5 +249,13 @@ def summary_keyboard() -> dict:
     return inline_keyboard(
         [
             [("Confirm & Submit", "sub:yes"), ("Cancel", "sub:no")],
+        ]
+    )
+
+
+def evidence_keyboard() -> dict:
+    return inline_keyboard(
+        [
+            [("Skip", "evi:skip"), ("Cancel", "evi:cancel")],
         ]
     )
