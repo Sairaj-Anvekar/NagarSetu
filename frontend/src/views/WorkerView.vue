@@ -11,6 +11,7 @@ import EmptyState from '../components/EmptyState.vue'
 import { fetchMyTasks } from '../api/workerApi'
 import { getErrorMessage } from '../utils/apiError'
 import { isOverdue } from '../utils/taskDisplay'
+import { labelOf } from '../utils/labelOf'
 import { useAuthStore } from '../stores/auth'
 
 const props = defineProps({
@@ -24,14 +25,14 @@ const auth = getActivePinia() ? useAuthStore() : null
 
 const workerName = computed(() => auth?.user?.name ?? '')
 const headerChip = computed(() => {
-  const dept = auth?.user?.department
-  const zone = auth?.user?.zone
+  const dept = labelOf(auth?.user?.department)
+  const zone = labelOf(auth?.user?.zone)
   if (dept && zone) {
     return `${dept} · ${zone}`
   }
   return ''
 })
-const workerZone = computed(() => auth?.user?.zone ?? '')
+const workerZone = computed(() => labelOf(auth?.user?.zone))
 
 const items = ref([])
 const total = ref(0)

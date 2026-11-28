@@ -407,6 +407,43 @@ describe('WorkerView - Redesign Extensions (W3)', () => {
     expect(header.props('chip')).toBe('Solid Waste Management · Zone A')
     expect(header.text()).toContain('Ravi Patil')
     expect(header.text()).toContain('Solid Waste Management · Zone A')
+    expect(header.text()).not.toContain('[object Object]')
+    expect(header.text()).not.toContain('{')
+  })
+
+  it('renders greeting header with department and zone chip when provided as real-backend objects', async () => {
+    saveAuth({
+      token: 'test-token',
+      role: 'worker',
+      user: {
+        id: '101',
+        name: 'Ravi Patil',
+        department: { id: '1', name: 'Sanitation' },
+        zone: { id: '1', name: 'Zone A' },
+      },
+    })
+
+    fetchMyTasks.mockResolvedValueOnce({
+      items: mockTasks,
+      total: 5,
+      page: 1,
+      page_size: 5,
+    })
+
+    const wrapper = mount(WorkerView, {
+      props: { now: NOW },
+      global: { plugins: [pinia] },
+    })
+    await flushPromises()
+
+    const header = wrapper.getComponent(WorkerHeader)
+    expect(header.props('variant')).toBe('greeting')
+    expect(header.props('name')).toBe('Ravi Patil')
+    expect(header.props('chip')).toBe('Sanitation · Zone A')
+    expect(header.text()).toContain('Ravi Patil')
+    expect(header.text()).toContain('Sanitation · Zone A')
+    expect(header.text()).not.toContain('[object Object]')
+    expect(header.text()).not.toContain('{')
   })
 
   it('omits department/zone chip when user lacks department or zone', async () => {

@@ -163,6 +163,36 @@ describe('WorkerTaskCard', () => {
     const zoneChip = wrapper.find('.worker-task-card__zone-chip')
     expect(zoneChip.exists()).toBe(true)
     expect(zoneChip.text()).toBe('Zone A')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('{')
+  })
+
+  it('renders zone chip when zone prop is an object from real backend', () => {
+    const wrapper = mount(WorkerTaskCard, {
+      props: { task: baseTask, zone: { id: '1', name: 'Zone A' }, now: NOW },
+    })
+
+    const zoneChip = wrapper.find('.worker-task-card__zone-chip')
+    expect(zoneChip.exists()).toBe(true)
+    expect(zoneChip.text()).toBe('Zone A')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('{')
+  })
+
+  it('renders zone chip when task.zone is an object from real backend and zone prop is omitted', () => {
+    const taskWithObjectZone = {
+      ...baseTask,
+      zone: { id: '1', name: 'Zone A' },
+    }
+    const wrapper = mount(WorkerTaskCard, {
+      props: { task: taskWithObjectZone, now: NOW },
+    })
+
+    const zoneChip = wrapper.find('.worker-task-card__zone-chip')
+    expect(zoneChip.exists()).toBe(true)
+    expect(zoneChip.text()).toBe('Zone A')
+    expect(wrapper.text()).not.toContain('[object Object]')
+    expect(wrapper.text()).not.toContain('{')
   })
 
   it('omits zone chip when zone prop is empty', () => {

@@ -14,6 +14,7 @@ import { useAuthStore } from '../stores/auth'
 import { getErrorMessage } from '../utils/apiError'
 import { getFieldErrors } from '../utils/fieldErrors'
 import { buildDirectionsUrl } from '../utils/googleMaps'
+import { labelOf } from '../utils/labelOf'
 import { DEFER_REASON_MAX, DEFER_REASON_MIN } from '../utils/resolutionLimits'
 
 defineProps({
@@ -25,7 +26,7 @@ defineProps({
 
 const route = useRoute()
 const auth = getActivePinia() ? useAuthStore() : null
-const workerZone = computed(() => auth?.user?.zone ?? '')
+const workerZone = computed(() => labelOf(auth?.user?.zone))
 
 const task = ref(null)
 const isLoading = ref(false)

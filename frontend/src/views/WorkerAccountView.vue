@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getLoginRoute } from '../utils/loginRoute'
+import { labelOf } from '../utils/labelOf'
 import WorkerHeader from '../components/worker/WorkerHeader.vue'
 import AccountProfileCard from '../components/worker/AccountProfileCard.vue'
 import AccountInfoRows from '../components/worker/AccountInfoRows.vue'
@@ -16,8 +17,8 @@ const workerName = computed(() => {
   return typeof name === 'string' && name.trim() ? name.trim() : 'Worker'
 })
 
-const department = computed(() => auth.user?.department || '')
-const zone = computed(() => auth.user?.zone || '')
+const department = computed(() => labelOf(auth.user?.department))
+const zone = computed(() => labelOf(auth.user?.zone))
 const phone = computed(() => auth.user?.phone || '')
 
 function handleLogout() {
